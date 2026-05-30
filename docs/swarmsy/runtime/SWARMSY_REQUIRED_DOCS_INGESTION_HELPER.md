@@ -166,8 +166,11 @@ If future work adds onboarding automation, it should call the existing helper ex
 3. Call:
 
 ```bash
-curl http://localhost:3001/api/admin/swarmsy/required-docs/status
+curl http://localhost:3001/api/admin/swarmsy/required-docs/status \
+  -H "Authorization: ******"
 ```
+
+Replace the asterisks with an admin JWT token prefixed by Bearer.
 
 4. Verify:
    - `success: true`
@@ -184,9 +187,12 @@ curl http://localhost:3001/api/admin/swarmsy/required-docs/status
 ```bash
 curl -X POST \
   http://localhost:3001/api/admin/swarmsy/workspace-preset/hive/ingest-required-docs \
+  -H "Authorization: ******" \
   -H "Content-Type: application/json" \
   -d '{"workspaceSlug":"swarmsy-hive"}'
 ```
+
+Replace the asterisks with an admin JWT token prefixed by Bearer.
 
 4. Verify the response clearly reports:
    - `success`

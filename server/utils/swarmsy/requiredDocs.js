@@ -141,7 +141,7 @@ function inspectManifestDocument(
   );
   if (error) {
     return {
-      path: docPath,
+      path: normalizedPath ?? docPath,
       present: false,
       loadable: false,
       required,
@@ -358,6 +358,7 @@ async function ingestSwarmsyRequiredDocsForWorkspace(workspace, options = {}) {
   const existingTrackedPaths = new Set(
     existingDocs.map(trackedWorkspaceDocPath).filter(Boolean)
   );
+  const docsRootStatus = getDoctrineDocsRootStatus();
   const ingested = [];
   const skipped = [];
   const failed = [];
@@ -371,7 +372,10 @@ async function ingestSwarmsyRequiredDocsForWorkspace(workspace, options = {}) {
       continue;
     }
 
-    const { absolutePath, error } = resolveManifestDocPath(docPath);
+    const { absolutePath, error } = resolveManifestDocPath(
+      docPath,
+      docsRootStatus
+    );
     if (error || !absolutePath) {
       failed.push({
         path: docPath,
