@@ -211,17 +211,15 @@ function inspectManifestDocument(
 
   try {
     const content = fs.readFileSync(absolutePath, "utf8");
+    const hasContent = content.trim().length > 0;
     return {
       path: normalizedPath,
       present: true,
-      loadable: content.trim().length > 0,
+      loadable: hasContent,
       required,
       optional: !required,
       bytes: stats.size,
-      error:
-        content.trim().length > 0
-          ? null
-          : "Document exists but is empty on disk.",
+      error: hasContent ? null : "Document exists but is empty on disk.",
     };
   } catch (readError) {
     return {
@@ -230,7 +228,7 @@ function inspectManifestDocument(
       loadable: false,
       required,
       optional: !required,
-      error: readError.message,
+      error: `Document could not be read: ${readError.message}`,
     };
   }
 }

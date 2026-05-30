@@ -167,12 +167,12 @@ If future work adds onboarding automation, it should call the existing helper ex
 3. Call:
 
 ```bash
-AUTH_HEADER="******"
+AUTH_HEADER="Bearer <YOUR_ADMIN_JWT>"
 curl http://localhost:3001/api/admin/swarmsy/required-docs/status \
   -H "Authorization: ${AUTH_HEADER}"
 ```
 
-Replace `<YOUR_ADMIN_JWT>` with your admin JWT.
+Replace `<YOUR_ADMIN_JWT>` in `AUTH_HEADER` with your admin JWT.
 
 4. Verify:
    - `success: true`
@@ -187,7 +187,7 @@ Replace `<YOUR_ADMIN_JWT>` with your admin JWT.
 3. Call:
 
 ```bash
-AUTH_HEADER="******"
+AUTH_HEADER="Bearer <YOUR_ADMIN_JWT>"
 curl -X POST \
   http://localhost:3001/api/admin/swarmsy/workspace-preset/hive/ingest-required-docs \
   -H "Authorization: ${AUTH_HEADER}" \
@@ -195,7 +195,7 @@ curl -X POST \
   -d '{"workspaceSlug":"swarmsy-hive"}'
 ```
 
-Replace `<YOUR_ADMIN_JWT>` with your admin JWT.
+Replace `<YOUR_ADMIN_JWT>` in `AUTH_HEADER` with your admin JWT.
 
 4. Verify the response clearly reports:
    - `success`
