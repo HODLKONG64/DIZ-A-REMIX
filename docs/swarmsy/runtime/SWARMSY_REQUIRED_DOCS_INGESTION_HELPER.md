@@ -65,8 +65,9 @@ The helper verifies each manifest file and reports:
 Doctrine docs root resolution:
 
 - Default local/dev docs root is the repository root.
-- Set `SWARMSY_DOCTRINE_DOCS_ROOT` to override runtime resolution (example: `/app/docs`).
+- Set `SWARMSY_DOCTRINE_DOCS_ROOT` to override runtime resolution (example: `/app` or repo root path).
 - Manifest paths resolve relative to that docs root.
+- `SWARMSY_DOCTRINE_DOCS_ROOT` must point to the parent directory that contains `docs/`, because manifest entries already include the `docs/` prefix.
 - Manifest paths cannot escape the configured docs root (and cannot escape repo root when the configured root is inside the repo).
 - If the configured docs root is unavailable, status truthfully reports docs as unavailable/missing and `documentsToIngest` is empty.
 
@@ -170,7 +171,7 @@ curl http://localhost:3001/api/admin/swarmsy/required-docs/status \
   -H "Authorization: ******"
 ```
 
-Replace the asterisks with an admin JWT token prefixed by Bearer.
+Replace `******` with your admin JWT prefixed by `Bearer`.
 
 4. Verify:
    - `success: true`
@@ -192,7 +193,7 @@ curl -X POST \
   -d '{"workspaceSlug":"swarmsy-hive"}'
 ```
 
-Replace the asterisks with an admin JWT token prefixed by Bearer.
+Replace `******` with your admin JWT prefixed by `Bearer`.
 
 4. Verify the response clearly reports:
    - `success`

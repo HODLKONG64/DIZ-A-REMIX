@@ -59,7 +59,19 @@ function getDoctrineDocsRootStatus() {
     };
   }
 
-  if (!fs.statSync(docsRoot).isDirectory()) {
+  let docsRootStats = null;
+  try {
+    docsRootStats = fs.statSync(docsRoot);
+  } catch (error) {
+    return {
+      docsRoot,
+      envValue: configuredRoot || null,
+      available: false,
+      message: `SWARMSY doctrine docs root could not be read: ${error.message}`,
+    };
+  }
+
+  if (!docsRootStats.isDirectory()) {
     return {
       docsRoot,
       envValue: configuredRoot || null,
@@ -157,11 +169,24 @@ function inspectManifestDocument(
       loadable: false,
       required,
       optional: !required,
-      error: "Document is missing from the repository.",
+      error: "Document is missing from the configured docs root.",
     };
   }
 
-  const stats = fs.statSync(absolutePath);
+  let stats = null;
+  try {
+    stats = fs.statSync(absolutePath);
+  } catch (error) {
+    return {
+      path: normalizedPath,
+      present: true,
+      loadable: false,
+      required,
+      optional: !required,
+      error: `Document could not be read: ${error.message}`,
+    };
+  }
+
   if (!stats.isFile()) {
     return {
       path: normalizedPath,
@@ -277,14 +302,26 @@ function trackedWorkspaceDocPath(document) {
 }
 
 function createIngestionMetadata(docPath, absolutePath) {
-  const stats = fs.statSync(absolutePath);
+  let stats = null;
+  try {
+    stats = fs.statSync(absolutePath);
+  } catch (error) {
+    return {
+      metadata: null,
+      error: `Document could not be read: ${error.message}`,
+    };
+  }
+
   return {
-    title: docPath,
-    docAuthor: "SWARMSY Doctrine",
-    description: `SWARMSY required doctrine document from ${docPath}.`,
-    docSource: `${FILE_SOURCE_PREFIX}${docPath}`,
-    chunkSource: `${FILE_SOURCE_PREFIX}${docPath}`,
-    published: String(stats.mtimeMs),
+    metadata: {
+      title: docPath,
+      docAuthor: "SWARMSY Doctrine",
+      description: `SWARMSY required doctrine document from ${docPath}.`,
+      docSource: `${FILE_SOURCE_PREFIX}${docPath}`,
+      chunkSource: `${FILE_SOURCE_PREFIX}${docPath}`,
+      published: stats.mtimeMs,
+    },
+    error: null,
   };
 }
 
@@ -400,14 +437,23 @@ async function ingestSwarmsyRequiredDocsForWorkspace(workspace, options = {}) {
       continue;
     }
 
+    const { metadata, error: metadataError } = createIngestionMetadata(
+      docPath,
+      absolutePath
+    );
+    if (metadataError || !metadata) {
+      failed.push({
+        path: docPath,
+        reason: metadataError || "Document metadata could not be prepared.",
+      });
+      continue;
+    }
+
     const {
       success,
       reason,
       documents = [],
-    } = await collector.processRawText(
-      content,
-      createIngestionMetadata(docPath, absolutePath)
-    );
+    } = await collector.processRawText(content, metadata);
     const docLocation = documents?.[0]?.location;
     if (!success || !docLocation) {
       failed.push({

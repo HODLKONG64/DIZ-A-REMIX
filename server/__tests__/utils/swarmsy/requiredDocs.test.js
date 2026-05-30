@@ -1,3 +1,6 @@
+const fs = require("fs");
+const path = require("path");
+
 jest.mock("../../../models/documents", () => ({
   Document: {
     forWorkspace: jest.fn(),
@@ -20,6 +23,7 @@ const {
 
 describe("SWARMSY required docs helper", () => {
   const originalDoctrineRoot = process.env.SWARMSY_DOCTRINE_DOCS_ROOT;
+  const repoRoot = path.resolve(__dirname, "../../../..");
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -119,6 +123,69 @@ describe("SWARMSY required docs helper", () => {
       present: false,
       loadable: false,
     });
+  });
+
+  it("truthfully reports docs root stat errors as unavailable", () => {
+    process.env.SWARMSY_DOCTRINE_DOCS_ROOT = "/tmp";
+    const originalStatSync = fs.statSync;
+    const statSpy = jest.spyOn(fs, "statSync");
+    statSpy.mockImplementation((targetPath) => {
+      if (targetPath === "/tmp") {
+        throw new Error("EACCES: permission denied");
+      }
+      return originalStatSync(targetPath);
+    });
+
+    const status = getSwarmsyRequiredDocsStatus({
+      name: "Test Manifest",
+      version: 1,
+      groups: [
+        {
+          id: "mixed",
+          label: "Mixed",
+          required: true,
+          paths: ["docs/swarmsy/app-mode/README.md"],
+        },
+      ],
+    });
+
+    expect(status.docsRootAvailable).toBe(false);
+    expect(status.docsRootMessage).toContain("could not be read");
+    statSpy.mockRestore();
+  });
+
+  it("marks unreadable manifest docs as per-file failures", () => {
+    const targetDoc = "docs/swarmsy/app-mode/README.md";
+    const targetPath = path.resolve(repoRoot, targetDoc);
+    const originalStatSync = fs.statSync;
+    const statSpy = jest.spyOn(fs, "statSync");
+    statSpy.mockImplementation((inputPath) => {
+      if (path.resolve(inputPath) === targetPath) {
+        throw new Error("EACCES: unreadable");
+      }
+      return originalStatSync(inputPath);
+    });
+
+    const status = getSwarmsyRequiredDocsStatus({
+      name: "Test Manifest",
+      version: 1,
+      groups: [
+        {
+          id: "mixed",
+          label: "Mixed",
+          required: true,
+          paths: [targetDoc],
+        },
+      ],
+    });
+
+    expect(status.groups[0].files[0]).toMatchObject({
+      path: targetDoc,
+      present: true,
+      loadable: false,
+    });
+    expect(status.groups[0].files[0].error).toContain("Document could not be read:");
+    statSpy.mockRestore();
   });
 
   it("skips documents that are already attached to the workspace", async () => {
@@ -229,7 +296,65 @@ describe("SWARMSY required docs helper", () => {
       ["custom-documents/raw-doc.json"],
       11
     );
+    const metadata = collector.processRawText.mock.calls[0][1];
+    expect(typeof metadata.published).toBe("number");
     expect(purgeSourceDocument).not.toHaveBeenCalled();
+  });
+
+  it("fails one file when ingestion metadata stat cannot be read", async () => {
+    Document.forWorkspace.mockResolvedValue([]);
+
+    const targetDoc =
+      "docs/swarmsy/living-icon-engine/personas/11_SWARMSY_SPARKY_PERSONA_SYSTEM_PROMPT.md";
+    const targetPath = path.resolve(repoRoot, targetDoc);
+    let statCalls = 0;
+    const originalStatSync = fs.statSync;
+    const statSpy = jest.spyOn(fs, "statSync");
+    statSpy.mockImplementation((inputPath) => {
+      if (path.resolve(inputPath) === targetPath) {
+        statCalls += 1;
+        if (statCalls >= 2) {
+          throw new Error("ENOENT: gone");
+        }
+      }
+      return originalStatSync(inputPath);
+    });
+
+    const collector = {
+      online: jest.fn().mockResolvedValue(true),
+      processRawText: jest.fn(),
+    };
+
+    const result = await ingestSwarmsyRequiredDocsForWorkspace(
+      {
+        id: 7,
+        slug: "swarmsy-hive",
+        name: "SWARMSY HIVE",
+      },
+      {
+        manifest: {
+          name: "Test Manifest",
+          version: 1,
+          groups: [
+            {
+              id: "persona",
+              label: "Persona",
+              required: true,
+              paths: [targetDoc],
+            },
+          ],
+        },
+        collector,
+      }
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.failed[0]).toMatchObject({
+      path: targetDoc,
+    });
+    expect(result.failed[0].reason).toContain("Document could not be read:");
+    expect(collector.processRawText).not.toHaveBeenCalled();
+    statSpy.mockRestore();
   });
 
   it("returns stable collector offline error code", async () => {
