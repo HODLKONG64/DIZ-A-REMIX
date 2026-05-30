@@ -16,6 +16,10 @@ const {
   PRESET_NAME,
 } = require("../utils/swarmsy/applyWorkspacePreset");
 const {
+  getSwarmsyRequiredDocsStatus,
+  ingestSwarmsyRequiredDocsForWorkspace,
+} = require("../utils/swarmsy/requiredDocs");
+const {
   getVectorDbClass,
   getEmbeddingEngineSelection,
 } = require("../utils/helpers");
@@ -69,6 +73,37 @@ async function withSwarmsyHiveCreationLock(lockKey, action) {
     swarmsyHiveCreationLocks.delete(lockKey);
     if (typeof releaseLock === "function") releaseLock();
   }
+}
+
+async function findRequestedWorkspace(request, response) {
+  const user = await userFromSession(request, response);
+  const { workspaceId = null, workspaceSlug = null } = reqBody(request) || {};
+
+  if (workspaceId !== null && workspaceId !== undefined && workspaceId !== "") {
+    if (isNaN(Number(workspaceId))) {
+      return { workspace: null, error: "Invalid workspaceId." };
+    }
+
+    return {
+      workspace: await Workspace.get({ id: Number(workspaceId) }),
+      error: null,
+      user,
+    };
+  }
+
+  if (typeof workspaceSlug === "string" && workspaceSlug.trim().length > 0) {
+    return {
+      workspace: await Workspace.get({ slug: workspaceSlug.trim() }),
+      error: null,
+      user,
+    };
+  }
+
+  return {
+    workspace: await findSwarmsyHiveWorkspace(user?.id ?? null),
+    error: null,
+    user,
+  };
 }
 
 function adminEndpoints(app) {
@@ -592,6 +627,78 @@ function adminEndpoints(app) {
           workspace: null,
           message: "Failed to create SWARMSY HIVE workspace preset.",
           preset: PRESET_NAME,
+        });
+      }
+    }
+  );
+
+  app.get(
+    "/admin/swarmsy/required-docs/status",
+    [validatedRequest, flexUserRoleValid([ROLES.admin, ROLES.manager])],
+    async (_request, response) => {
+      try {
+        return response.status(200).json({
+          success: true,
+          ...getSwarmsyRequiredDocsStatus(),
+        });
+      } catch (error) {
+        console.error(error);
+        return response.status(500).json({
+          success: false,
+          message: "Failed to load SWARMSY required docs status.",
+        });
+      }
+    }
+  );
+
+  app.post(
+    "/admin/swarmsy/workspace-preset/hive/ingest-required-docs",
+    [validatedRequest, flexUserRoleValid([ROLES.admin, ROLES.manager])],
+    async (request, response) => {
+      try {
+        const { workspace, error, user } = await findRequestedWorkspace(
+          request,
+          response
+        );
+
+        if (error) {
+          return response.status(422).json({
+            success: false,
+            message: error,
+          });
+        }
+
+        if (!workspace) {
+          return response.status(404).json({
+            success: false,
+            message: "No SWARMSY HIVE workspace was found for ingestion.",
+          });
+        }
+
+        if (workspace.name !== PRESET_NAME) {
+          return response.status(400).json({
+            success: false,
+            message: "Target workspace must be a SWARMSY HIVE workspace.",
+            workspace,
+          });
+        }
+
+        const result = await ingestSwarmsyRequiredDocsForWorkspace(workspace, {
+          userId: user?.id ?? null,
+        });
+
+        if (result.message === "Document processing API is not online.") {
+          return response.status(503).json(result);
+        }
+
+        return response
+          .status(result.success || result.partial ? 200 : 400)
+          .json(result);
+      } catch (error) {
+        console.error(error);
+        return response.status(500).json({
+          success: false,
+          message: "Failed to ingest SWARMSY required docs.",
         });
       }
     }

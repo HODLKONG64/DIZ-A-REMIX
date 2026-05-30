@@ -43,7 +43,7 @@
 - Goal: Help users/admins load prompt tree, persona, operating layer, and disruption docs.
 - Likely files/directories: document ingestion helpers, admin upload/import flows, docs indexing hooks.
 - Runtime risk: Medium-High.
-- Acceptance criteria: Required doctrine docs are discoverable and loadable with clear status.
+- Acceptance criteria: Required doctrine docs are discoverable and loadable with clear status, and an admin can trigger on-demand ingestion for `SWARMSY HIVE` without changing generic AnythingLLM behavior.
 - Validation/tests: Ingestion tests for missing/partial/full docs and retrieval checks.
 - Rollback note: Disable helper and keep manual docs ingestion path.
 

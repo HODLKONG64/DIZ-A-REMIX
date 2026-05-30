@@ -75,6 +75,52 @@ The lock is a pragmatic runtime idempotency guard for this route. A future DB-le
 
 ---
 
+## What Was Added in PR #8
+
+### Required Doctrine Manifest
+
+```text
+server/config/swarmsy/SWARMSY_REQUIRED_DOCS_MANIFEST.json
+```
+
+Lists the current doctrine docs required by `SWARMSY HIVE`:
+
+- Living Icon Engine prompt tree
+- SPARKY persona
+- Operating layer
+- Disruption engine
+- App mode
+
+### Required Docs Helper
+
+```text
+server/utils/swarmsy/requiredDocs.js
+```
+
+Adds:
+
+- manifest loading
+- grouped present/missing/loadable status
+- a `documentsToIngest` list
+- on-demand ingestion for an existing `SWARMSY HIVE` workspace using existing collector + workspace document APIs
+
+### Admin/API Routes
+
+```text
+GET  /api/admin/swarmsy/required-docs/status
+POST /api/admin/swarmsy/workspace-preset/hive/ingest-required-docs
+```
+
+Behavior:
+
+- protected by existing admin/manager middleware
+- does not auto-ingest on boot
+- does not ingest for every workspace
+- only targets `SWARMSY HIVE`
+- does not claim a doc is loaded just because it exists in the repo
+
+---
+
 ## What Remains Docs-Only
 
 The following behaviours from `SWARMSY_DEFAULT_WORKSPACE_PRESET.md` are **not yet runtime-wired**:
@@ -84,7 +130,7 @@ The following behaviours from `SWARMSY_DEFAULT_WORKSPACE_PRESET.md` are **not ye
 | Workspace auto-created on first boot/setup | Docs-only (intentionally not wired) | Keep docs-only unless explicitly approved |
 | SPARKY loaded as default persona in UI | Docs-only | Phase 3 |
 | Face/Hidden Identity first-run prompt | Docs-only | Phase 4 |
-| Required doctrine documents ingested automatically | Docs-only | Phase 5 |
+| Required doctrine documents ingested automatically | Docs-only (status + on-demand ingestion helper now wired, automatic ingestion still intentionally off) | Future onboarding wiring |
 | Project sections surfaced in dashboard | Docs-only | Phase 6 |
 | Memory lock viewer | Docs-only | Phase 7 |
 
@@ -124,6 +170,17 @@ app.listen(port, async () => {
 ### Option C — Onboarding flow integration (Phase 4)
 
 During the first-run onboarding wizard, offer a "Start SWARMSY HIVE" option that calls `createSwarmsyHiveWorkspace()`.
+
+### Option D — Explicit doctrine load step
+
+After the workspace exists, call:
+
+```text
+GET  /api/admin/swarmsy/required-docs/status
+POST /api/admin/swarmsy/workspace-preset/hive/ingest-required-docs
+```
+
+This keeps doctrine loading explicit and truthful.
 
 ---
 
@@ -172,6 +229,14 @@ console.log(message); // => null on success
 5. Confirm SPARKY system prompt is set on the workspace.
 6. Confirm 8 suggested messages appear in the workspace chat interface.
 
+### 5. Verify doctrine helper routes
+
+1. Call `GET /api/admin/swarmsy/required-docs/status`
+2. Confirm grouped required-doc status is returned
+3. Call `POST /api/admin/swarmsy/workspace-preset/hive/ingest-required-docs`
+4. Confirm ingestion returns real `ingested` / `skipped` / `failed` counts
+5. Re-run the ingestion route and confirm already-tracked docs are skipped rather than silently duplicated by the helper
+
 ---
 
 ## Runtime Impact Summary
@@ -210,3 +275,4 @@ If a future PR wires boot-time seeding, that PR must document its own rollback.
 - [`docs/swarmsy/app-mode/SPARKY_SYSTEM_PROMPT_PRESET.md`](../app-mode/SPARKY_SYSTEM_PROMPT_PRESET.md)
 - [`docs/swarmsy/app-mode/SWARMSY_RUNTIME_PRESET_BACKLOG.md`](../app-mode/SWARMSY_RUNTIME_PRESET_BACKLOG.md)
 - [`docs/swarmsy/operating-layer/SWARMSY_FUTURE_RUNTIME_INTEGRATION_PLAN.md`](../operating-layer/SWARMSY_FUTURE_RUNTIME_INTEGRATION_PLAN.md)
+- [`docs/swarmsy/runtime/SWARMSY_REQUIRED_DOCS_INGESTION_HELPER.md`](./SWARMSY_REQUIRED_DOCS_INGESTION_HELPER.md)
