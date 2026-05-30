@@ -59,9 +59,8 @@ function resolveManifestDocPath(docPath) {
 }
 
 function inspectManifestDocument(docPath, required = false) {
-  const { normalizedPath, absolutePath, error } = resolveManifestDocPath(
-    docPath
-  );
+  const { normalizedPath, absolutePath, error } =
+    resolveManifestDocPath(docPath);
   if (error) {
     return {
       path: docPath,
@@ -106,7 +105,9 @@ function inspectManifestDocument(docPath, required = false) {
       optional: !required,
       bytes: stats.size,
       error:
-        content.trim().length > 0 ? null : "Document exists but is empty on disk.",
+        content.trim().length > 0
+          ? null
+          : "Document exists but is empty on disk.",
     };
   } catch (readError) {
     return {
@@ -120,11 +121,13 @@ function inspectManifestDocument(docPath, required = false) {
   }
 }
 
-function getSwarmsyRequiredDocPaths(manifest = loadSwarmsyRequiredDocsManifest()) {
+function getSwarmsyRequiredDocPaths(
+  manifest = loadSwarmsyRequiredDocsManifest()
+) {
   return manifest.groups.flatMap((group) =>
     group.paths
       .map((docPath) => normalizeRepoRelativePath(docPath))
-      .filter(Boolean),
+      .filter(Boolean)
   );
 }
 
@@ -157,18 +160,14 @@ function getSwarmsyRequiredDocsStatus(
       .filter((file) => file.present && file.loadable)
       .map((file) => file.path),
     summary: {
-      requiredPresent: allFiles.filter(
-        (file) => file.required && file.present
-      ).length,
-      requiredMissing: allFiles.filter(
-        (file) => file.required && !file.present
-      ).length,
-      optionalPresent: allFiles.filter(
-        (file) => file.optional && file.present
-      ).length,
-      optionalMissing: allFiles.filter(
-        (file) => file.optional && !file.present
-      ).length,
+      requiredPresent: allFiles.filter((file) => file.required && file.present)
+        .length,
+      requiredMissing: allFiles.filter((file) => file.required && !file.present)
+        .length,
+      optionalPresent: allFiles.filter((file) => file.optional && file.present)
+        .length,
+      optionalMissing: allFiles.filter((file) => file.optional && !file.present)
+        .length,
     },
   };
 }
@@ -206,14 +205,9 @@ function createIngestionMetadata(docPath, absolutePath) {
   };
 }
 
-async function ingestSwarmsyRequiredDocsForWorkspace(
-  workspace,
-  options = {}
-) {
+async function ingestSwarmsyRequiredDocsForWorkspace(workspace, options = {}) {
   if (!workspace?.id || !workspace?.slug) {
-    throw new Error(
-      "A valid workspace is required for SWARMSY doc ingestion."
-    );
+    throw new Error("A valid workspace is required for SWARMSY doc ingestion.");
   }
 
   const manifest = options.manifest || loadSwarmsyRequiredDocsManifest();
@@ -318,7 +312,11 @@ async function ingestSwarmsyRequiredDocsForWorkspace(
       continue;
     }
 
-    const { success, reason, documents = [] } = await collector.processRawText(
+    const {
+      success,
+      reason,
+      documents = [],
+    } = await collector.processRawText(
       content,
       createIngestionMetadata(docPath, absolutePath)
     );
@@ -358,7 +356,8 @@ async function ingestSwarmsyRequiredDocsForWorkspace(
   if (success && ingested.length > 0) {
     message = "SWARMSY required docs ingested successfully.";
   } else if (success) {
-    message = "All SWARMSY required docs were already attached to this workspace.";
+    message =
+      "All SWARMSY required docs were already attached to this workspace.";
   } else if (partial) {
     message = "Some SWARMSY required docs were ingested, but some failed.";
   }
