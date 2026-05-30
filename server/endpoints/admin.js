@@ -687,7 +687,7 @@ function adminEndpoints(app) {
           userId: user?.id ?? null,
         });
 
-        if (result.message === "Document processing API is not online.") {
+        if (result.errorCode === "COLLECTOR_OFFLINE") {
           return response.status(503).json(result);
         }
 

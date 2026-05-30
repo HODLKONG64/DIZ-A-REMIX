@@ -19,8 +19,15 @@ const {
 } = require("../../../utils/swarmsy/requiredDocs");
 
 describe("SWARMSY required docs helper", () => {
+  const originalDoctrineRoot = process.env.SWARMSY_DOCTRINE_DOCS_ROOT;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    if (typeof originalDoctrineRoot === "undefined") {
+      delete process.env.SWARMSY_DOCTRINE_DOCS_ROOT;
+    } else {
+      process.env.SWARMSY_DOCTRINE_DOCS_ROOT = originalDoctrineRoot;
+    }
   });
 
   it("loads the SWARMSY required docs manifest", () => {
@@ -67,6 +74,51 @@ describe("SWARMSY required docs helper", () => {
       optionalMissing: 0,
     });
     expect(status.documentsToIngest).toEqual(["docs/swarmsy/app-mode/README.md"]);
+  });
+
+  it("uses consistent boolean coercion for optional group status", () => {
+    const manifest = {
+      name: "Test Manifest",
+      version: 1,
+      groups: [
+        {
+          id: "mixed",
+          label: "Mixed",
+          required: "true",
+          paths: ["docs/swarmsy/app-mode/README.md"],
+        },
+      ],
+    };
+
+    const status = getSwarmsyRequiredDocsStatus(manifest);
+    expect(status.groups[0].required).toBe(true);
+    expect(status.groups[0].optional).toBe(false);
+  });
+
+  it("truthfully reports unavailable docs root from env override", () => {
+    process.env.SWARMSY_DOCTRINE_DOCS_ROOT = "/tmp/swarmsy-doctrine-root-missing";
+
+    const manifest = {
+      name: "Test Manifest",
+      version: 1,
+      groups: [
+        {
+          id: "mixed",
+          label: "Mixed",
+          required: true,
+          paths: ["docs/swarmsy/app-mode/README.md"],
+        },
+      ],
+    };
+
+    const status = getSwarmsyRequiredDocsStatus(manifest);
+    expect(status.docsRootAvailable).toBe(false);
+    expect(status.docsRootMessage).toContain("does not exist");
+    expect(status.documentsToIngest).toEqual([]);
+    expect(status.groups[0].files[0]).toMatchObject({
+      present: false,
+      loadable: false,
+    });
   });
 
   it("skips documents that are already attached to the workspace", async () => {
@@ -178,5 +230,43 @@ describe("SWARMSY required docs helper", () => {
       11
     );
     expect(purgeSourceDocument).not.toHaveBeenCalled();
+  });
+
+  it("returns stable collector offline error code", async () => {
+    Document.forWorkspace.mockResolvedValue([]);
+
+    const collector = {
+      online: jest.fn().mockResolvedValue(false),
+      processRawText: jest.fn(),
+    };
+
+    const result = await ingestSwarmsyRequiredDocsForWorkspace(
+      {
+        id: 7,
+        slug: "swarmsy-hive",
+        name: "SWARMSY HIVE",
+      },
+      {
+        manifest: {
+          name: "Test Manifest",
+          version: 1,
+          groups: [
+            {
+              id: "persona",
+              label: "Persona",
+              required: true,
+              paths: [
+                "docs/swarmsy/living-icon-engine/personas/11_SWARMSY_SPARKY_PERSONA_SYSTEM_PROMPT.md",
+              ],
+            },
+          ],
+        },
+        collector,
+      }
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.errorCode).toBe("COLLECTOR_OFFLINE");
+    expect(result.message).toBe("Document processing API is not online.");
   });
 });

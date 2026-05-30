@@ -10,6 +10,7 @@ const MANIFEST_PATH = path.resolve(
   "../../config/swarmsy/SWARMSY_REQUIRED_DOCS_MANIFEST.json"
 );
 const FILE_SOURCE_PREFIX = "file://";
+const DOCTRINE_DOCS_ROOT_ENV = "SWARMSY_DOCTRINE_DOCS_ROOT";
 
 function loadSwarmsyRequiredDocsManifest() {
   return JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf8"));
@@ -35,7 +36,50 @@ function normalizeRepoRelativePath(docPath = "") {
   return normalized;
 }
 
-function resolveManifestDocPath(docPath) {
+function getDoctrineDocsRootStatus() {
+  const configuredRoot =
+    typeof process.env[DOCTRINE_DOCS_ROOT_ENV] === "string"
+      ? process.env[DOCTRINE_DOCS_ROOT_ENV].trim()
+      : "";
+
+  const docsRoot = configuredRoot
+    ? path.resolve(
+        path.isAbsolute(configuredRoot)
+          ? configuredRoot
+          : path.resolve(REPO_ROOT, configuredRoot)
+      )
+    : REPO_ROOT;
+
+  if (!fs.existsSync(docsRoot)) {
+    return {
+      docsRoot,
+      envValue: configuredRoot || null,
+      available: false,
+      message: `SWARMSY doctrine docs root does not exist: ${docsRoot}`,
+    };
+  }
+
+  if (!fs.statSync(docsRoot).isDirectory()) {
+    return {
+      docsRoot,
+      envValue: configuredRoot || null,
+      available: false,
+      message: `SWARMSY doctrine docs root is not a directory: ${docsRoot}`,
+    };
+  }
+
+  return {
+    docsRoot,
+    envValue: configuredRoot || null,
+    available: true,
+    message: null,
+  };
+}
+
+function resolveManifestDocPath(
+  docPath,
+  docsRootStatus = getDoctrineDocsRootStatus()
+) {
   const normalizedPath = normalizeRepoRelativePath(docPath);
   if (!normalizedPath) {
     return {
@@ -45,22 +89,56 @@ function resolveManifestDocPath(docPath) {
     };
   }
 
-  const absolutePath = path.resolve(REPO_ROOT, normalizedPath);
-  const relativePath = path.relative(REPO_ROOT, absolutePath);
+  const absolutePath = path.resolve(docsRootStatus.docsRoot, normalizedPath);
+  const relativePath = path.relative(docsRootStatus.docsRoot, absolutePath);
   if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
     return {
       normalizedPath,
       absolutePath: null,
-      error: "Manifest document path resolves outside the repository root.",
+      error:
+        "Manifest document path resolves outside the configured docs root.",
+    };
+  }
+
+  const docsRootRelativeToRepo = path.relative(
+    REPO_ROOT,
+    docsRootStatus.docsRoot
+  );
+  const docsRootWithinRepo =
+    !docsRootRelativeToRepo.startsWith("..") &&
+    !path.isAbsolute(docsRootRelativeToRepo);
+
+  if (docsRootWithinRepo) {
+    const relativeToRepo = path.relative(REPO_ROOT, absolutePath);
+    if (relativeToRepo.startsWith("..") || path.isAbsolute(relativeToRepo)) {
+      return {
+        normalizedPath,
+        absolutePath: null,
+        error: "Manifest document path resolves outside the repository root.",
+      };
+    }
+  }
+
+  if (!docsRootStatus.available) {
+    return {
+      normalizedPath,
+      absolutePath,
+      error: docsRootStatus.message,
     };
   }
 
   return { normalizedPath, absolutePath, error: null };
 }
 
-function inspectManifestDocument(docPath, required = false) {
-  const { normalizedPath, absolutePath, error } =
-    resolveManifestDocPath(docPath);
+function inspectManifestDocument(
+  docPath,
+  required = false,
+  docsRootStatus = getDoctrineDocsRootStatus()
+) {
+  const { normalizedPath, absolutePath, error } = resolveManifestDocPath(
+    docPath,
+    docsRootStatus
+  );
   if (error) {
     return {
       path: docPath,
@@ -134,16 +212,17 @@ function getSwarmsyRequiredDocPaths(
 function getSwarmsyRequiredDocsStatus(
   manifest = loadSwarmsyRequiredDocsManifest()
 ) {
+  const docsRootStatus = getDoctrineDocsRootStatus();
   const groups = manifest.groups.map((group) => {
     const files = group.paths.map((docPath) =>
-      inspectManifestDocument(docPath, Boolean(group.required))
+      inspectManifestDocument(docPath, Boolean(group.required), docsRootStatus)
     );
 
     return {
       id: group.id,
       label: group.label,
       required: Boolean(group.required),
-      optional: !group.required,
+      optional: !Boolean(group.required),
       present: files.filter((file) => file.present).length,
       missing: files.filter((file) => !file.present).length,
       loadable: files.filter((file) => file.loadable).length,
@@ -155,6 +234,10 @@ function getSwarmsyRequiredDocsStatus(
   return {
     manifest: manifest.name,
     version: manifest.version,
+    docsRoot: docsRootStatus.docsRoot,
+    docsRootAvailable: docsRootStatus.available,
+    docsRootEnvValue: docsRootStatus.envValue,
+    docsRootMessage: docsRootStatus.message,
     groups,
     documentsToIngest: allFiles
       .filter((file) => file.present && file.loadable)
@@ -251,6 +334,7 @@ async function ingestSwarmsyRequiredDocsForWorkspace(workspace, options = {}) {
     return {
       success: false,
       partial: false,
+      errorCode: "COLLECTOR_OFFLINE",
       manifest: status.manifest,
       workspace: {
         id: workspace.id,

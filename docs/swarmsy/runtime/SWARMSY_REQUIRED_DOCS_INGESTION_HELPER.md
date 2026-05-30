@@ -62,6 +62,14 @@ The helper verifies each manifest file and reports:
 - `optional`
 - `loadable`
 
+Doctrine docs root resolution:
+
+- Default local/dev docs root is the repository root.
+- Set `SWARMSY_DOCTRINE_DOCS_ROOT` to override runtime resolution (example: `/app/docs`).
+- Manifest paths resolve relative to that docs root.
+- Manifest paths cannot escape the configured docs root (and cannot escape repo root when the configured root is inside the repo).
+- If the configured docs root is unavailable, status truthfully reports docs as unavailable/missing and `documentsToIngest` is empty.
+
 Important:
 
 - A file being present on disk is **not** treated as already loaded into a workspace.
@@ -183,6 +191,7 @@ curl -X POST \
 4. Verify the response clearly reports:
    - `success`
    - `partial`
+   - `errorCode` (`COLLECTOR_OFFLINE` when the collector is offline)
    - `ingested`
    - `skipped`
    - `failed`
@@ -194,6 +203,12 @@ curl -X POST \
 `SWARMSY HIVE` is the workspace preset and command centre.
 
 This helper is the runtime/config bridge that tells the preset which doctrine docs are actually available for ingestion, and then attaches them with existing AnythingLLM document APIs when an admin explicitly requests it.
+
+Runtime caveat:
+
+- If doctrine docs are not copied into a runtime image, status/ingestion will truthfully report missing/unavailable docs.
+- In Docker/runtime, either copy doctrine docs into the image or set `SWARMSY_DOCTRINE_DOCS_ROOT` to a mounted/copied docs path.
+- A future Docker/image PR should implement one of those runtime options.
 
 ---
 
