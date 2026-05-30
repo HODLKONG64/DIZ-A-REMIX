@@ -188,6 +188,44 @@ describe("SWARMSY required docs helper", () => {
     statSpy.mockRestore();
   });
 
+  it("marks ENOENT stat failures as missing", () => {
+    const targetDoc = "docs/swarmsy/app-mode/README.md";
+    const targetPath = path.resolve(repoRoot, targetDoc);
+    const originalStatSync = fs.statSync;
+    const statSpy = jest.spyOn(fs, "statSync");
+    statSpy.mockImplementation((inputPath) => {
+      if (path.resolve(inputPath) === targetPath) {
+        const missingError = new Error("ENOENT: missing");
+        missingError.code = "ENOENT";
+        throw missingError;
+      }
+      return originalStatSync(inputPath);
+    });
+
+    const status = getSwarmsyRequiredDocsStatus({
+      name: "Test Manifest",
+      version: 1,
+      groups: [
+        {
+          id: "mixed",
+          label: "Mixed",
+          required: true,
+          paths: [targetDoc],
+        },
+      ],
+    });
+
+    expect(status.groups[0].files[0]).toMatchObject({
+      path: targetDoc,
+      present: false,
+      loadable: false,
+    });
+    expect(status.groups[0].files[0].error).toBe(
+      "Document is missing from the configured docs root."
+    );
+    statSpy.mockRestore();
+  });
+
   it("skips documents that are already attached to the workspace", async () => {
     Document.forWorkspace.mockResolvedValue([
       {
@@ -393,5 +431,75 @@ describe("SWARMSY required docs helper", () => {
     expect(result.success).toBe(false);
     expect(result.errorCode).toBe("COLLECTOR_OFFLINE");
     expect(result.message).toBe("Document processing API is not online.");
+  });
+
+  it("captures embed and purge failures per-file without aborting ingestion", async () => {
+    Document.forWorkspace.mockResolvedValue([]);
+    Document.addDocuments
+      .mockRejectedValueOnce(new Error("vector db unavailable"))
+      .mockResolvedValueOnce({
+        embedded: ["custom-documents/raw-doc-2.json"],
+        failedToEmbed: [],
+        errors: [],
+      });
+    purgeSourceDocument.mockRejectedValueOnce(new Error("cleanup failed"));
+
+    const collector = {
+      online: jest.fn().mockResolvedValue(true),
+      processRawText: jest
+        .fn()
+        .mockResolvedValueOnce({
+          success: true,
+          reason: null,
+          documents: [{ location: "custom-documents/raw-doc-1.json" }],
+        })
+        .mockResolvedValueOnce({
+          success: true,
+          reason: null,
+          documents: [{ location: "custom-documents/raw-doc-2.json" }],
+        }),
+    };
+
+    const result = await ingestSwarmsyRequiredDocsForWorkspace(
+      {
+        id: 7,
+        slug: "swarmsy-hive",
+        name: "SWARMSY HIVE",
+      },
+      {
+        userId: 11,
+        manifest: {
+          name: "Test Manifest",
+          version: 1,
+          groups: [
+            {
+              id: "persona",
+              label: "Persona",
+              required: true,
+              paths: [
+                "docs/swarmsy/living-icon-engine/personas/11_SWARMSY_SPARKY_PERSONA_SYSTEM_PROMPT.md",
+                "docs/swarmsy/app-mode/README.md",
+              ],
+            },
+          ],
+        },
+        collector,
+      }
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.partial).toBe(true);
+    expect(result.ingested).toEqual([
+      {
+        path: "docs/swarmsy/app-mode/README.md",
+        location: "custom-documents/raw-doc-2.json",
+      },
+    ]);
+    expect(result.failed).toHaveLength(1);
+    expect(result.failed[0].path).toBe(
+      "docs/swarmsy/living-icon-engine/personas/11_SWARMSY_SPARKY_PERSONA_SYSTEM_PROMPT.md"
+    );
+    expect(result.failed[0].reason).toContain("vector db unavailable");
+    expect(result.failed[0].reason).toContain("purge failed: cleanup failed");
   });
 });

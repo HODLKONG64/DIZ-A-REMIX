@@ -177,13 +177,17 @@ function inspectManifestDocument(
   try {
     stats = fs.statSync(absolutePath);
   } catch (error) {
+    const missing =
+      error && typeof error === "object" && error.code === "ENOENT";
     return {
       path: normalizedPath,
-      present: true,
+      present: !missing,
       loadable: false,
       required,
       optional: !required,
-      error: `Document could not be read: ${error.message}`,
+      error: missing
+        ? "Document is missing from the configured docs root."
+        : `Document could not be read: ${error.message}`,
     };
   }
 
@@ -463,19 +467,41 @@ async function ingestSwarmsyRequiredDocsForWorkspace(workspace, options = {}) {
       continue;
     }
 
-    const {
-      embedded = [],
-      failedToEmbed = [],
-      errors = [],
-    } = await Document.addDocuments(workspace, [docLocation], userId);
+    let embedded = [];
+    let failedToEmbed = [];
+    let errors = [];
+    try {
+      const embedResult = await Document.addDocuments(
+        workspace,
+        [docLocation],
+        userId
+      );
+      embedded = embedResult?.embedded || [];
+      failedToEmbed = embedResult?.failedToEmbed || [];
+      errors = embedResult?.errors || [];
+    } catch (embedError) {
+      let reason = `Failed to attach ${docPath} to workspace ${workspace.slug}: ${embedError.message}`;
+      try {
+        await purgeSourceDocument(docLocation);
+      } catch (purgeError) {
+        reason = `${reason}; purge failed: ${purgeError.message}`;
+      }
+      failed.push({ path: docPath, reason });
+      continue;
+    }
 
     if (embedded.length === 0 || failedToEmbed.length > 0) {
-      await purgeSourceDocument(docLocation);
+      let reason =
+        errors.join("; ") ||
+        `Failed to attach ${docPath} to workspace ${workspace.slug}.`;
+      try {
+        await purgeSourceDocument(docLocation);
+      } catch (purgeError) {
+        reason = `${reason}; purge failed: ${purgeError.message}`;
+      }
       failed.push({
         path: docPath,
-        reason:
-          errors.join("; ") ||
-          `Failed to attach ${docPath} to workspace ${workspace.slug}.`,
+        reason,
       });
       continue;
     }
