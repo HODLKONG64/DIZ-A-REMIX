@@ -172,7 +172,7 @@ curl http://localhost:3001/api/admin/swarmsy/required-docs/status \
   -H "Authorization: ${AUTH_HEADER}"
 ```
 
-Replace `<ADMIN_JWT>` with your admin JWT.
+Replace `<YOUR_ADMIN_JWT>` with your admin JWT.
 
 4. Verify:
    - `success: true`
@@ -195,7 +195,7 @@ curl -X POST \
   -d '{"workspaceSlug":"swarmsy-hive"}'
 ```
 
-Replace `<ADMIN_JWT>` with your admin JWT.
+Replace `<YOUR_ADMIN_JWT>` with your admin JWT.
 
 4. Verify the response clearly reports:
    - `success`

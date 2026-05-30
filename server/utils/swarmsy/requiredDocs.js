@@ -12,6 +12,13 @@ const MANIFEST_PATH = path.resolve(
 const FILE_SOURCE_PREFIX = "file://";
 const DOCTRINE_DOCS_ROOT_ENV = "SWARMSY_DOCTRINE_DOCS_ROOT";
 
+function isRequiredGroup(group) {
+  if (typeof group.required === "string") {
+    return group.required.toLowerCase() === "true";
+  }
+  return Boolean(group.required);
+}
+
 function loadSwarmsyRequiredDocsManifest() {
   return JSON.parse(fs.readFileSync(MANIFEST_PATH, "utf8"));
 }
@@ -243,15 +250,16 @@ function getSwarmsyRequiredDocsStatus(
 ) {
   const docsRootStatus = getDoctrineDocsRootStatus();
   const groups = manifest.groups.map((group) => {
+    const groupRequired = isRequiredGroup(group);
     const files = group.paths.map((docPath) =>
-      inspectManifestDocument(docPath, Boolean(group.required), docsRootStatus)
+      inspectManifestDocument(docPath, groupRequired, docsRootStatus)
     );
 
     return {
       id: group.id,
       label: group.label,
-      required: Boolean(group.required),
-      optional: !Boolean(group.required),
+      required: groupRequired,
+      optional: !groupRequired,
       present: files.filter((file) => file.present).length,
       missing: files.filter((file) => !file.present).length,
       loadable: files.filter((file) => file.loadable).length,

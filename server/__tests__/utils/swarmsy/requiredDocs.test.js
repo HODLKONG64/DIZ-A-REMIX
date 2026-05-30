@@ -99,6 +99,25 @@ describe("SWARMSY required docs helper", () => {
     expect(status.groups[0].optional).toBe(false);
   });
 
+  it('treats required: "false" string as optional (not required)', () => {
+    const manifest = {
+      name: "Test Manifest",
+      version: 1,
+      groups: [
+        {
+          id: "optional-group",
+          label: "Optional Group",
+          required: "false",
+          paths: ["docs/swarmsy/app-mode/README.md"],
+        },
+      ],
+    };
+
+    const status = getSwarmsyRequiredDocsStatus(manifest);
+    expect(status.groups[0].required).toBe(false);
+    expect(status.groups[0].optional).toBe(true);
+  });
+
   it("truthfully reports unavailable docs root from env override", () => {
     process.env.SWARMSY_DOCTRINE_DOCS_ROOT = "/tmp/swarmsy-doctrine-root-missing";
 

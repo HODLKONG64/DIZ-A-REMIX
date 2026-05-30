@@ -75,7 +75,7 @@ The lock is a pragmatic runtime idempotency guard for this route. A future DB-le
 
 ---
 
-## What Was Added in PR #8
+## What Was Added — Required Docs Helper
 
 ### Required Doctrine Manifest
 
