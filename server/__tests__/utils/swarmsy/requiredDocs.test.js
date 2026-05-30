@@ -1,4 +1,5 @@
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 
 jest.mock("../../../models/documents", () => ({
@@ -119,7 +120,12 @@ describe("SWARMSY required docs helper", () => {
   });
 
   it("truthfully reports unavailable docs root from env override", () => {
-    process.env.SWARMSY_DOCTRINE_DOCS_ROOT = "/tmp/swarmsy-doctrine-root-missing";
+    const missingRoot = path.join(
+      os.tmpdir(),
+      `swarmsy-doctrine-root-missing-${Date.now()}-${process.pid}`
+    );
+
+    process.env.SWARMSY_DOCTRINE_DOCS_ROOT = missingRoot;
 
     const manifest = {
       name: "Test Manifest",
@@ -145,13 +151,15 @@ describe("SWARMSY required docs helper", () => {
   });
 
   it("truthfully reports docs root stat errors as unavailable", () => {
-    process.env.SWARMSY_DOCTRINE_DOCS_ROOT = "/tmp";
+    const tmpDir = os.tmpdir();
+    process.env.SWARMSY_DOCTRINE_DOCS_ROOT = tmpDir;
     const originalStatSync = fs.statSync;
     const statSpy = jest.spyOn(fs, "statSync");
     statSpy.mockImplementation((targetPath) => {
-      if (targetPath === "/tmp") {
+      if (path.resolve(targetPath) === path.resolve(tmpDir)) {
         throw new Error("EACCES: permission denied");
       }
+
       return originalStatSync(targetPath);
     });
 
