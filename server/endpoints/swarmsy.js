@@ -92,9 +92,8 @@ async function swarmsyOnboardingCreateHive(request, response) {
     const lockKey = creatorId ? String(creatorId) : "global";
 
     return await withSwarmsyHiveCreationLock(lockKey, async () => {
-      const existingWorkspace = await findUserSwarmsyHiveWorkspace(
-        workspaceOwner
-      );
+      const existingWorkspace =
+        await findUserSwarmsyHiveWorkspace(workspaceOwner);
       if (existingWorkspace) {
         return response
           .status(200)
