@@ -1,0 +1,194 @@
+const { Workspace } = require("../../models/workspace");
+const { safeJsonParse } = require("../http");
+const { PRESET_NAME } = require("./applyWorkspacePreset");
+const { getSwarmsyRequiredDocsStatus } = require("./requiredDocs");
+
+function getWorkspaceSummary(workspace = null) {
+  if (!workspace) {
+    return {
+      exists: false,
+      state: "setup_needed",
+      ready: false,
+    };
+  }
+
+  return {
+    exists: true,
+    id: workspace.id,
+    slug: workspace.slug,
+    name: workspace.name,
+  };
+}
+
+function getWorkspaceChunkSources(workspace = null) {
+  const chunkSources = new Set();
+
+  for (const document of workspace?.documents || []) {
+    const metadata = safeJsonParse(document.metadata, null);
+    if (metadata?.chunkSource) {
+      chunkSources.add(String(metadata.chunkSource));
+    }
+  }
+
+  return chunkSources;
+}
+
+function getRequiredDoctrineFiles(doctrineStatus = {}) {
+  return (doctrineStatus.groups || [])
+    .filter((group) => group.required)
+    .flatMap((group) => group.files || []);
+}
+
+function buildDoctrineState(doctrineStatus = null, workspace = null) {
+  if (!doctrineStatus || doctrineStatus.success !== true) {
+    return {
+      statusAvailable: false,
+      docsRootAvailable: false,
+      requiredMissing: null,
+      optionalMissing: null,
+      requiredLoadable: 0,
+      requiredAttached: 0,
+      requiredPendingIngestion: 0,
+      ingestionRequired: Boolean(workspace),
+      note: "Docs status is unavailable. Setup readiness cannot be confirmed yet.",
+    };
+  }
+
+  const summary = doctrineStatus.summary || {};
+  const requiredFiles = getRequiredDoctrineFiles(doctrineStatus);
+  const requiredLoadablePaths = requiredFiles
+    .filter((file) => file.loadable)
+    .map((file) => file.path);
+  const workspaceChunkSources = getWorkspaceChunkSources(workspace);
+  const requiredAttached = requiredLoadablePaths.filter((docPath) =>
+    workspaceChunkSources.has(`swarmsy-required://${docPath}`)
+  ).length;
+  const requiredPendingIngestion = Math.max(
+    requiredLoadablePaths.length - requiredAttached,
+    0
+  );
+
+  let note =
+    "Docs status is available. Ingestion state must be confirmed before claiming HIVE is fully loaded.";
+
+  if (!doctrineStatus.docsRootAvailable || summary.requiredMissing > 0) {
+    note =
+      "Required doctrine docs are not fully available on disk yet. Loading requires an authorized setup route.";
+  } else if (!workspace) {
+    note =
+      "Docs status is available. Create or select a SWARMSY HIVE before loading doctrine.";
+  } else if (requiredPendingIngestion === 0) {
+    note =
+      "Required doctrine docs are available on disk and already attached to this SWARMSY HIVE.";
+  }
+
+  return {
+    statusAvailable: true,
+    docsRootAvailable: doctrineStatus.docsRootAvailable,
+    requiredMissing: summary.requiredMissing ?? 0,
+    optionalMissing: summary.optionalMissing ?? 0,
+    requiredLoadable: requiredLoadablePaths.length,
+    requiredAttached,
+    requiredPendingIngestion,
+    ingestionRequired: Boolean(workspace) && requiredPendingIngestion > 0,
+    note,
+  };
+}
+
+function getWorkspaceState(workspace = null, doctrine = {}) {
+  if (!workspace) return "setup_needed";
+  if (
+    !doctrine.statusAvailable ||
+    !doctrine.docsRootAvailable ||
+    doctrine.requiredMissing > 0 ||
+    doctrine.ingestionRequired
+  ) {
+    return "underloaded";
+  }
+  return "ready";
+}
+
+function getNextAction(workspace = null, doctrine = {}) {
+  if (!workspace) {
+    return {
+      type: "create_hive",
+      label: "Create SWARMSY HIVE",
+      message: "No SWARMSY HIVE workspace exists for this user yet.",
+    };
+  }
+
+  if (
+    !doctrine.statusAvailable ||
+    !doctrine.docsRootAvailable ||
+    doctrine.requiredMissing > 0
+  ) {
+    return {
+      type: "authorized_setup_required",
+      label: "Wait for authorized setup",
+      message:
+        "Your SWARMSY HIVE exists, but required doctrine docs are not fully available yet.",
+    };
+  }
+
+  if (doctrine.ingestionRequired) {
+    return {
+      type: "continue_or_load_docs",
+      label: "Continue setup",
+      message:
+        "Your SWARMSY HIVE exists. Next, confirm required docs are loaded before starting intake.",
+    };
+  }
+
+  return {
+    type: "open_hive",
+    label: "Open SWARMSY HIVE",
+    message:
+      "Your SWARMSY HIVE appears ready for the next onboarding step.",
+  };
+}
+
+async function findUserSwarmsyHiveWorkspace(user = null) {
+  if (user?.id) {
+    return Workspace.get({
+      name: PRESET_NAME,
+      workspace_users: {
+        some: {
+          user_id: Number(user.id),
+        },
+      },
+    });
+  }
+
+  return Workspace.get({ name: PRESET_NAME });
+}
+
+async function getSwarmsyOnboardingStatus({
+  user = null,
+  doctrineStatus = null,
+} = {}) {
+  const workspace = await findUserSwarmsyHiveWorkspace(user);
+  const resolvedDoctrineStatus =
+    doctrineStatus || getSwarmsyRequiredDocsStatus();
+  const doctrine = buildDoctrineState(resolvedDoctrineStatus, workspace);
+  const workspaceSummary = {
+    ...getWorkspaceSummary(workspace),
+    state: getWorkspaceState(workspace, doctrine),
+    ready: getWorkspaceState(workspace, doctrine) === "ready",
+  };
+
+  return {
+    success: true,
+    mode: "swarmsy_onboarding",
+    workspace: workspaceSummary,
+    doctrine,
+    nextAction: getNextAction(workspace, doctrine),
+  };
+}
+
+module.exports = {
+  buildDoctrineState,
+  findUserSwarmsyHiveWorkspace,
+  getNextAction,
+  getSwarmsyOnboardingStatus,
+  getWorkspaceState,
+};
