@@ -1,12 +1,37 @@
+const fs = require("fs");
 const path = require("path");
-const { pathToFileURL } = require("url");
+const vm = require("vm");
 
-async function loadProofTrackerModule() {
+function loadProofTrackerModule() {
   const modulePath = path.resolve(
     __dirname,
     "../../../frontend/src/components/SwarmsyFirstRunOnboarding/proofTracker.js"
   );
-  return import(pathToFileURL(modulePath).href);
+  const source = fs.readFileSync(modulePath, "utf8");
+  const transformed = source
+    .replace(/export const /g, "const ")
+    .replace(/export function /g, "function ");
+
+  const script = new vm.Script(
+    `${transformed}
+module.exports = {
+  PROOF_TRACKER_HIVE_MISSING_MESSAGE,
+  PROOF_TRACKER_UNDERLOADED_MESSAGE,
+  PROOF_TRACKER_DOCTRINE_UNAVAILABLE_MESSAGE,
+  PROOF_TRACKER_EMPTY_INPUT_FALLBACK,
+  canReviewProof,
+  getProofTrackerBlockedMessage,
+  buildProofReviewStarterMessage
+};`
+  );
+
+  const sandbox = {
+    module: { exports: {} },
+    exports: {},
+  };
+  vm.createContext(sandbox);
+  script.runInContext(sandbox);
+  return sandbox.module.exports;
 }
 
 function buildReadyStatus(overrides = {}) {
@@ -28,12 +53,12 @@ function buildReadyStatus(overrides = {}) {
 }
 
 describe("SWARMSY proof tracker handoff helper", () => {
-  it("disables proof action when HIVE is missing", async () => {
+  it("disables proof action when HIVE is missing", () => {
     const {
       canReviewProof,
       getProofTrackerBlockedMessage,
       PROOF_TRACKER_HIVE_MISSING_MESSAGE,
-    } = await loadProofTrackerModule();
+    } = loadProofTrackerModule();
     const status = buildReadyStatus({ workspace: { exists: false } });
 
     expect(canReviewProof(status)).toBe(false);
@@ -42,12 +67,12 @@ describe("SWARMSY proof tracker handoff helper", () => {
     );
   });
 
-  it("disables proof action when doctrine is underloaded", async () => {
+  it("disables proof action when doctrine is underloaded", () => {
     const {
       canReviewProof,
       getProofTrackerBlockedMessage,
       PROOF_TRACKER_UNDERLOADED_MESSAGE,
-    } = await loadProofTrackerModule();
+    } = loadProofTrackerModule();
     const status = buildReadyStatus({
       workspace: { ready: false },
       doctrine: { requiredMissing: 1 },
@@ -59,12 +84,12 @@ describe("SWARMSY proof tracker handoff helper", () => {
     );
   });
 
-  it("disables proof action when doctrine readiness is unavailable", async () => {
+  it("disables proof action when doctrine readiness is unavailable", () => {
     const {
       canReviewProof,
       getProofTrackerBlockedMessage,
       PROOF_TRACKER_DOCTRINE_UNAVAILABLE_MESSAGE,
-    } = await loadProofTrackerModule();
+    } = loadProofTrackerModule();
     const status = buildReadyStatus({ doctrine: { statusAvailable: false } });
 
     expect(canReviewProof(status)).toBe(false);
@@ -73,18 +98,18 @@ describe("SWARMSY proof tracker handoff helper", () => {
     );
   });
 
-  it("enables proof action when HIVE is ready", async () => {
+  it("enables proof action when HIVE is ready", () => {
     const { canReviewProof, getProofTrackerBlockedMessage } =
-      await loadProofTrackerModule();
+      loadProofTrackerModule();
     const status = buildReadyStatus();
 
     expect(canReviewProof(status)).toBe(true);
     expect(getProofTrackerBlockedMessage(status)).toBeNull();
   });
 
-  it("builds empty-proof checklist handoff starter", async () => {
+  it("builds empty-proof checklist handoff starter", () => {
     const { buildProofReviewStarterMessage, PROOF_TRACKER_EMPTY_INPUT_FALLBACK } =
-      await loadProofTrackerModule();
+      loadProofTrackerModule();
 
     const message = buildProofReviewStarterMessage("");
 
@@ -93,8 +118,8 @@ describe("SWARMSY proof tracker handoff helper", () => {
     expect(message).toContain("Do not invent proof.");
   });
 
-  it("embeds pasted proof in handoff starter", async () => {
-    const { buildProofReviewStarterMessage } = await loadProofTrackerModule();
+  it("embeds pasted proof in handoff starter", () => {
+    const { buildProofReviewStarterMessage } = loadProofTrackerModule();
     const proof =
       "Press mention: Example Journal. Sales: 12 in April. Product: remix pack.";
 
