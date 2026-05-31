@@ -57,6 +57,8 @@ When onboarding status confirms readiness:
 
 - show `Your SWARMSY HIVE is ready.`
 - show `Choose how you want to build.`
+- show `SWARMSY HIVE Action Hub`
+- show `Choose the next command for SPARKY. Every action routes through your HIVE and keeps the project moving.`
 - show identity mode choices:
   - `Face Identity Mode`
   - `Hidden Identity Mode`
@@ -64,6 +66,29 @@ When onboarding status confirms readiness:
   - `Load Memory Lock`
 - show `Start SWARMSY Intake`
 - allow `Load Memory Lock` to open a paste panel for returning users
+
+## SWARMSY HIVE Action Hub
+
+This is an organization and polish layer on top of the existing onboarding actions.
+
+- no new backend routes
+- no new storage
+- no new doctrine docs
+- existing actions are grouped into `Build`, `Continue`, `Launch`, and `Verify`
+- HIVE readiness still gates every action before the hub appears
+
+The grouped actions stay the same:
+
+- `Build`
+  - identity mode choices
+  - `Start Intake`
+  - `Existing Project`
+- `Continue`
+  - `Load Memory Lock`
+- `Launch`
+  - `Campaign Calendar`
+- `Verify`
+  - `Review Proof / Find Proof Gaps`
 
 ### 5. Returning user memory-lock continuation
 
