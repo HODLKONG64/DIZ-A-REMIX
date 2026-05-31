@@ -311,6 +311,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
 
   function closeMemoryLockPanel() {
     setMemoryLockError("");
+    setMemoryLockInput("");
     setMemoryLockPanelOpen(false);
     if (selectedMode === "memory-lock") {
       setSelectedMode(null);
@@ -329,10 +330,17 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
       return;
     }
 
-    sessionStorage.setItem(
-      PENDING_HOME_MESSAGE,
-      JSON.stringify({ message: starterMessage, attachments: [] })
-    );
+    try {
+      sessionStorage.setItem(
+        PENDING_HOME_MESSAGE,
+        JSON.stringify({ message: starterMessage, attachments: [] })
+      );
+    } catch {
+      setMemoryLockError(
+        "This memory lock is too large to hand off through the browser session. Paste a shorter lock or split it into smaller sections."
+      );
+      return;
+    }
     navigate(paths.workspace.chat(activeStatus.workspace.slug));
   }
 
