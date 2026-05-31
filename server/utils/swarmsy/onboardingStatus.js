@@ -189,18 +189,30 @@ function getNextAction(workspace = null, doctrine = {}) {
 }
 
 async function findUserSwarmsyHiveWorkspace(user = null) {
-  if (user?.id) {
-    return Workspace.get({
-      name: PRESET_NAME,
-      workspace_users: {
-        some: {
-          user_id: Number(user.id),
+  const where = user?.id
+    ? {
+        name: PRESET_NAME,
+        workspace_users: {
+          some: {
+            user_id: Number(user.id),
+          },
+        },
+      }
+    : { name: PRESET_NAME };
+
+  return Workspace._findFirst({
+    where,
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      documents: {
+        select: {
+          metadata: true,
         },
       },
-    });
-  }
-
-  return Workspace.get({ name: PRESET_NAME });
+    },
+  });
 }
 
 async function getSwarmsyOnboardingStatus({

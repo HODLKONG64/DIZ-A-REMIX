@@ -9,7 +9,7 @@ const { Workspace } = require("../../../models/workspace");
 
 jest.mock("../../../models/workspace", () => ({
   Workspace: {
-    get: jest.fn(),
+    _findFirst: jest.fn(),
   },
 }));
 
@@ -73,16 +73,28 @@ describe("swarmsy onboarding status helper", () => {
   };
 
   it("returns setup-needed status when no HIVE workspace exists", async () => {
-    Workspace.get.mockResolvedValue(null);
+    Workspace._findFirst.mockResolvedValue(null);
 
     const status = await getSwarmsyOnboardingStatus({
       user: { id: 44 },
       doctrineStatus,
     });
 
-    expect(Workspace.get).toHaveBeenCalledWith({
-      name: "SWARMSY HIVE",
-      workspace_users: { some: { user_id: 44 } },
+    expect(Workspace._findFirst).toHaveBeenCalledWith({
+      where: {
+        name: "SWARMSY HIVE",
+        workspace_users: { some: { user_id: 44 } },
+      },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        documents: {
+          select: {
+            metadata: true,
+          },
+        },
+      },
     });
     expect(status.workspace).toEqual({
       exists: false,
@@ -93,7 +105,7 @@ describe("swarmsy onboarding status helper", () => {
   });
 
   it("marks an existing HIVE as underloaded when doctrine is loadable but not attached", async () => {
-    Workspace.get.mockResolvedValue({
+    Workspace._findFirst.mockResolvedValue({
       id: 7,
       slug: "swarmsy-hive",
       name: "SWARMSY HIVE",
@@ -127,7 +139,7 @@ describe("swarmsy onboarding status helper", () => {
   });
 
   it("marks HIVE as ready only when required doctrine docs are already attached", async () => {
-    Workspace.get.mockResolvedValue({
+    Workspace._findFirst.mockResolvedValue({
       id: 9,
       slug: "swarmsy-hive",
       name: "SWARMSY HIVE",
@@ -210,7 +222,7 @@ describe("swarmsy onboarding status helper", () => {
       ],
     };
 
-    Workspace.get.mockResolvedValue({
+    Workspace._findFirst.mockResolvedValue({
       id: 5,
       slug: "swarmsy-hive",
       name: "SWARMSY HIVE",
@@ -237,7 +249,7 @@ describe("swarmsy onboarding status helper", () => {
   });
 
   it("returns conservative doctrine status when getSwarmsyRequiredDocsStatus throws", async () => {
-    Workspace.get.mockResolvedValue({
+    Workspace._findFirst.mockResolvedValue({
       id: 3,
       slug: "swarmsy-hive",
       name: "SWARMSY HIVE",
@@ -271,7 +283,7 @@ describe("swarmsy onboarding status helper", () => {
   });
 
   it("caches required docs status within the ttl window", async () => {
-    Workspace.get.mockResolvedValue({
+    Workspace._findFirst.mockResolvedValue({
       id: 3,
       slug: "swarmsy-hive",
       name: "SWARMSY HIVE",
