@@ -207,7 +207,7 @@ No other doc was found to claim something is working when it is only planned/doc
 | `SWARMSY_REQUIRED_DOCS_STATUS_HELPER.md` says no ingestion route when one exists | medium | Stale doc. Misleads future contributors. Needs update. |
 | No tests for `applyWorkspacePreset.js` | medium | `createSwarmsyHiveWorkspace` and `loadSwarmsyHivePreset` are untested. Regression risk if Workspace API changes. |
 | No tests for SWARMSY admin routes | low-medium | `POST /hive`, `GET /required-docs/status`, `POST /ingest-required-docs` are untested. |
-| No broken manifest paths | none | All 43 manifest paths (required) + 17 optional paths were verified present in the filesystem. |
+| No broken manifest paths | none | All 44 manifest paths (required) + 17 optional paths were verified present in the filesystem. |
 | No missing required docs | none | All required groups have exact file count match between manifest and filesystem. |
 | No docs referencing non-existent files | none | Runtime docs reference only files confirmed present. |
 | Ingestion route has no test coverage | medium | The ingestion pipeline (collector + embed) path is untested at unit or integration level. |

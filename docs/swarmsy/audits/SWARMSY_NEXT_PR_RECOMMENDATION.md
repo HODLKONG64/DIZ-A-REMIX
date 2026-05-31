@@ -61,43 +61,30 @@ Based on: `SWARMSY_BUILD_READINESS_AUDIT.md`, `SWARMSY_DOCTRINE_COVERAGE_AUDIT.m
 
 ---
 
-## Recommendation
+## Recommended Next PR
 
-### Next runtime PR
+`Add SWARMSY first-run onboarding entrypoint with user-safe route strategy`
 
-**Add SWARMSY first-run onboarding entrypoint**
+The first-run onboarding flow must not require a normal user to call admin-only endpoints directly.
 
----
+The next PR should define or implement a user-safe onboarding route layer that can:
 
-## Purpose
+1. Detect whether the current user already has a SWARMSY HIVE workspace.
+2. Offer to create/select that workspace through a user-safe route or an admin-only setup path.
+3. Check required docs readiness through an allowed setup/status path.
+4. Trigger docs ingestion only through a route the current user is authorized to use.
+5. Preserve strict workspace ownership/permission checks.
+6. Avoid exposing admin-only controls to normal users.
 
-A user currently has no guided path to enter SWARMSY mode. The runtime pieces exist (workspace creation route, required docs status route, ingestion route) but there is no user-facing entrypoint that:
-
-- Detects first-run state.
-- Offers Face Identity / Hidden Identity / Existing Project / Load Memory Lock choices.
-- Can create or select the SWARMSY HIVE workspace.
-- Can call the required docs status check.
-- Can trigger the required docs ingestion route if docs are not yet attached.
-- Prevents the user from landing in a generic AnythingLLM blank chat.
-
-Without this entrypoint, SWARMSY exists only at the admin API level. The system never activates for users.
+If user-safe route wiring is not implemented in that PR, scope the feature clearly as an admin/manager setup flow and do not present it as normal-user first-run onboarding.
 
 ---
 
-## Entrypoint Spec (summary)
+## Risk Note
 
-The first-run onboarding entrypoint should:
+**Admin-only route dependency is a blocker for normal-user onboarding.** A user-facing onboarding wizard must either wrap the existing admin/setup actions in user-safe endpoints or remain explicitly admin/manager-only.
 
-1. Detect whether a SWARMSY HIVE workspace exists for the current user.
-2. If not, offer to create one by calling `POST /api/admin/swarmsy/workspace-preset/hive`.
-3. Check required docs status via `GET /api/admin/swarmsy/required-docs/status`.
-4. If required docs are not fully ingested, offer to trigger `POST /api/admin/swarmsy/workspace-preset/hive/ingest-required-docs`.
-5. Present the four starting choices: Face Identity / Hidden Identity / Existing Project / Load Memory Lock.
-6. Route the user to the SWARMSY HIVE workspace, not a generic AnythingLLM workspace.
-7. Not auto-run on every boot. Should be triggered by an explicit user or admin action.
-
-The full onboarding spec is at:
-`docs/swarmsy/app-mode/SWARMSY_FIRST_RUN_ONBOARDING_SPEC.md`
+The existing routes (`POST /api/admin/swarmsy/workspace-preset/hive`, `GET /api/admin/swarmsy/required-docs/status`, `POST /api/admin/swarmsy/workspace-preset/hive/ingest-required-docs`) are admin/manager protected. Normal users cannot rely on them directly. The next PR must resolve this before presenting first-run onboarding as a normal-user feature.
 
 ---
 
