@@ -16,7 +16,8 @@ This route uses the existing authenticated non-admin route convention:
 - `validatedRequest`
 - `flexUserRoleValid([ROLES.all])`
 
-The route resolves the current authenticated user from session/JWT and scopes create/existing checks to that user.
+In multi-user mode, the route resolves the authenticated user from session/JWT and scopes create/existing checks to that user.
+In single-user mode, if no session user is attached, the route creates/reuses a global SWARMSY HIVE (`creatorId = null`).
 
 ## Request Shape
 

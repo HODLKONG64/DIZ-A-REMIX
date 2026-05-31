@@ -84,17 +84,17 @@ async function swarmsyOnboardingStatus(request, response) {
 async function swarmsyOnboardingCreateHive(request, response) {
   try {
     const user = await userFromSession(request, response);
-    const creatorId = Number(user?.id);
-    if (!Number.isInteger(creatorId) || creatorId <= 0) {
-      return response
-        .status(400)
-        .json(
-          swarmsyCreateHiveFailure("Unable to resolve authenticated user.")
-        );
-    }
+    const creatorId =
+      user?.id && Number.isInteger(Number(user.id)) && Number(user.id) > 0
+        ? Number(user.id)
+        : null;
+    const workspaceOwner = creatorId ? user : null;
+    const lockKey = creatorId ? String(creatorId) : "global";
 
-    return await withSwarmsyHiveCreationLock(String(creatorId), async () => {
-      const existingWorkspace = await findUserSwarmsyHiveWorkspace(user);
+    return await withSwarmsyHiveCreationLock(lockKey, async () => {
+      const existingWorkspace = await findUserSwarmsyHiveWorkspace(
+        workspaceOwner
+      );
       if (existingWorkspace) {
         return response
           .status(200)
@@ -113,7 +113,8 @@ async function swarmsyOnboardingCreateHive(request, response) {
           );
       }
 
-      const refreshedWorkspace = await findUserSwarmsyHiveWorkspace(user);
+      const refreshedWorkspace =
+        await findUserSwarmsyHiveWorkspace(workspaceOwner);
       return response
         .status(200)
         .json(swarmsyCreateHiveSuccess(refreshedWorkspace || workspace, true));

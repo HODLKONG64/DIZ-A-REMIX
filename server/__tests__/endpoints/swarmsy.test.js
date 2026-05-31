@@ -80,6 +80,18 @@ describe("swarmsy endpoints", () => {
     );
   });
 
+  it("keeps create-hive protected by existing auth middleware", () => {
+    const app = {
+      get: jest.fn(),
+      post: jest.fn(),
+    };
+
+    swarmsyEndpoints(app);
+
+    const [, middlewares] = app.post.mock.calls[0];
+    expect(middlewares[0]).toBe(validatedRequest);
+  });
+
   it("returns onboarding status for the current authenticated user", async () => {
     const request = { headers: {} };
     const response = responseMock();
@@ -171,6 +183,57 @@ describe("swarmsy endpoints", () => {
           "SWARMSY HIVE was created. Next, check doctrine readiness before starting intake.",
       },
     });
+  });
+
+  it("returns existing global SWARMSY HIVE in single-user mode", async () => {
+    const request = { headers: {} };
+    const response = responseMock();
+    const existingWorkspace = {
+      id: 7,
+      slug: "swarmsy-hive-global",
+      name: "SWARMSY HIVE",
+    };
+
+    userFromSession.mockResolvedValue(null);
+    findUserSwarmsyHiveWorkspace.mockResolvedValue(existingWorkspace);
+
+    await swarmsyOnboardingCreateHive(request, response);
+
+    expect(findUserSwarmsyHiveWorkspace).toHaveBeenCalledWith(null);
+    expect(createSwarmsyHiveWorkspace).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true, created: false })
+    );
+  });
+
+  it("creates global SWARMSY HIVE in single-user mode when missing", async () => {
+    const request = { headers: {} };
+    const response = responseMock();
+    const createdWorkspace = {
+      id: 8,
+      slug: "swarmsy-hive-global-1",
+      name: "SWARMSY HIVE",
+    };
+
+    userFromSession.mockResolvedValue(null);
+    findUserSwarmsyHiveWorkspace
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(createdWorkspace);
+    createSwarmsyHiveWorkspace.mockResolvedValue({
+      workspace: createdWorkspace,
+      message: null,
+    });
+
+    await swarmsyOnboardingCreateHive(request, response);
+
+    expect(createSwarmsyHiveWorkspace).toHaveBeenCalledWith(null);
+    expect(findUserSwarmsyHiveWorkspace).toHaveBeenNthCalledWith(1, null);
+    expect(findUserSwarmsyHiveWorkspace).toHaveBeenNthCalledWith(2, null);
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true, created: true })
+    );
   });
 
   it("returns failure shape when create fails", async () => {
