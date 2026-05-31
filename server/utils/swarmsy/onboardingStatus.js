@@ -3,6 +3,30 @@ const { safeJsonParse } = require("../http");
 const { PRESET_NAME } = require("./applyWorkspacePreset");
 const { getSwarmsyRequiredDocsStatus } = require("./requiredDocs");
 
+const REQUIRED_DOCS_STATUS_TTL_MS = 15_000;
+let cachedRequiredDocsStatus = null;
+let cachedRequiredDocsStatusAt = 0;
+
+function getCachedRequiredDocsStatus() {
+  const now = Date.now();
+
+  if (
+    cachedRequiredDocsStatus &&
+    now - cachedRequiredDocsStatusAt < REQUIRED_DOCS_STATUS_TTL_MS
+  ) {
+    return cachedRequiredDocsStatus;
+  }
+
+  cachedRequiredDocsStatus = getSwarmsyRequiredDocsStatus();
+  cachedRequiredDocsStatusAt = now;
+  return cachedRequiredDocsStatus;
+}
+
+function resetRequiredDocsStatusCache() {
+  cachedRequiredDocsStatus = null;
+  cachedRequiredDocsStatusAt = 0;
+}
+
 function getWorkspaceSummary(workspace = null) {
   if (!workspace) {
     return {
@@ -188,17 +212,22 @@ async function getSwarmsyOnboardingStatus({
   let resolvedDoctrineStatus = doctrineStatus;
   if (!resolvedDoctrineStatus) {
     try {
-      resolvedDoctrineStatus = getSwarmsyRequiredDocsStatus();
-    } catch {
+      resolvedDoctrineStatus = getCachedRequiredDocsStatus();
+    } catch (error) {
+      console.warn(
+        "SWARMSY required docs status unavailable:",
+        error?.message || error
+      );
       resolvedDoctrineStatus = null;
     }
   }
 
   const doctrine = buildDoctrineState(resolvedDoctrineStatus, workspace);
+  const workspaceState = getWorkspaceState(workspace, doctrine);
   const workspaceSummary = {
     ...getWorkspaceSummary(workspace),
-    state: getWorkspaceState(workspace, doctrine),
-    ready: getWorkspaceState(workspace, doctrine) === "ready",
+    state: workspaceState,
+    ready: workspaceState === "ready",
   };
 
   return {
@@ -211,6 +240,7 @@ async function getSwarmsyOnboardingStatus({
 }
 
 module.exports = {
+  __resetRequiredDocsStatusCacheForTests: resetRequiredDocsStatusCache,
   buildDoctrineState,
   findUserSwarmsyHiveWorkspace,
   getNextAction,

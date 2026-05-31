@@ -1,4 +1,5 @@
 const {
+  __resetRequiredDocsStatusCacheForTests,
   buildDoctrineState,
   getNextAction,
   getSwarmsyOnboardingStatus,
@@ -37,6 +38,7 @@ const {
 describe("swarmsy onboarding status helper", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    __resetRequiredDocsStatusCacheForTests();
   });
 
   const doctrineStatus = {
@@ -245,6 +247,10 @@ describe("swarmsy onboarding status helper", () => {
       throw new Error("Manifest not found");
     });
 
+    const consoleWarnSpy = jest
+      .spyOn(console, "warn")
+      .mockImplementation(() => {});
+
     const status = await getSwarmsyOnboardingStatus({ user: { id: 3 } });
 
     expect(status.doctrine).toMatchObject({
@@ -253,8 +259,32 @@ describe("swarmsy onboarding status helper", () => {
       requiredMissing: null,
       requiredNonLoadable: null,
     });
+    expect(consoleWarnSpy).toHaveBeenCalledWith(
+      "SWARMSY required docs status unavailable:",
+      "Manifest not found"
+    );
     expect(status.doctrine.note).toContain("unavailable");
     expect(status.workspace.state).toBe("underloaded");
     expect(status.workspace.ready).toBe(false);
+
+    consoleWarnSpy.mockRestore();
+  });
+
+  it("caches required docs status within the ttl window", async () => {
+    Workspace.get.mockResolvedValue({
+      id: 3,
+      slug: "swarmsy-hive",
+      name: "SWARMSY HIVE",
+      documents: [],
+    });
+    getSwarmsyRequiredDocsStatus.mockReturnValue(doctrineStatus);
+    const nowSpy = jest.spyOn(Date, "now");
+    nowSpy.mockReturnValueOnce(1000).mockReturnValueOnce(1001);
+
+    await getSwarmsyOnboardingStatus({ user: { id: 3 } });
+    await getSwarmsyOnboardingStatus({ user: { id: 3 } });
+
+    expect(getSwarmsyRequiredDocsStatus).toHaveBeenCalledTimes(1);
+    nowSpy.mockRestore();
   });
 });
