@@ -250,4 +250,63 @@ describe("swarmsy required docs ingestion helper", () => {
       message: "SWARMSY required docs ingestion completed with partial failures.",
     });
   });
+
+  it("serializes ingestion requests for the same workspace", async () => {
+    collector.online.mockResolvedValue(true);
+    getSwarmsyRequiredDocsStatus.mockReturnValue({
+      docsRoot: "/repo",
+      groups: [
+        {
+          required: true,
+          files: [{ path: "docs/swarmsy/required-a.md", loadable: true }],
+        },
+      ],
+    });
+
+    let releaseFirstCollect;
+    const firstCollect = new Promise((resolve) => {
+      releaseFirstCollect = resolve;
+    });
+
+    collector.forwardExtensionRequest
+      .mockImplementationOnce(() => firstCollect)
+      .mockResolvedValueOnce({
+        success: true,
+        documents: [{ location: "custom-documents/required-a.json" }],
+      });
+
+    Document.addDocuments.mockResolvedValue({
+      failedToEmbed: [],
+      errors: [],
+      embedded: ["custom-documents/required-a.json"],
+    });
+
+    const workspace = {
+      id: 1,
+      slug: "swarmsy-hive",
+      name: "SWARMSY HIVE",
+      documents: [],
+    };
+
+    const firstRequest = ingestSwarmsyRequiredDocs({ workspace, userId: 12 });
+    const secondRequest = ingestSwarmsyRequiredDocs({ workspace, userId: 12 });
+
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(collector.forwardExtensionRequest).toHaveBeenCalledTimes(1);
+
+    releaseFirstCollect({
+      success: true,
+      documents: [{ location: "custom-documents/required-a.json" }],
+    });
+
+    const [firstResult, secondResult] = await Promise.all([
+      firstRequest,
+      secondRequest,
+    ]);
+
+    expect(collector.forwardExtensionRequest).toHaveBeenCalledTimes(2);
+    expect(firstResult.partial).toBe(false);
+    expect(secondResult.partial).toBe(false);
+  });
 });

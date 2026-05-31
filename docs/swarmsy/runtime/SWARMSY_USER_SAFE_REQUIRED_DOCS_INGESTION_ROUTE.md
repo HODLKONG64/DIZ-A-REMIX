@@ -116,5 +116,5 @@ AUTH_TOKEN="<YOUR_USER_JWT>"
 
 curl http://localhost:3001/api/swarmsy/onboarding/ingest-required-docs \
   -X POST \
-  -H "Authorization: ******"
+  -H "Authorization: Bearer $AUTH_TOKEN"
 ```
