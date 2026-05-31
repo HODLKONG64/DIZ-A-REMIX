@@ -142,8 +142,7 @@ function getNextAction(workspace = null, doctrine = {}) {
   return {
     type: "open_hive",
     label: "Open SWARMSY HIVE",
-    message:
-      "Your SWARMSY HIVE appears ready for the next onboarding step.",
+    message: "Your SWARMSY HIVE appears ready for the next onboarding step.",
   };
 }
 
