@@ -339,7 +339,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
       );
     } catch {
       setMemoryLockError(
-        "This memory lock is too large to hand off through the browser session. Paste a shorter lock or split it into smaller sections."
+        "This memory lock could not be stored for chat handoff. Paste a shorter lock or enable browser session storage, then try again."
       );
       return;
     }
