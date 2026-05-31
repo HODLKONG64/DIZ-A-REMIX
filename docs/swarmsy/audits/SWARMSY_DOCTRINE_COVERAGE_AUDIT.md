@@ -141,7 +141,18 @@ docs/swarmsy/sparky-operator/SPARKY_PROJECT_COMMAND_EXAMPLES.md      ✓
 
 ### No optional advanced doctrine blocks first-run setup
 
-✅ Confirmed. Both optional groups have `required: false`. The status helper only flags required groups in `requiredMissing`. The ingestion route processes all loadable paths including optional ones, but optional unavailability does not prevent HIVE creation.
+✅ Confirmed. Both optional groups have `required: false`.
+
+The status helper can surface optional advanced doctrine groups such as Spark Library and SPARKY Operator Playbooks, but the current required-docs ingestion route only ingests required groups.
+
+Optional doctrine does not block first-run setup.
+
+Current runtime truth:
+
+- Required doctrine groups are included in first-run readiness and required-docs ingestion.
+- Optional doctrine groups are discoverable in status/manifest output.
+- Optional doctrine ingestion is not currently implemented by `/ingest-required-docs`.
+- A future optional-doctrine ingestion route or advanced-docs selector would be needed to attach Spark Library / SPARKY Operator docs automatically.
 
 ### All manifest paths point to real files
 
