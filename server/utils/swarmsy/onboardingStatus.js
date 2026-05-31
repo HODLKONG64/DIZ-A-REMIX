@@ -45,17 +45,21 @@ function buildDoctrineState(doctrineStatus = null, workspace = null) {
       statusAvailable: false,
       docsRootAvailable: false,
       requiredMissing: null,
+      requiredNonLoadable: null,
       optionalMissing: null,
       requiredLoadable: 0,
       requiredAttached: 0,
       requiredPendingIngestion: 0,
       ingestionRequired: Boolean(workspace),
-      note: "Docs status is unavailable. Setup readiness cannot be confirmed yet.",
+      note: "Required docs status is unavailable. HIVE readiness cannot be confirmed.",
     };
   }
 
   const summary = doctrineStatus.summary || {};
   const requiredFiles = getRequiredDoctrineFiles(doctrineStatus);
+  const requiredNonLoadableFiles = requiredFiles.filter(
+    (file) => file.present && !file.loadable
+  );
   const requiredLoadablePaths = requiredFiles
     .filter((file) => file.loadable)
     .map((file) => file.path);
@@ -74,6 +78,9 @@ function buildDoctrineState(doctrineStatus = null, workspace = null) {
   if (!doctrineStatus.docsRootAvailable || summary.requiredMissing > 0) {
     note =
       "Required doctrine docs are not fully available on disk yet. Loading requires an authorized setup route.";
+  } else if (requiredNonLoadableFiles.length > 0) {
+    note =
+      "Some required doctrine docs are present but not loadable. Fix those files before HIVE can be considered ready.";
   } else if (!workspace) {
     note =
       "Docs status is available. Create or select a SWARMSY HIVE before loading doctrine.";
@@ -86,6 +93,7 @@ function buildDoctrineState(doctrineStatus = null, workspace = null) {
     statusAvailable: true,
     docsRootAvailable: doctrineStatus.docsRootAvailable,
     requiredMissing: summary.requiredMissing ?? 0,
+    requiredNonLoadable: requiredNonLoadableFiles.length,
     optionalMissing: summary.optionalMissing ?? 0,
     requiredLoadable: requiredLoadablePaths.length,
     requiredAttached,
@@ -101,6 +109,7 @@ function getWorkspaceState(workspace = null, doctrine = {}) {
     !doctrine.statusAvailable ||
     !doctrine.docsRootAvailable ||
     doctrine.requiredMissing > 0 ||
+    doctrine.requiredNonLoadable > 0 ||
     doctrine.ingestionRequired
   ) {
     return "underloaded";
@@ -127,6 +136,15 @@ function getNextAction(workspace = null, doctrine = {}) {
       label: "Wait for authorized setup",
       message:
         "Your SWARMSY HIVE exists, but required doctrine docs are not fully available yet.",
+    };
+  }
+
+  if (doctrine.requiredNonLoadable > 0) {
+    return {
+      type: "authorized_setup_required",
+      label: "Wait for authorized setup",
+      message:
+        "Your SWARMSY HIVE exists, but some required doctrine docs are present and not loadable. Fix those files before proceeding.",
     };
   }
 
@@ -166,8 +184,16 @@ async function getSwarmsyOnboardingStatus({
   doctrineStatus = null,
 } = {}) {
   const workspace = await findUserSwarmsyHiveWorkspace(user);
-  const resolvedDoctrineStatus =
-    doctrineStatus || getSwarmsyRequiredDocsStatus();
+
+  let resolvedDoctrineStatus = doctrineStatus;
+  if (!resolvedDoctrineStatus) {
+    try {
+      resolvedDoctrineStatus = getSwarmsyRequiredDocsStatus();
+    } catch (_error) {
+      resolvedDoctrineStatus = null;
+    }
+  }
+
   const doctrine = buildDoctrineState(resolvedDoctrineStatus, workspace);
   const workspaceSummary = {
     ...getWorkspaceSummary(workspace),

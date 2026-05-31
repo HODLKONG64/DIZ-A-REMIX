@@ -12,6 +12,28 @@ jest.mock("../../../models/workspace", () => ({
   },
 }));
 
+jest.mock("../../../utils/http", () => ({
+  safeJsonParse: (str, fallback = null) => {
+    try {
+      return JSON.parse(str);
+    } catch {
+      return fallback;
+    }
+  },
+}));
+
+jest.mock("../../../utils/swarmsy/applyWorkspacePreset", () => ({
+  PRESET_NAME: "SWARMSY HIVE",
+}));
+
+jest.mock("../../../utils/swarmsy/requiredDocs", () => ({
+  getSwarmsyRequiredDocsStatus: jest.fn(),
+}));
+
+const {
+  getSwarmsyRequiredDocsStatus,
+} = require("../../../utils/swarmsy/requiredDocs");
+
 describe("swarmsy onboarding status helper", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -30,6 +52,7 @@ describe("swarmsy onboarding status helper", () => {
         files: [
           {
             path: "docs/swarmsy/required-a.md",
+            present: true,
             loadable: true,
           },
         ],
@@ -39,6 +62,7 @@ describe("swarmsy onboarding status helper", () => {
         files: [
           {
             path: "docs/swarmsy/optional-a.md",
+            present: true,
             loadable: true,
           },
         ],
@@ -90,6 +114,7 @@ describe("swarmsy onboarding status helper", () => {
     expect(status.doctrine).toMatchObject({
       statusAvailable: true,
       requiredMissing: 0,
+      requiredNonLoadable: 0,
       optionalMissing: 1,
       requiredLoadable: 1,
       requiredAttached: 0,
@@ -121,6 +146,7 @@ describe("swarmsy onboarding status helper", () => {
     expect(status.workspace.state).toBe("ready");
     expect(status.workspace.ready).toBe(true);
     expect(status.doctrine.ingestionRequired).toBe(false);
+    expect(status.doctrine.requiredNonLoadable).toBe(0);
     expect(status.nextAction.type).toBe("open_hive");
   });
 
@@ -145,6 +171,7 @@ describe("swarmsy onboarding status helper", () => {
       statusAvailable: true,
       docsRootAvailable: false,
       requiredMissing: 2,
+      requiredNonLoadable: 0,
       ingestionRequired: false,
     });
     expect(doctrine.note).toContain("authorized setup route");
@@ -152,5 +179,82 @@ describe("swarmsy onboarding status helper", () => {
     expect(getNextAction({ id: 1 }, doctrine).type).toBe(
       "authorized_setup_required"
     );
+  });
+
+  it("marks HIVE as underloaded when required docs are present but not loadable", async () => {
+    const nonLoadableDoctrineStatus = {
+      success: true,
+      docsRootAvailable: true,
+      summary: {
+        requiredMissing: 0,
+        optionalMissing: 0,
+      },
+      groups: [
+        {
+          required: true,
+          files: [
+            {
+              path: "docs/swarmsy/required-a.md",
+              present: true,
+              loadable: false,
+            },
+            {
+              path: "docs/swarmsy/required-b.md",
+              present: true,
+              loadable: false,
+            },
+          ],
+        },
+      ],
+    };
+
+    Workspace.get.mockResolvedValue({
+      id: 5,
+      slug: "swarmsy-hive",
+      name: "SWARMSY HIVE",
+      documents: [],
+    });
+
+    const status = await getSwarmsyOnboardingStatus({
+      user: { id: 5 },
+      doctrineStatus: nonLoadableDoctrineStatus,
+    });
+
+    expect(status.workspace.state).toBe("underloaded");
+    expect(status.workspace.ready).toBe(false);
+    expect(status.doctrine).toMatchObject({
+      statusAvailable: true,
+      requiredMissing: 0,
+      requiredNonLoadable: 2,
+      requiredLoadable: 0,
+      ingestionRequired: false,
+    });
+    expect(status.doctrine.note).toContain("not loadable");
+    expect(status.nextAction.type).toBe("authorized_setup_required");
+    expect(status.nextAction.type).not.toBe("open_hive");
+  });
+
+  it("returns conservative doctrine status when getSwarmsyRequiredDocsStatus throws", async () => {
+    Workspace.get.mockResolvedValue({
+      id: 3,
+      slug: "swarmsy-hive",
+      name: "SWARMSY HIVE",
+      documents: [],
+    });
+    getSwarmsyRequiredDocsStatus.mockImplementation(() => {
+      throw new Error("Manifest not found");
+    });
+
+    const status = await getSwarmsyOnboardingStatus({ user: { id: 3 } });
+
+    expect(status.doctrine).toMatchObject({
+      statusAvailable: false,
+      docsRootAvailable: false,
+      requiredMissing: null,
+      requiredNonLoadable: null,
+    });
+    expect(status.doctrine.note).toContain("unavailable");
+    expect(status.workspace.state).toBe("underloaded");
+    expect(status.workspace.ready).toBe(false);
   });
 });

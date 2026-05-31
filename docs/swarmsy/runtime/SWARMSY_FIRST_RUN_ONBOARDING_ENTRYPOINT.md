@@ -115,10 +115,10 @@ Example when the current user has no HIVE workspace yet:
 AUTH_TOKEN="<YOUR_USER_JWT>"
 
 curl http://localhost:3001/api/swarmsy/onboarding/status \
-  -H "Authorization: ******"
+  -H "Authorization: Bearer $AUTH_TOKEN"
 ```
 
-Replace the `Authorization` header value with your user JWT using the existing bearer-token auth convention.
+Replace `<YOUR_USER_JWT>` with your user JWT.
 
 ### Unauthenticated request
 
