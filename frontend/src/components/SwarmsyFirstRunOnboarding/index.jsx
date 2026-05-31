@@ -40,6 +40,7 @@ const IDENTITY_MODES = [
     description: "Continue a returning SWARMSY project from your latest lock.",
   },
 ];
+const MEMORY_LOCK_ERROR_ID = "swarmsy-memory-lock-error";
 
 function createFallbackStatus(message) {
   return {
@@ -573,6 +574,10 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
 
                 <textarea
                   aria-label="SWARMSY memory lock"
+                  aria-describedby={
+                    memoryLockError ? MEMORY_LOCK_ERROR_ID : undefined
+                  }
+                  aria-invalid={Boolean(memoryLockError)}
                   value={memoryLockInput}
                   onChange={(event) => {
                     setMemoryLockInput(event.target.value);
@@ -585,7 +590,13 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                 />
 
                 {memoryLockError && (
-                  <p className="mt-3 text-sm text-red-400">{memoryLockError}</p>
+                  <p
+                    id={MEMORY_LOCK_ERROR_ID}
+                    role="alert"
+                    className="mt-3 text-sm text-red-400"
+                  >
+                    {memoryLockError}
+                  </p>
                 )}
 
                 <div className="mt-4 flex flex-wrap gap-3">
