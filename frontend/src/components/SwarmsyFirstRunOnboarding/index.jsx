@@ -327,14 +327,12 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   }
 
   function startIntake() {
-    setBusyAction("start-intake");
-    const disabledReason =
-      actionHubState.actions.startIntake.disabledReason;
+    const disabledReason = actionHubState.actions.startIntake.disabledReason;
     if (disabledReason) {
       showToast(disabledReason, "warning");
-      setBusyAction(null);
       return;
     }
+    setBusyAction("start-intake");
 
     try {
       sessionStorage.setItem(
