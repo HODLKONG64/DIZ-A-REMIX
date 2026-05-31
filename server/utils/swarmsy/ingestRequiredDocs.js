@@ -14,7 +14,8 @@ function getWorkspaceLockKey(workspace = null) {
 
 async function withWorkspaceIngestionLock(workspace, run) {
   const lockKey = getWorkspaceLockKey(workspace);
-  const previousLock = workspaceIngestionLocks.get(lockKey) || Promise.resolve();
+  const previousLock =
+    workspaceIngestionLocks.get(lockKey) || Promise.resolve();
   let releaseCurrentLock;
   const currentLock = new Promise((resolve) => {
     releaseCurrentLock = resolve;
@@ -68,10 +69,10 @@ function getWorkspaceSummary(workspace = null) {
   };
 }
 
-function getExistingChunkSources(workspace = null) {
+function getExistingChunkSources(existingDocs = []) {
   const existingChunkSources = new Set();
 
-  for (const existingDoc of workspace?.documents || []) {
+  for (const existingDoc of existingDocs) {
     const metadata = safeJsonParse(existingDoc.metadata, null);
     if (metadata?.chunkSource) {
       existingChunkSources.add(String(metadata.chunkSource));
@@ -113,7 +114,8 @@ async function ingestSwarmsyRequiredDocs({ workspace, userId = null } = {}) {
       };
     }
 
-    const existingChunkSources = getExistingChunkSources(workspace);
+    const existingDocs = await Document.forWorkspace(workspace.id);
+    const existingChunkSources = getExistingChunkSources(existingDocs);
     const ingested = [];
     const skipped = [...unavailablePaths];
     const failed = [];
@@ -155,7 +157,8 @@ async function ingestSwarmsyRequiredDocs({ workspace, userId = null } = {}) {
           path: docPath,
           stage: "collect",
           error:
-            reason || "Collector did not return an ingestible document location.",
+            reason ||
+            "Collector did not return an ingestible document location.",
         });
         continue;
       }
@@ -165,7 +168,11 @@ async function ingestSwarmsyRequiredDocs({ workspace, userId = null } = {}) {
         failedToEmbed = [],
         errors = [],
         embedded = [],
-      } = await Document.addDocuments(workspace, [generatedDocLocation], userId);
+      } = await Document.addDocuments(
+        workspace,
+        [generatedDocLocation],
+        userId
+      );
 
       if (failedToEmbed.length > 0 || embedded.length === 0) {
         failed.push({

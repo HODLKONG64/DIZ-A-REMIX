@@ -1,6 +1,7 @@
 jest.mock("../../../models/documents", () => ({
   Document: {
     addDocuments: jest.fn(),
+    forWorkspace: jest.fn(),
   },
 }));
 
@@ -27,6 +28,7 @@ describe("swarmsy required docs ingestion helper", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    Document.forWorkspace.mockResolvedValue([]);
 
     collector = {
       online: jest.fn(),
@@ -113,18 +115,19 @@ describe("swarmsy required docs ingestion helper", () => {
       embedded: ["custom-documents/required-b.json"],
     });
 
+    Document.forWorkspace.mockResolvedValue([
+      {
+        metadata: JSON.stringify({
+          chunkSource: "swarmsy-required://docs/swarmsy/required-a.md",
+        }),
+      },
+    ]);
+
     const result = await ingestSwarmsyRequiredDocs({
       workspace: {
         id: 1,
         slug: "swarmsy-hive",
         name: "SWARMSY HIVE",
-        documents: [
-          {
-            metadata: JSON.stringify({
-              chunkSource: "swarmsy-required://docs/swarmsy/required-a.md",
-            }),
-          },
-        ],
       },
       userId: 12,
     });
@@ -151,13 +154,6 @@ describe("swarmsy required docs ingestion helper", () => {
         id: 1,
         slug: "swarmsy-hive",
         name: "SWARMSY HIVE",
-        documents: [
-          {
-            metadata: JSON.stringify({
-              chunkSource: "swarmsy-required://docs/swarmsy/required-a.md",
-            }),
-          },
-        ],
       },
       ["custom-documents/required-b.json"],
       12
@@ -251,7 +247,7 @@ describe("swarmsy required docs ingestion helper", () => {
     });
   });
 
-  it("serializes ingestion requests for the same workspace", async () => {
+  it("serializes ingestion requests and refreshes docs before duplicate checks", async () => {
     collector.online.mockResolvedValue(true);
     getSwarmsyRequiredDocsStatus.mockReturnValue({
       docsRoot: "/repo",
@@ -267,6 +263,16 @@ describe("swarmsy required docs ingestion helper", () => {
     const firstCollect = new Promise((resolve) => {
       releaseFirstCollect = resolve;
     });
+
+    Document.forWorkspace
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([
+        {
+          metadata: JSON.stringify({
+            chunkSource: "swarmsy-required://docs/swarmsy/required-a.md",
+          }),
+        },
+      ]);
 
     collector.forwardExtensionRequest
       .mockImplementationOnce(() => firstCollect)
@@ -291,10 +297,6 @@ describe("swarmsy required docs ingestion helper", () => {
     const firstRequest = ingestSwarmsyRequiredDocs({ workspace, userId: 12 });
     const secondRequest = ingestSwarmsyRequiredDocs({ workspace, userId: 12 });
 
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(collector.forwardExtensionRequest).toHaveBeenCalledTimes(1);
-
     releaseFirstCollect({
       success: true,
       documents: [{ location: "custom-documents/required-a.json" }],
@@ -305,8 +307,18 @@ describe("swarmsy required docs ingestion helper", () => {
       secondRequest,
     ]);
 
-    expect(collector.forwardExtensionRequest).toHaveBeenCalledTimes(2);
+    expect(Document.forWorkspace).toHaveBeenCalledTimes(2);
+    expect(collector.forwardExtensionRequest).toHaveBeenCalledTimes(1);
+    expect(Document.addDocuments).toHaveBeenCalledTimes(1);
     expect(firstResult.partial).toBe(false);
     expect(secondResult.partial).toBe(false);
+    expect(secondResult.ingested).toEqual([]);
+    expect(secondResult.skipped).toEqual([
+      {
+        path: "docs/swarmsy/required-a.md",
+        reason: "already_attached",
+        error: null,
+      },
+    ]);
   });
 });
