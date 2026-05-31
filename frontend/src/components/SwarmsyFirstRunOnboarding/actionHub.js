@@ -94,9 +94,13 @@ export function getIntakeDisabledMessage(status, selectedMode) {
   return null;
 }
 
+function getBusyReasonForAction(actionId, busyAction) {
+  if (!busyAction || busyAction === actionId) return null;
+  return ACTION_BUSY_MESSAGE;
+}
+
 export function getActionHubActionState({ status, selectedMode, busyAction }) {
   const globallyBusy = Boolean(busyAction);
-  const busyReason = globallyBusy ? ACTION_BUSY_MESSAGE : null;
   const intakeDisabledMessage = getIntakeDisabledMessage(status, selectedMode);
   const memoryLockBlockedMessage = canContinueFromMemoryLock(status)
     ? null
@@ -110,22 +114,30 @@ export function getActionHubActionState({ status, selectedMode, busyAction }) {
       startIntake: {
         busy: busyAction === "start-intake",
         disabled: globallyBusy || Boolean(intakeDisabledMessage),
-        disabledReason: busyReason || intakeDisabledMessage,
+        disabledReason:
+          getBusyReasonForAction("start-intake", busyAction) ||
+          intakeDisabledMessage,
       },
       loadMemoryLock: {
         busy: busyAction === "memory-lock",
         disabled: globallyBusy || Boolean(memoryLockBlockedMessage),
-        disabledReason: busyReason || memoryLockBlockedMessage,
+        disabledReason:
+          getBusyReasonForAction("memory-lock", busyAction) ||
+          memoryLockBlockedMessage,
       },
       campaignCalendar: {
         busy: busyAction === "campaign-calendar",
         disabled: globallyBusy || Boolean(campaignBlockedMessage),
-        disabledReason: busyReason || campaignBlockedMessage,
+        disabledReason:
+          getBusyReasonForAction("campaign-calendar", busyAction) ||
+          campaignBlockedMessage,
       },
       reviewProof: {
         busy: busyAction === "proof-review",
         disabled: globallyBusy || Boolean(proofBlockedMessage),
-        disabledReason: busyReason || proofBlockedMessage,
+        disabledReason:
+          getBusyReasonForAction("proof-review", busyAction) ||
+          proofBlockedMessage,
       },
     },
   };

@@ -8,8 +8,8 @@ function readFrontendModule(relativePath) {
       path.resolve(__dirname, "../../../frontend/src", relativePath),
       "utf8"
     )
-    .replace(/import\s*{[\s\S]*?}\s*from\s*".*?";\n/g, "")
-    .replace(/import .* from ".*?";\n/g, "")
+    .replace(/import\s*{[\s\S]*?}\s*from\s*".*?";\r?\n/g, "")
+    .replace(/import .* from ".*?";\r?\n/g, "")
     .replace(/export const /g, "const ")
     .replace(/export function /g, "function ");
 }

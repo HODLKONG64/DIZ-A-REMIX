@@ -267,7 +267,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     busyAction,
   });
   const selectedIdentityMode = IDENTITY_MODES.find(
-    (mode) => mode.id === selectedMode
+    (mode) => mode.id === selectedMode && mode.id !== "memory-lock"
   );
   const [buildGroup, continueGroup, launchGroup, verifyGroup] =
     ACTION_HUB_GROUPS;
@@ -324,32 +324,10 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
 
   function startIntake() {
     setBusyAction("start-intake");
-    if (!activeStatus?.workspace?.exists) {
-      showToast("Create your SWARMSY HIVE before starting intake.", "warning");
-      setBusyAction(null);
-      return;
-    }
-
-    if (doctrineUnavailable(activeStatus)) {
-      showToast("Doctrine readiness cannot be confirmed right now.", "warning");
-      setBusyAction(null);
-      return;
-    }
-
-    if (!activeStatus?.workspace?.ready) {
-      showToast(
-        "Load required doctrine docs before starting intake.",
-        "warning"
-      );
-      setBusyAction(null);
-      return;
-    }
-
-    if (!activeStatus?.workspace?.slug || !intakeStarter) {
-      showToast(
-        "Select an identity mode to prepare the SWARMSY intake handoff.",
-        "warning"
-      );
+    const disabledReason =
+      actionHubState.actions.startIntake.disabledReason;
+    if (disabledReason) {
+      showToast(disabledReason, "warning");
       setBusyAction(null);
       return;
     }
