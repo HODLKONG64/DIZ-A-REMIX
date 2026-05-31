@@ -1,14 +1,49 @@
 const fs = require("fs");
 const path = require("path");
-const { pathToFileURL } = require("url");
+const vm = require("vm");
 
-async function loadActionHubModule() {
-  const modulePath = path.resolve(
-    __dirname,
-    "../../../frontend/src/components/SwarmsyFirstRunOnboarding/actionHub.js"
+function readFrontendModule(relativePath) {
+  return fs
+    .readFileSync(
+      path.resolve(__dirname, "../../../frontend/src", relativePath),
+      "utf8"
+    )
+    .replace(/import\s*{[\s\S]*?}\s*from\s*".*?";\n/g, "")
+    .replace(/import .* from ".*?";\n/g, "")
+    .replace(/export const /g, "const ")
+    .replace(/export function /g, "function ");
+}
+
+function loadActionHubModule() {
+  const source = [
+    readFrontendModule("components/SwarmsyFirstRunOnboarding/handoff.js"),
+    readFrontendModule(
+      "components/SwarmsyFirstRunOnboarding/campaignCalendar.js"
+    ),
+    readFrontendModule("components/SwarmsyFirstRunOnboarding/memoryLock.js"),
+    readFrontendModule("components/SwarmsyFirstRunOnboarding/proofTracker.js"),
+    readFrontendModule("components/SwarmsyFirstRunOnboarding/actionHub.js"),
+  ].join("\n");
+
+  const script = new vm.Script(
+    `${source}
+module.exports = {
+  ACTION_HUB_TITLE,
+  ACTION_HUB_HELPER_COPY,
+  ACTION_BUSY_MESSAGE,
+  ACTION_HUB_GROUPS,
+  isActionHubReady,
+  getIntakeDisabledMessage,
+  getActionHubActionState
+};`
   );
-
-  return import(`${pathToFileURL(modulePath).href}?t=${Date.now()}`);
+  const sandbox = {
+    module: { exports: {} },
+    exports: {},
+  };
+  vm.createContext(sandbox);
+  script.runInContext(sandbox);
+  return sandbox.module.exports;
 }
 
 function buildReadyStatus(overrides = {}) {
@@ -30,8 +65,8 @@ function buildReadyStatus(overrides = {}) {
 }
 
 describe("SWARMSY HIVE action hub", () => {
-  it("shows the ready hub structure with all grouped actions", async () => {
-    const actionHub = await loadActionHubModule();
+  it("shows the ready hub structure with all grouped actions", () => {
+    const actionHub = loadActionHubModule();
     const readyStatus = buildReadyStatus();
     const state = actionHub.getActionHubActionState({
       status: readyStatus,
@@ -66,8 +101,8 @@ describe("SWARMSY HIVE action hub", () => {
     expect(state.actions.reviewProof.disabled).toBe(false);
   });
 
-  it("keeps the no-HIVE state in the create flow", async () => {
-    const actionHub = await loadActionHubModule();
+  it("keeps the no-HIVE state in the create flow", () => {
+    const actionHub = loadActionHubModule();
     const status = buildReadyStatus({ workspace: { exists: false } });
     const state = actionHub.getActionHubActionState({
       status,
@@ -85,8 +120,8 @@ describe("SWARMSY HIVE action hub", () => {
     );
   });
 
-  it("keeps the underloaded state in the load-docs flow", async () => {
-    const actionHub = await loadActionHubModule();
+  it("keeps the underloaded state in the load-docs flow", () => {
+    const actionHub = loadActionHubModule();
     const status = buildReadyStatus({
       workspace: { ready: false },
       doctrine: { requiredMissing: 1 },
@@ -106,8 +141,8 @@ describe("SWARMSY HIVE action hub", () => {
     );
   });
 
-  it("does not expose ready actions when doctrine is unavailable", async () => {
-    const actionHub = await loadActionHubModule();
+  it("does not expose ready actions when doctrine is unavailable", () => {
+    const actionHub = loadActionHubModule();
     const status = buildReadyStatus({
       doctrine: { statusAvailable: false },
     });
@@ -123,8 +158,8 @@ describe("SWARMSY HIVE action hub", () => {
     );
   });
 
-  it("keeps actions disabled during busy states", async () => {
-    const actionHub = await loadActionHubModule();
+  it("keeps actions disabled during busy states", () => {
+    const actionHub = loadActionHubModule();
     const state = actionHub.getActionHubActionState({
       status: buildReadyStatus(),
       selectedMode: "hidden",
@@ -143,10 +178,7 @@ describe("SWARMSY HIVE action hub", () => {
 
   it("keeps the onboarding model on user-safe routes only", () => {
     const source = fs.readFileSync(
-      path.resolve(
-        __dirname,
-        "../../../frontend/src/models/swarmsyOnboarding.js"
-      ),
+      path.resolve(__dirname, "../../../frontend/src/models/swarmsyOnboarding.js"),
       "utf8"
     );
 
@@ -165,7 +197,7 @@ describe("SWARMSY HIVE action hub", () => {
       "utf8"
     );
 
-    expect(source).toContain("SWARMSY HIVE Action Hub");
+    expect(source).toContain("ACTION_HUB_TITLE");
     expect(source).toContain("Choose the next command for SPARKY.");
   });
 });

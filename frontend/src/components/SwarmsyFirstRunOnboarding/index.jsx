@@ -806,8 +806,8 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                         Paste your latest SWARMSY memory lock.
                       </h3>
                       <p className="text-sm text-theme-text-secondary">
-                        SPARKY will continue from this state instead of restarting
-                        your identity.
+                        SPARKY will continue from this state instead of
+                        restarting your identity.
                       </p>
                     </div>
 
@@ -850,7 +850,9 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                       <ActionButton
                         icon={CheckCircle}
                         busy={busyAction === "memory-lock"}
-                        disabled={Boolean(busyAction) && busyAction !== "memory-lock"}
+                        disabled={
+                          Boolean(busyAction) && busyAction !== "memory-lock"
+                        }
                         onClick={continueFromMemoryLock}
                       >
                         Continue from Memory Lock
@@ -886,8 +888,12 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                       <input
                         type="date"
                         value={campaignDate}
-                        disabled={actionHubState.actions.campaignCalendar.disabled}
-                        onChange={(event) => setCampaignDate(event.target.value)}
+                        disabled={
+                          actionHubState.actions.campaignCalendar.disabled
+                        }
+                        onChange={(event) =>
+                          setCampaignDate(event.target.value)
+                        }
                         className="w-full rounded-lg border border-theme-sidebar-border bg-theme-bg-menu px-3 py-2 text-sm text-theme-text-primary outline-none focus:border-teal disabled:cursor-not-allowed disabled:opacity-60"
                       />
                     </label>
@@ -899,8 +905,12 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                       <input
                         type="text"
                         value={campaignFocus}
-                        disabled={actionHubState.actions.campaignCalendar.disabled}
-                        onChange={(event) => setCampaignFocus(event.target.value)}
+                        disabled={
+                          actionHubState.actions.campaignCalendar.disabled
+                        }
+                        onChange={(event) =>
+                          setCampaignFocus(event.target.value)
+                        }
                         placeholder="Optional focus for this day."
                         className="w-full rounded-lg border border-theme-sidebar-border bg-theme-bg-menu px-3 py-2 text-sm text-theme-text-primary outline-none focus:border-teal disabled:cursor-not-allowed disabled:opacity-60"
                       />
@@ -913,7 +923,9 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                     </span>
                     <textarea
                       value={campaignProofAssets}
-                      disabled={actionHubState.actions.campaignCalendar.disabled}
+                      disabled={
+                        actionHubState.actions.campaignCalendar.disabled
+                      }
                       onChange={(event) =>
                         setCampaignProofAssets(event.target.value)
                       }
@@ -981,9 +993,9 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                   ) : (
                     <div className="mt-4 rounded-2xl border border-theme-sidebar-border bg-theme-bg-menu p-4">
                       <p className="text-sm text-theme-text-secondary">
-                        Paste proof, links, notes, screenshot descriptions, sales
-                        results, comments, press mentions, product details, or
-                        campaign results.
+                        Paste proof, links, notes, screenshot descriptions,
+                        sales results, comments, press mentions, product
+                        details, or campaign results.
                       </p>
                       <textarea
                         aria-label="SWARMSY proof review notes"

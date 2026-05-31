@@ -7,10 +7,7 @@ import {
   canContinueFromMemoryLock,
   MEMORY_LOCK_BLOCKED_MESSAGE,
 } from "./memoryLock";
-import {
-  canReviewProof,
-  getProofTrackerBlockedMessage,
-} from "./proofTracker";
+import { canReviewProof, getProofTrackerBlockedMessage } from "./proofTracker";
 
 export const ACTION_HUB_TITLE = "SWARMSY HIVE Action Hub";
 export const ACTION_HUB_HELPER_COPY =
