@@ -144,7 +144,11 @@ export default function Home() {
   }
 
   if (!workspace && user?.role === "default") {
-    return <NoWorkspacesAssigned />;
+    return (
+      <SwarmsyFirstRunOnboarding fallbackWorkspace={workspace}>
+        <NoWorkspacesAssigned />
+      </SwarmsyFirstRunOnboarding>
+    );
   }
 
   if (workspace && threadSlug) {

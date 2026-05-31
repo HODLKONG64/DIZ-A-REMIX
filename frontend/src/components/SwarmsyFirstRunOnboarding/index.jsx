@@ -193,8 +193,8 @@ function ActionButton({ busy, icon: Icon, children, ...props }) {
     <button
       type="button"
       className="flex items-center justify-center gap-x-2 rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary px-4 py-2 text-sm font-medium text-theme-text-primary transition hover:bg-theme-bg-menu disabled:cursor-not-allowed disabled:opacity-60"
-      disabled={busy || props.disabled}
       {...props}
+      disabled={busy || props.disabled}
     >
       {busy ? (
         <SpinnerGap className="animate-spin" size={18} />
