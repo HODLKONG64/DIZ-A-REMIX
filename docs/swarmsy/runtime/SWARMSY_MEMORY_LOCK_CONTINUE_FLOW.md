@@ -46,8 +46,8 @@ The starter message instructs SPARKY to:
 
 ## Persistence
 
-There is no database persistence in this PR.
+There is no dedicated Memory Lock database persistence in this PR.
 
-The pasted memory lock exists only in the immediate handoff message routed into chat.
+The pasted memory lock is included in the immediate handoff message routed into chat, so it follows normal workspace chat history storage and retention after submission.
 
 A future PR can add Memory Lock storage, viewing, import history, or richer continuity tooling.

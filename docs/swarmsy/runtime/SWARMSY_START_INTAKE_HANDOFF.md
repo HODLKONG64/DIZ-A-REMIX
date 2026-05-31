@@ -49,7 +49,7 @@ That starter instructs SPARKY to:
 - treat the memory lock as higher priority than a fresh intake
 - ask clarifying questions if the lock is unclear
 
-There is still no Memory Lock database persistence in this slice.
+There is still no dedicated Memory Lock database persistence in this slice; the pasted lock is submitted as a normal chat message and follows workspace chat history retention.
 
 ## Chat Flow Convention
 

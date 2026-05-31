@@ -572,6 +572,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                 </div>
 
                 <textarea
+                  aria-label="SWARMSY memory lock"
                   value={memoryLockInput}
                   onChange={(event) => {
                     setMemoryLockInput(event.target.value);
