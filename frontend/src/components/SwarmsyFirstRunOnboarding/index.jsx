@@ -269,8 +269,12 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   const selectedIdentityMode = IDENTITY_MODES.find(
     (mode) => mode.id === selectedMode && mode.id !== "memory-lock"
   );
-  const [buildGroup, continueGroup, launchGroup, verifyGroup] =
-    ACTION_HUB_GROUPS;
+  const buildGroup = ACTION_HUB_GROUPS.find((group) => group.id === "build");
+  const continueGroup = ACTION_HUB_GROUPS.find(
+    (group) => group.id === "continue"
+  );
+  const launchGroup = ACTION_HUB_GROUPS.find((group) => group.id === "launch");
+  const verifyGroup = ACTION_HUB_GROUPS.find((group) => group.id === "verify");
 
   async function refreshReadiness() {
     setBusyAction("refresh");
