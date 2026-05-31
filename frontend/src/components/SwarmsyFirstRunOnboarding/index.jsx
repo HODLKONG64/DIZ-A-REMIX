@@ -354,10 +354,19 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
       return;
     }
 
-    sessionStorage.setItem(
-      PENDING_HOME_MESSAGE,
-      JSON.stringify({ message: intakeStarter, attachments: [] })
-    );
+    try {
+      sessionStorage.setItem(
+        PENDING_HOME_MESSAGE,
+        JSON.stringify({ message: intakeStarter, attachments: [] })
+      );
+    } catch {
+      showToast(
+        "The intake handoff could not be stored for chat. Enable browser session storage or try again.",
+        "error"
+      );
+      setBusyAction(null);
+      return;
+    }
     navigate(paths.workspace.chat(activeStatus.workspace.slug));
   }
 
@@ -675,7 +684,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
             </div>
           )}
 
-        {actionHubState.ready && (
+        {activeStatus?.workspace?.exists && (
           <div className="rounded-2xl border border-theme-sidebar-border bg-theme-bg-secondary p-5">
             <div className="space-y-2">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-theme-text-secondary">

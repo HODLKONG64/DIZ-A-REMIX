@@ -11,7 +11,7 @@ import { canReviewProof, getProofTrackerBlockedMessage } from "./proofTracker";
 
 export const ACTION_HUB_TITLE = "SWARMSY HIVE Action Hub";
 export const ACTION_HUB_HELPER_COPY =
-  "Choose the next command for SPARKY. Every action routes through your HIVE and keeps the project moving.";
+  "Every action routes through your HIVE and keeps the project moving.";
 export const ACTION_BUSY_MESSAGE =
   "Another SWARMSY action is already running. Wait for it to finish.";
 export const INTAKE_MODE_REQUIRED_MESSAGE =

@@ -76,7 +76,7 @@ describe("SWARMSY HIVE action hub", () => {
 
     expect(actionHub.ACTION_HUB_TITLE).toBe("SWARMSY HIVE Action Hub");
     expect(actionHub.ACTION_HUB_HELPER_COPY).toContain(
-      "Choose the next command for SPARKY."
+      "Every action routes through your HIVE and keeps the project moving."
     );
     expect(actionHub.ACTION_HUB_GROUPS.map((group) => group.title)).toEqual([
       "Build",
