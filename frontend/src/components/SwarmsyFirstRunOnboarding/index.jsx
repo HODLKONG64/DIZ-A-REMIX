@@ -11,6 +11,12 @@ import paths from "@/utils/paths";
 import showToast from "@/utils/toast";
 import { PENDING_HOME_MESSAGE } from "@/utils/constants";
 import { canStartSwarmsyIntake, getIntakeStarterMessage } from "./handoff";
+import {
+  buildMemoryLockStarterMessage,
+  canContinueFromMemoryLock,
+  MEMORY_LOCK_BLOCKED_MESSAGE,
+  MEMORY_LOCK_EMPTY_ERROR,
+} from "./memoryLock";
 
 const IDENTITY_MODES = [
   {
@@ -31,8 +37,7 @@ const IDENTITY_MODES = [
   {
     id: "memory-lock",
     label: "Load Memory Lock",
-    description:
-      "Prepare for a future memory-lock handoff without adding a viewer here.",
+    description: "Continue a returning SWARMSY project from your latest lock.",
   },
 ];
 
@@ -159,6 +164,9 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   const [busyAction, setBusyAction] = useState(null);
   const [selectedMode, setSelectedMode] = useState(null);
   const [lastActionResult, setLastActionResult] = useState(null);
+  const [memoryLockInput, setMemoryLockInput] = useState("");
+  const [memoryLockError, setMemoryLockError] = useState("");
+  const [memoryLockPanelOpen, setMemoryLockPanelOpen] = useState(false);
 
   const loadStatus = useCallback(async () => {
     const response = await SwarmsyOnboarding.status();
@@ -196,12 +204,15 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   useEffect(() => {
     if (status?.workspace?.ready) return;
     setSelectedMode(null);
+    setMemoryLockPanelOpen(false);
+    setMemoryLockError("");
   }, [status?.workspace?.ready]);
 
   const activeStatus = status || createFallbackStatus();
   const copy = statusCopy(activeStatus);
   const intakeStarter = getIntakeStarterMessage(selectedMode);
   const canStartIntake = canStartSwarmsyIntake(activeStatus, selectedMode);
+  const canLoadMemoryLock = canContinueFromMemoryLock(activeStatus);
 
   async function refreshReadiness() {
     setBusyAction("refresh");
@@ -283,6 +294,44 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     sessionStorage.setItem(
       PENDING_HOME_MESSAGE,
       JSON.stringify({ message: intakeStarter, attachments: [] })
+    );
+    navigate(paths.workspace.chat(activeStatus.workspace.slug));
+  }
+
+  function openMemoryLockPanel() {
+    if (!canLoadMemoryLock) {
+      showToast(MEMORY_LOCK_BLOCKED_MESSAGE, "warning");
+      return;
+    }
+
+    setSelectedMode("memory-lock");
+    setMemoryLockError("");
+    setMemoryLockPanelOpen(true);
+  }
+
+  function closeMemoryLockPanel() {
+    setMemoryLockError("");
+    setMemoryLockPanelOpen(false);
+    if (selectedMode === "memory-lock") {
+      setSelectedMode(null);
+    }
+  }
+
+  function continueFromMemoryLock() {
+    if (!canLoadMemoryLock) {
+      showToast(MEMORY_LOCK_BLOCKED_MESSAGE, "warning");
+      return;
+    }
+
+    const starterMessage = buildMemoryLockStarterMessage(memoryLockInput);
+    if (!starterMessage) {
+      setMemoryLockError(MEMORY_LOCK_EMPTY_ERROR);
+      return;
+    }
+
+    sessionStorage.setItem(
+      PENDING_HOME_MESSAGE,
+      JSON.stringify({ message: starterMessage, attachments: [] })
     );
     navigate(paths.workspace.chat(activeStatus.workspace.slug));
   }
@@ -411,6 +460,15 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
           <ActionButton
             icon={CheckCircle}
             busy={false}
+            disabled={!canLoadMemoryLock}
+            onClick={openMemoryLockPanel}
+          >
+            Load Memory Lock
+          </ActionButton>
+
+          <ActionButton
+            icon={CheckCircle}
+            busy={false}
             disabled={!canStartIntake}
             onClick={startIntake}
           >
@@ -425,6 +483,12 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
             Check HIVE Readiness
           </ActionButton>
         </div>
+
+        {!canLoadMemoryLock && (
+          <p className="text-sm text-theme-text-secondary">
+            {MEMORY_LOCK_BLOCKED_MESSAGE}
+          </p>
+        )}
 
         {lastActionResult?.kind === "ingest-docs" &&
           (lastActionResult?.partial || !lastActionResult?.success) && (
@@ -459,6 +523,13 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                     key={mode.id}
                     type="button"
                     onClick={() => {
+                      if (mode.id === "memory-lock") {
+                        openMemoryLockPanel();
+                        return;
+                      }
+
+                      setMemoryLockPanelOpen(false);
+                      setMemoryLockError("");
                       setSelectedMode(mode.id);
                     }}
                     className={`rounded-2xl border p-4 text-left transition ${
@@ -477,6 +548,53 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                 );
               })}
             </div>
+
+            {memoryLockPanelOpen && (
+              <div className="mt-4 rounded-2xl border border-theme-sidebar-border bg-theme-bg-menu p-4">
+                <div className="space-y-2">
+                  <h3 className="text-base font-semibold text-theme-text-primary">
+                    Paste your latest SWARMSY memory lock.
+                  </h3>
+                  <p className="text-sm text-theme-text-secondary">
+                    SPARKY will continue from this state instead of restarting
+                    your identity.
+                  </p>
+                </div>
+
+                <textarea
+                  value={memoryLockInput}
+                  onChange={(event) => {
+                    setMemoryLockInput(event.target.value);
+                    if (memoryLockError) {
+                      setMemoryLockError("");
+                    }
+                  }}
+                  placeholder="Paste your SWARMSY memory lock here."
+                  className="mt-4 min-h-[220px] w-full rounded-2xl border border-theme-sidebar-border bg-theme-bg-secondary p-3 text-sm text-theme-text-primary outline-none focus:border-teal"
+                />
+
+                {memoryLockError && (
+                  <p className="mt-3 text-sm text-red-400">{memoryLockError}</p>
+                )}
+
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={closeMemoryLockPanel}
+                    className="rounded-lg border border-theme-sidebar-border px-4 py-2 text-sm font-medium text-theme-text-primary transition hover:bg-theme-bg-secondary"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={continueFromMemoryLock}
+                    className="rounded-lg border border-teal bg-teal px-4 py-2 text-sm font-medium text-black transition hover:opacity-90"
+                  >
+                    Continue from Memory Lock
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
