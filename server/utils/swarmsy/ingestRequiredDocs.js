@@ -141,7 +141,8 @@ async function ingestSwarmsyRequiredDocs({ workspace, userId = null } = {}) {
         path: docPath,
         stage: "embed",
         error:
-          errors[0] || "Document.addDocuments failed for this doctrine document.",
+          errors[0] ||
+          "Document.addDocuments failed for this doctrine document.",
       });
       continue;
     }
@@ -163,7 +164,8 @@ async function ingestSwarmsyRequiredDocs({ workspace, userId = null } = {}) {
   } else if (ingested.length === 0 && failed.length === 0) {
     message = "No SWARMSY required docs are currently available to ingest.";
   } else if (partial) {
-    message = "SWARMSY required docs ingestion completed with partial failures.";
+    message =
+      "SWARMSY required docs ingestion completed with partial failures.";
   }
 
   return {
