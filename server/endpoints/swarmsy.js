@@ -88,7 +88,9 @@ async function swarmsyOnboardingCreateHive(request, response) {
     if (!Number.isInteger(creatorId) || creatorId <= 0) {
       return response
         .status(400)
-        .json(swarmsyCreateHiveFailure("Unable to resolve authenticated user."));
+        .json(
+          swarmsyCreateHiveFailure("Unable to resolve authenticated user.")
+        );
     }
 
     return await withSwarmsyHiveCreationLock(String(creatorId), async () => {
@@ -99,13 +101,16 @@ async function swarmsyOnboardingCreateHive(request, response) {
           .json(swarmsyCreateHiveSuccess(existingWorkspace, false));
       }
 
-      const { workspace, message } = await createSwarmsyHiveWorkspace(creatorId);
+      const { workspace, message } =
+        await createSwarmsyHiveWorkspace(creatorId);
       if (!workspace) {
-        return response.status(400).json(
-          swarmsyCreateHiveFailure(
-            message || "Failed to create SWARMSY HIVE workspace."
-          )
-        );
+        return response
+          .status(400)
+          .json(
+            swarmsyCreateHiveFailure(
+              message || "Failed to create SWARMSY HIVE workspace."
+            )
+          );
       }
 
       const refreshedWorkspace = await findUserSwarmsyHiveWorkspace(user);
@@ -115,9 +120,11 @@ async function swarmsyOnboardingCreateHive(request, response) {
     });
   } catch (error) {
     console.error(error);
-    return response.status(500).json(
-      swarmsyCreateHiveFailure("Failed to create SWARMSY HIVE workspace.")
-    );
+    return response
+      .status(500)
+      .json(
+        swarmsyCreateHiveFailure("Failed to create SWARMSY HIVE workspace.")
+      );
   }
 }
 
