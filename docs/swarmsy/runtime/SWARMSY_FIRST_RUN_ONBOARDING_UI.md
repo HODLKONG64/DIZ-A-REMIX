@@ -64,7 +64,7 @@ When onboarding status confirms readiness:
   - `Hidden Identity Mode`
   - `Existing Project`
   - `Load Memory Lock`
-- show `Start SWARMSY Intake`
+- show `Start Intake`
 - allow `Load Memory Lock` to open a paste panel for returning users
 
 ## SWARMSY HIVE Action Hub
@@ -75,7 +75,7 @@ This is an organization and polish layer on top of the existing onboarding actio
 - no new storage
 - no new doctrine docs
 - existing actions are grouped into `Build`, `Continue`, `Launch`, and `Verify`
-- HIVE readiness still gates every action before the hub appears
+- the hub appears whenever a HIVE workspace exists; readiness gates each action, and disabled actions show the blocking reason
 
 The grouped actions stay the same:
 
@@ -156,7 +156,7 @@ This is intentionally lightweight:
 
 ## Start Intake Handoff
 
-The onboarding UI now hands users directly into SWARMSY HIVE chat when they click `Start SWARMSY Intake` in a ready state.
+The onboarding UI now hands users directly into SWARMSY HIVE chat when they click `Start Intake` in a ready state.
 
 The selected identity mode is preserved in a mode-specific starter message sent to SPARKY, and the intake file stays referenced (not inlined):
 
@@ -164,7 +164,7 @@ The selected identity mode is preserved in a mode-specific starter message sent 
 
 The handoff uses existing AnythingLLM chat routing and message-seeding flow so users do not land in a generic blank chat.
 
-For blocked readiness states (no HIVE, underloaded HIVE, doctrine unavailable), `Start SWARMSY Intake` remains blocked.
+For blocked readiness states (no HIVE, underloaded HIVE, doctrine unavailable), `Start Intake` remains blocked.
 
 See: [`SWARMSY_START_INTAKE_HANDOFF.md`](./SWARMSY_START_INTAKE_HANDOFF.md)
 See also: [`SWARMSY_MEMORY_LOCK_CONTINUE_FLOW.md`](./SWARMSY_MEMORY_LOCK_CONTINUE_FLOW.md)
@@ -193,13 +193,13 @@ This UI does **not** add:
    - `POST /api/swarmsy/onboarding/ingest-required-docs`
 3. Confirm the no-HIVE state shows `Create SWARMSY HIVE`.
 4. Confirm the underloaded state shows `Load Required Doctrine Docs`.
-5. Confirm the ready state shows the four identity mode buttons and `Start SWARMSY Intake`.
+5. Confirm the ready state shows the four identity mode buttons and `Start Intake`.
 6. Confirm `Load Memory Lock` opens a paste panel only when the HIVE is ready.
 7. Confirm empty memory-lock input is blocked with the expected validation copy.
 8. Confirm continuing from a pasted memory lock routes to SWARMSY HIVE chat with the continuation starter message.
 9. Confirm campaign calendar handoff stays blocked for missing-HIVE, underloaded-HIVE, and doctrine-unavailable states with the expected blocked copy.
 10. Confirm `Create Campaign Day` starter includes selected date and `09_SWARMSY_DAY_1_PR_CAMPAIGN_BUILDER.md`, and says selected date only with no Day 2/Week 2/30-day generation unless asked.
-11. Confirm doctrine-unavailable, missing-HIVE, and underloaded-HIVE states keep `Start SWARMSY Intake` blocked and memory-lock continuation blocked.
+11. Confirm doctrine-unavailable, missing-HIVE, and underloaded-HIVE states keep `Start Intake` blocked and memory-lock continuation blocked.
 12. Confirm partial ingestion shows failed items and retry guidance.
 13. Confirm `Review Proof / Find Proof Gaps` is blocked for missing-HIVE, underloaded-HIVE, and doctrine-unavailable states with the expected blocked copy.
 14. Confirm empty proof submission still routes to SWARMSY HIVE chat and requests proof-gap checklist behavior.

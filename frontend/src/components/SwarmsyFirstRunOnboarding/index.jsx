@@ -789,7 +789,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                     {continueGroup.actions[0]}
                   </p>
                   <p className="mt-2 text-sm text-theme-text-secondary">
-                    Continue an existing project without restarting.
+                    {continueGroup.description}
                   </p>
                   {actionHubState.actions.loadMemoryLock.disabledReason && (
                     <p className="mt-3 text-sm text-theme-text-secondary">
@@ -886,7 +886,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                     {launchGroup.actions[0]}
                   </p>
                   <p className="mt-2 text-sm text-theme-text-secondary">
-                    Pick a date and create a campaign-day command.
+                    {launchGroup.description}
                   </p>
 
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -980,7 +980,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                     {verifyGroup.actions[0]}
                   </p>
                   <p className="mt-2 text-sm text-theme-text-secondary">
-                    Check what claims are safe before posting.
+                    {verifyGroup.description}
                   </p>
 
                   {!proofReviewPanelOpen ? (
