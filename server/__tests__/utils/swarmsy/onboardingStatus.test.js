@@ -299,4 +299,33 @@ describe("swarmsy onboarding status helper", () => {
     expect(getSwarmsyRequiredDocsStatus).toHaveBeenCalledTimes(1);
     nowSpy.mockRestore();
   });
+
+  it("caches null required docs status within the ttl window when helper throws", async () => {
+    Workspace._findFirst.mockResolvedValue({
+      id: 3,
+      slug: "swarmsy-hive",
+      name: "SWARMSY HIVE",
+      documents: [],
+    });
+    getSwarmsyRequiredDocsStatus.mockImplementation(() => {
+      throw new Error("Manifest not found");
+    });
+
+    const consoleWarnSpy = jest
+      .spyOn(console, "warn")
+      .mockImplementation(() => {});
+    const nowSpy = jest.spyOn(Date, "now");
+    nowSpy.mockReturnValueOnce(1000).mockReturnValueOnce(1001);
+
+    const firstStatus = await getSwarmsyOnboardingStatus({ user: { id: 3 } });
+    const secondStatus = await getSwarmsyOnboardingStatus({ user: { id: 3 } });
+
+    expect(getSwarmsyRequiredDocsStatus).toHaveBeenCalledTimes(1);
+    expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
+    expect(firstStatus.doctrine.statusAvailable).toBe(false);
+    expect(secondStatus.doctrine.statusAvailable).toBe(false);
+
+    nowSpy.mockRestore();
+    consoleWarnSpy.mockRestore();
+  });
 });

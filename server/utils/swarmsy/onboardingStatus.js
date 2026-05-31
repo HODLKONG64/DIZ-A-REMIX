@@ -11,13 +11,21 @@ function getCachedRequiredDocsStatus() {
   const now = Date.now();
 
   if (
-    cachedRequiredDocsStatus &&
+    cachedRequiredDocsStatusAt > 0 &&
     now - cachedRequiredDocsStatusAt < REQUIRED_DOCS_STATUS_TTL_MS
   ) {
     return cachedRequiredDocsStatus;
   }
 
-  cachedRequiredDocsStatus = getSwarmsyRequiredDocsStatus();
+  try {
+    cachedRequiredDocsStatus = getSwarmsyRequiredDocsStatus();
+  } catch (error) {
+    console.warn(
+      "SWARMSY required docs status unavailable:",
+      error?.message || error
+    );
+    cachedRequiredDocsStatus = null;
+  }
   cachedRequiredDocsStatusAt = now;
   return cachedRequiredDocsStatus;
 }
@@ -223,15 +231,7 @@ async function getSwarmsyOnboardingStatus({
 
   let resolvedDoctrineStatus = doctrineStatus;
   if (!resolvedDoctrineStatus) {
-    try {
-      resolvedDoctrineStatus = getCachedRequiredDocsStatus();
-    } catch (error) {
-      console.warn(
-        "SWARMSY required docs status unavailable:",
-        error?.message || error
-      );
-      resolvedDoctrineStatus = null;
-    }
+    resolvedDoctrineStatus = getCachedRequiredDocsStatus();
   }
 
   const doctrine = buildDoctrineState(resolvedDoctrineStatus, workspace);
