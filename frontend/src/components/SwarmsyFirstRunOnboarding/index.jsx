@@ -205,6 +205,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     if (status?.workspace?.ready) return;
     setSelectedMode(null);
     setMemoryLockPanelOpen(false);
+    setMemoryLockInput("");
     setMemoryLockError("");
   }, [status?.workspace?.ready]);
 
@@ -537,6 +538,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                       }
 
                       setMemoryLockPanelOpen(false);
+                      setMemoryLockInput("");
                       setMemoryLockError("");
                       setSelectedMode(mode.id);
                     }}
