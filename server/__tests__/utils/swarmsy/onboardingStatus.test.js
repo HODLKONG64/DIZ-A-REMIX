@@ -270,6 +270,11 @@ describe("swarmsy onboarding status helper", () => {
       docsRootAvailable: false,
       requiredMissing: null,
       requiredNonLoadable: null,
+      optionalMissing: null,
+      requiredLoadable: null,
+      requiredAttached: null,
+      requiredPendingIngestion: null,
+      ingestionRequired: null,
     });
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       "SWARMSY required docs status unavailable:",

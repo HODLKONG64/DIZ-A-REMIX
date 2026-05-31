@@ -79,10 +79,10 @@ function buildDoctrineState(doctrineStatus = null, workspace = null) {
       requiredMissing: null,
       requiredNonLoadable: null,
       optionalMissing: null,
-      requiredLoadable: 0,
-      requiredAttached: 0,
-      requiredPendingIngestion: 0,
-      ingestionRequired: Boolean(workspace),
+      requiredLoadable: null,
+      requiredAttached: null,
+      requiredPendingIngestion: null,
+      ingestionRequired: null,
       note: "Required docs status is unavailable. HIVE readiness cannot be confirmed.",
     };
   }
