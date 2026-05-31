@@ -167,6 +167,8 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   const [memoryLockInput, setMemoryLockInput] = useState("");
   const [memoryLockError, setMemoryLockError] = useState("");
   const [memoryLockPanelOpen, setMemoryLockPanelOpen] = useState(false);
+  const activeStatus = status || createFallbackStatus();
+  const canLoadMemoryLock = canContinueFromMemoryLock(activeStatus);
 
   const loadStatus = useCallback(async () => {
     const response = await SwarmsyOnboarding.status();
@@ -202,18 +204,16 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   }, [loadStatus]);
 
   useEffect(() => {
-    if (status?.workspace?.ready) return;
+    if (canLoadMemoryLock) return;
     setSelectedMode(null);
     setMemoryLockPanelOpen(false);
     setMemoryLockInput("");
     setMemoryLockError("");
-  }, [status?.workspace?.ready]);
+  }, [canLoadMemoryLock]);
 
-  const activeStatus = status || createFallbackStatus();
   const copy = statusCopy(activeStatus);
   const intakeStarter = getIntakeStarterMessage(selectedMode);
   const canStartIntake = canStartSwarmsyIntake(activeStatus, selectedMode);
-  const canLoadMemoryLock = canContinueFromMemoryLock(activeStatus);
 
   async function refreshReadiness() {
     setBusyAction("refresh");
