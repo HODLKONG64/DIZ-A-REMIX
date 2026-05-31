@@ -189,7 +189,7 @@ async function getSwarmsyOnboardingStatus({
   if (!resolvedDoctrineStatus) {
     try {
       resolvedDoctrineStatus = getSwarmsyRequiredDocsStatus();
-    } catch (_error) {
+    } catch {
       resolvedDoctrineStatus = null;
     }
   }
