@@ -870,7 +870,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
           ) : (
             <div className="mt-4 rounded-2xl border border-theme-sidebar-border bg-theme-bg-menu p-4">
               <p className="text-sm text-theme-text-secondary">
-                Paste proof, links, notes, screenshots descriptions, sales
+                Paste proof, links, notes, screenshot descriptions, sales
                 results, comments, press mentions, product details, or campaign
                 results.
               </p>
@@ -887,7 +887,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                     setProofReviewError("");
                   }
                 }}
-                placeholder="Paste proof, links, notes, screenshots descriptions, sales results, comments, press mentions, product details, or campaign results."
+                placeholder="Paste proof, links, notes, screenshot descriptions, sales results, comments, press mentions, product details, or campaign results."
                 className="mt-3 min-h-[180px] w-full rounded-2xl border border-theme-sidebar-border bg-theme-bg-secondary p-3 text-sm text-theme-text-primary outline-none focus:border-teal"
               />
               {proofReviewError && (
