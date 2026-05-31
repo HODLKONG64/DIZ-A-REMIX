@@ -10,10 +10,7 @@ import SwarmsyOnboarding from "@/models/swarmsyOnboarding";
 import paths from "@/utils/paths";
 import showToast from "@/utils/toast";
 import { PENDING_HOME_MESSAGE } from "@/utils/constants";
-import {
-  canStartSwarmsyIntake,
-  getIntakeStarterMessage,
-} from "./handoff";
+import { canStartSwarmsyIntake, getIntakeStarterMessage } from "./handoff";
 
 const IDENTITY_MODES = [
   {
@@ -268,7 +265,10 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     }
 
     if (!activeStatus?.workspace?.ready) {
-      showToast("Load required doctrine docs before starting intake.", "warning");
+      showToast(
+        "Load required doctrine docs before starting intake.",
+        "warning"
+      );
       return;
     }
 
@@ -460,7 +460,6 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                     type="button"
                     onClick={() => {
                       setSelectedMode(mode.id);
-                      setShowIntakeGuidance(false);
                     }}
                     className={`rounded-2xl border p-4 text-left transition ${
                       selected
