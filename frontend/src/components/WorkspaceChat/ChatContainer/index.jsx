@@ -44,6 +44,32 @@ import {
   isLocalUserOllamaIntent,
 } from "@/components/SwarmsyFirstRunOnboarding/handoff";
 
+function getStoredLocalUserRuntimeForWorkspace(workspaceSlug = "") {
+  const storedRuntime = safeJsonParse(
+    sessionStorage.getItem(SWARMSY_LOCAL_USER_ACTIVE_RUNTIME)
+  );
+  const storedRuntimeWorkspaceSlug = String(
+    storedRuntime?.workspaceSlug || ""
+  ).trim();
+  const normalizedWorkspaceSlug = String(workspaceSlug || "").trim();
+
+  if (
+    !normalizedWorkspaceSlug ||
+    !storedRuntime ||
+    storedRuntimeWorkspaceSlug !== normalizedWorkspaceSlug
+  ) {
+    return {
+      runtime: null,
+      isLocalUserSession: false,
+    };
+  }
+
+  return {
+    runtime: normalizeLocalUserOllamaRuntimeSelection(storedRuntime),
+    isLocalUserSession: isLocalUserOllamaIntent(storedRuntime),
+  };
+}
+
 export default function ChatContainer({
   workspace,
   threadSlug = null,
@@ -59,19 +85,12 @@ export default function ChatContainer({
   const { chatHistoryRef } = useChatContainerQuickScroll();
   const pendingMessageChecked = useRef(false);
   const pendingResetRef = useRef(false);
-  const activeLocalUserRuntimeRef = useRef(
-    normalizeLocalUserOllamaRuntimeSelection(
-      safeJsonParse(sessionStorage.getItem(SWARMSY_LOCAL_USER_ACTIVE_RUNTIME))
-    )
+  const initialStoredLocalRuntime = getStoredLocalUserRuntimeForWorkspace(
+    workspace?.slug
   );
-  // Tracks whether this chat session was started as a Local User (Ollama) session,
-  // even if the current active runtime normalizes to null (e.g., empty model).
-  // Kept separate from activeLocalUserRuntimeRef so the missing-model guard can fire
-  // when normalization returns null rather than silently falling back to the workspace provider.
+  const activeLocalUserRuntimeRef = useRef(initialStoredLocalRuntime.runtime);
   const isLocalUserSessionRef = useRef(
-    isLocalUserOllamaIntent(
-      safeJsonParse(sessionStorage.getItem(SWARMSY_LOCAL_USER_ACTIVE_RUNTIME))
-    )
+    initialStoredLocalRuntime.isLocalUserSession
   );
 
   const isEmpty =
@@ -304,6 +323,15 @@ export default function ChatContainer({
   };
 
   useEffect(() => {
+    const scopedStoredRuntime = getStoredLocalUserRuntimeForWorkspace(
+      workspace?.slug
+    );
+    activeLocalUserRuntimeRef.current = scopedStoredRuntime.runtime;
+    isLocalUserSessionRef.current = scopedStoredRuntime.isLocalUserSession;
+    pendingMessageChecked.current = false;
+  }, [workspace?.slug]);
+
+  useEffect(() => {
     if (pendingMessageChecked.current || !workspace?.slug) return;
     pendingMessageChecked.current = true;
 
@@ -329,7 +357,10 @@ export default function ChatContainer({
         activeLocalUserRuntimeRef.current = runtime;
         sessionStorage.setItem(
           SWARMSY_LOCAL_USER_ACTIVE_RUNTIME,
-          JSON.stringify(runtime)
+          JSON.stringify({
+            ...runtime,
+            workspaceSlug: workspace.slug,
+          })
         );
       } else if (hasLocalUserIntent) {
         activeLocalUserRuntimeRef.current = null;

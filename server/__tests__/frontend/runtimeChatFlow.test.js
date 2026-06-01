@@ -19,6 +19,9 @@ describe("SWARMSY runtime chat flow wiring", () => {
     expect(source).toContain("activeLocalUserRuntimeRef.current");
     expect(source).toContain("isLocalUserSessionRef.current = false");
     expect(source).toContain("sessionStorage.removeItem(SWARMSY_LOCAL_USER_ACTIVE_RUNTIME)");
+    expect(source).toContain("storedRuntime?.workspaceSlug");
+    expect(source).toContain("storedRuntimeWorkspaceSlug !== normalizedWorkspaceSlug");
+    expect(source).toContain("workspaceSlug: workspace.slug");
   });
 
   it("sends runtime overrides in workspace and thread chat requests", () => {
