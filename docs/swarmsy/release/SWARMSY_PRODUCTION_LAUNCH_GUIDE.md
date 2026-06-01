@@ -68,5 +68,5 @@ The following are not part of the normal user experience:
 ## Mode clarity
 
 - **Developer mode** is for contributors only.
-- **Production mode** is what real users should use.
+- **Production mode** is what users use.
 - Normal users should access SWARMSY through a hosted URL, log in, and use the app.
