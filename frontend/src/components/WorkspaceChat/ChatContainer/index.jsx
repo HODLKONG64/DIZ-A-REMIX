@@ -120,7 +120,9 @@ export default function ChatContainer({
       document.getElementById(PROMPT_INPUT_ID)?.value || "";
     if (!currentMessage) return false;
 
-    const activeRuntime = activeLocalUserRuntimeRef.current;
+    const activeRuntime = isLocalUserSessionRef.current
+      ? activeLocalUserRuntimeRef.current
+      : null;
 
     // Block Local User chat if this is a local user session but the runtime is
     // missing or invalid (e.g. model cleared). activeLocalUserRuntimeRef is
@@ -218,7 +220,11 @@ export default function ChatContainer({
     // When auto-submitting without an explicit runtime override, inherit the
     // active Local User runtime so follow-up messages (suggested messages,
     // regenerate, quick actions) also use the selected Ollama model.
-    const effectiveRuntime = runtime ?? activeLocalUserRuntimeRef.current;
+    const effectiveRuntime =
+      runtime ??
+      (isLocalUserSessionRef.current
+        ? activeLocalUserRuntimeRef.current
+        : null);
 
     // Block Local User chat if this is a local user session but the runtime is
     // missing or invalid. Same guard as handleSubmit — auto-submitted commands
@@ -306,8 +312,13 @@ export default function ChatContainer({
       // Mark this as a Local User session if the pending message carries a local
       // user Ollama intent (regardless of whether the model is valid), so the
       // missing-model guard can fire on follow-up messages if validation fails.
-      if (isLocalUserOllamaIntent(pending?.runtime)) {
+      const hasLocalUserIntent = isLocalUserOllamaIntent(pending?.runtime);
+      if (hasLocalUserIntent) {
         isLocalUserSessionRef.current = true;
+      } else {
+        isLocalUserSessionRef.current = false;
+        activeLocalUserRuntimeRef.current = null;
+        sessionStorage.removeItem(SWARMSY_LOCAL_USER_ACTIVE_RUNTIME);
       }
       const runtime = normalizeLocalUserOllamaRuntimeSelection(
         pending?.runtime
@@ -320,6 +331,9 @@ export default function ChatContainer({
           SWARMSY_LOCAL_USER_ACTIVE_RUNTIME,
           JSON.stringify(runtime)
         );
+      } else if (hasLocalUserIntent) {
+        activeLocalUserRuntimeRef.current = null;
+        sessionStorage.removeItem(SWARMSY_LOCAL_USER_ACTIVE_RUNTIME);
       }
       setTimeout(() => {
         sessionStorage.removeItem(PENDING_HOME_MESSAGE);

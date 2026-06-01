@@ -15,6 +15,10 @@ describe("SWARMSY runtime chat flow wiring", () => {
     expect(source).toContain("runtime: lastUserMessage?.runtime");
     expect(source).toContain("runtime: promptMessage?.runtime");
     expect(source).toContain("const runtime = normalizeLocalUserOllamaRuntimeSelection");
+    expect(source).toContain("isLocalUserSessionRef.current");
+    expect(source).toContain("activeLocalUserRuntimeRef.current");
+    expect(source).toContain("isLocalUserSessionRef.current = false");
+    expect(source).toContain("sessionStorage.removeItem(SWARMSY_LOCAL_USER_ACTIVE_RUNTIME)");
   });
 
   it("sends runtime overrides in workspace and thread chat requests", () => {
@@ -39,6 +43,7 @@ describe("SWARMSY runtime chat flow wiring", () => {
 
     expect(source).toContain("applyRuntimeSelectionToWorkspace");
     expect(source).toContain("const { workspace: runtimeWorkspace } =");
+    expect(source).toContain("workspaceName: workspace?.name");
     expect(source).toContain("runtimeWorkspace?.chatModel || \"System Default\"");
   });
 });

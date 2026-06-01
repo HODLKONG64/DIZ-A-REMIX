@@ -195,7 +195,7 @@ function chatEndpoints(app) {
         await EventLogs.logEvent(
           "sent_chat",
           {
-            workspaceName: runtimeWorkspace?.name,
+            workspaceName: workspace?.name,
             thread: thread.name,
             chatModel: runtimeWorkspace?.chatModel || "System Default",
           },
