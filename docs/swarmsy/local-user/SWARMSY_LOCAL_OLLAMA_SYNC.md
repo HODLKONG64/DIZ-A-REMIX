@@ -42,3 +42,12 @@ If `http://localhost:11434/api/tags` is unreachable, SWARMSY should:
 - Provider setup should be user-controlled.
 - Errors should explain whether the issue is install, runtime, or model availability.
 - No claim should imply that SWARMSY bundled or installed Ollama automatically in this phase.
+
+## Implementation Status
+
+- Detection foundation now lives in `server/utils/swarmsy/localUserOllama.js`.
+- The local-user-only runtime route is `GET /api/swarmsy/local-user/ollama/status`.
+- The route is limited to single-user/local-user flow so Hosted/Admin Mode behavior stays unchanged.
+- Detection only performs a safe `GET` against `http://localhost:11434/api/tags`.
+- Returned states are `reachable`, `unreachable`, `no_models`, and `error`.
+- Installed Ollama models are listed when the local runtime is reachable.
