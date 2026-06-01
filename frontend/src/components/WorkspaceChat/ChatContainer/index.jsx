@@ -164,12 +164,12 @@ export default function ChatContainer({
    * @returns {void}
    */
   const sendCommand = async ({
-   text = "",
-   autoSubmit = false,
-   history = [],
-   attachments = [],
-   runtime = null,
-   writeMode = "replace",
+    text = "",
+    autoSubmit = false,
+    history = [],
+    attachments = [],
+    runtime = null,
+    writeMode = "replace",
   } = {}) => {
     // If we are not auto-submitting, we can just emit the text to the prompt input.
     if (!autoSubmit) {
@@ -247,7 +247,9 @@ export default function ChatContainer({
 
     const pending = safeJsonParse(sessionStorage.getItem(PENDING_HOME_MESSAGE));
     if (pending?.message) {
-      const runtime = normalizeLocalUserOllamaRuntimeSelection(pending?.runtime);
+      const runtime = normalizeLocalUserOllamaRuntimeSelection(
+        pending?.runtime
+      );
       setTimeout(() => {
         sessionStorage.removeItem(PENDING_HOME_MESSAGE);
         sendCommand({
