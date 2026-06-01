@@ -73,7 +73,10 @@ async function detectLocalOllama({
   timeoutMs = DEFAULT_TIMEOUT_MS,
 } = {}) {
   if (typeof fetchImpl !== "function") {
-    return errorResult(endpoint, "Fetch is unavailable for local Ollama detection.");
+    return errorResult(
+      endpoint,
+      "Fetch is unavailable for local Ollama detection."
+    );
   }
 
   try {

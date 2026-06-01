@@ -9,9 +9,7 @@ const {
 const {
   ingestSwarmsyRequiredDocs,
 } = require("../utils/swarmsy/ingestRequiredDocs");
-const {
-  detectLocalOllama,
-} = require("../utils/swarmsy/localUserOllama");
+const { detectLocalOllama } = require("../utils/swarmsy/localUserOllama");
 const { validatedRequest } = require("../utils/middleware/validatedRequest");
 const {
   flexUserRoleValid,
