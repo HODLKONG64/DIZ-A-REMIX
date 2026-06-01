@@ -97,6 +97,60 @@ function createFallbackStatus(message) {
   };
 }
 
+const LOCAL_OLLAMA_UI_STATES = new Set([
+  "checking",
+  "reachable",
+  "unreachable",
+  "no_models",
+  "error",
+]);
+
+const LOCAL_OLLAMA_SETUP_GUIDANCE = [
+  "Ollama was not detected.",
+  "Start Ollama or configure a compatible endpoint.",
+  "SWARMSY does not auto-install Ollama or auto-download models.",
+];
+
+function normalizeLocalUserModel(model = null, index = 0) {
+  const name = String(model?.name || model?.id || "").trim();
+  if (!name) return null;
+  return {
+    id: String(model?.id || name || `model-${index}`).trim(),
+    name,
+  };
+}
+
+function normalizeLocalUserOllamaStatus(response = null) {
+  if (response?.mode !== "local_user") return null;
+  const status = LOCAL_OLLAMA_UI_STATES.has(response?.status)
+    ? response.status
+    : "error";
+  const models = Array.isArray(response?.models)
+    ? response.models.map(normalizeLocalUserModel).filter(Boolean)
+    : [];
+
+  return {
+    status,
+    models,
+    endpoint: response?.endpoint || null,
+    message: response?.message || null,
+  };
+}
+
+function localOllamaStatusTone(status = "checking") {
+  if (status === "reachable") return "success";
+  if (status === "unreachable" || status === "error") return "warning";
+  return "neutral";
+}
+
+function localOllamaStatusTitle(status = "checking") {
+  if (status === "checking") return "Checking Local User Mode Ollama status...";
+  if (status === "reachable") return "Ollama is reachable.";
+  if (status === "no_models") return "Ollama is reachable, but no models are installed.";
+  if (status === "unreachable") return "Ollama was not detected.";
+  return "Ollama status could not be confirmed.";
+}
+
 function doctrineUnavailable(status) {
   const doctrine = status?.doctrine || {};
   return (
@@ -201,6 +255,14 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   const [campaignDate, setCampaignDate] = useState(getDefaultCampaignDate);
   const [campaignFocus, setCampaignFocus] = useState("");
   const [campaignProofAssets, setCampaignProofAssets] = useState("");
+  const [isLocalUserMode, setIsLocalUserMode] = useState(false);
+  const [localOllamaStatus, setLocalOllamaStatus] = useState({
+    status: "checking",
+    models: [],
+    endpoint: null,
+    message: null,
+  });
+  const [selectedLocalOllamaModel, setSelectedLocalOllamaModel] = useState("");
   const activeStatus = status || createFallbackStatus();
   const canLoadMemoryLock = canContinueFromMemoryLock(activeStatus);
   const canUseProofTracker = canReviewProof(activeStatus);
@@ -223,6 +285,23 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     );
     setStatus(fallbackStatus);
     return fallbackStatus;
+  }, []);
+
+  const syncLocalUserOllamaStatus = useCallback(async () => {
+    setLocalOllamaStatus((current) => ({
+      ...current,
+      status: "checking",
+    }));
+    const response = await SwarmsyOnboarding.localUserOllamaStatus();
+    const normalizedStatus = normalizeLocalUserOllamaStatus(response);
+    if (!normalizedStatus) {
+      setIsLocalUserMode(false);
+      return null;
+    }
+
+    setIsLocalUserMode(true);
+    setLocalOllamaStatus(normalizedStatus);
+    return normalizedStatus;
   }, []);
 
   useEffect(() => {
@@ -258,6 +337,24 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     setProofReviewError("");
   }, [canUseProofTracker]);
 
+  useEffect(() => {
+    syncLocalUserOllamaStatus();
+  }, [syncLocalUserOllamaStatus]);
+
+  useEffect(() => {
+    const nextModelId = localOllamaStatus.models[0]?.id || "";
+    if (!nextModelId) {
+      setSelectedLocalOllamaModel("");
+      return;
+    }
+    const hasSelectedModel = localOllamaStatus.models.some(
+      (model) => model.id === selectedLocalOllamaModel
+    );
+    if (!hasSelectedModel) {
+      setSelectedLocalOllamaModel(nextModelId);
+    }
+  }, [localOllamaStatus.models, selectedLocalOllamaModel]);
+
   const copy = statusCopy(activeStatus);
   const intakeStarter = getIntakeStarterMessage(selectedMode);
   const canCreateCampaignDay = canUseCalendar && Boolean(campaignDate?.trim());
@@ -275,6 +372,8 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   );
   const launchGroup = ACTION_HUB_GROUPS.find((group) => group.id === "launch");
   const verifyGroup = ACTION_HUB_GROUPS.find((group) => group.id === "verify");
+  const localOllamaTone = localOllamaStatusTone(localOllamaStatus.status);
+  const localOllamaTitle = localOllamaStatusTitle(localOllamaStatus.status);
 
   async function refreshReadiness() {
     setBusyAction("refresh");
@@ -288,6 +387,13 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
         "warning"
       );
     }
+    setBusyAction(null);
+  }
+
+  async function checkLocalUserOllama() {
+    if (busyAction) return;
+    setBusyAction("local-ollama-refresh");
+    await syncLocalUserOllamaStatus();
     setBusyAction(null);
   }
 
@@ -608,6 +714,99 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
             </div>
           </div>
         </div>
+
+        {isLocalUserMode && (
+          <div className={`rounded-2xl border p-5 ${toneClasses(localOllamaTone)}`}>
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <p className="text-sm font-semibold uppercase tracking-[0.2em]">
+                  Local User Mode · Ollama
+                </p>
+                <h2 className="text-lg font-semibold">{localOllamaTitle}</h2>
+                {localOllamaStatus.message && (
+                  <p className="text-sm leading-6">{localOllamaStatus.message}</p>
+                )}
+                {localOllamaStatus.endpoint && (
+                  <p className="text-xs opacity-80">
+                    Endpoint: {localOllamaStatus.endpoint}
+                  </p>
+                )}
+              </div>
+              <ActionButton
+                icon={ArrowClockwise}
+                busy={busyAction === "local-ollama-refresh"}
+                disabled={
+                  Boolean(busyAction) && busyAction !== "local-ollama-refresh"
+                }
+                onClick={checkLocalUserOllama}
+              >
+                Check again
+              </ActionButton>
+            </div>
+
+            {(localOllamaStatus.status === "unreachable" ||
+              localOllamaStatus.status === "error") && (
+              <ul className="mt-4 list-disc space-y-1 pl-5 text-sm leading-6">
+                {LOCAL_OLLAMA_SETUP_GUIDANCE.map((step) => (
+                  <li key={step}>{step}</li>
+                ))}
+              </ul>
+            )}
+
+            {localOllamaStatus.status === "no_models" && (
+              <p className="mt-4 text-sm leading-6">
+                Ollama is connected, but no installed models were reported yet.
+              </p>
+            )}
+
+            {localOllamaStatus.models.length > 0 && (
+              <div className="mt-4 space-y-4">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-semibold uppercase tracking-[0.2em]">
+                    Installed Ollama models
+                  </h3>
+                  <ul className="grid gap-2 md:grid-cols-2">
+                    {localOllamaStatus.models.map((model) => (
+                      <li
+                        key={model.id}
+                        className="rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary px-3 py-2 text-sm font-medium text-theme-text-primary"
+                      >
+                        {model.name}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <label
+                    htmlFor="local-user-ollama-model"
+                    className="text-sm font-semibold uppercase tracking-[0.2em]"
+                  >
+                    Model selection shell
+                  </label>
+                  <select
+                    id="local-user-ollama-model"
+                    value={selectedLocalOllamaModel}
+                    onChange={(event) =>
+                      setSelectedLocalOllamaModel(event.target.value)
+                    }
+                    className="w-full rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary px-3 py-2 text-sm text-theme-text-primary outline-none focus:border-teal"
+                  >
+                    {localOllamaStatus.models.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs opacity-80">
+                    Model selection is currently stored in Local User Mode UI
+                    state only.
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex flex-wrap gap-3">
           {!activeStatus?.workspace?.exists && (

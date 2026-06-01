@@ -185,6 +185,7 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toContain("/swarmsy/onboarding/status");
     expect(source).toContain("/swarmsy/onboarding/create-hive");
     expect(source).toContain("/swarmsy/onboarding/ingest-required-docs");
+    expect(source).toContain("/swarmsy/local-user/ollama/status");
     expect(source).not.toContain("/admin/");
   });
 
@@ -199,5 +200,9 @@ describe("SWARMSY HIVE action hub", () => {
 
     expect(source).toContain("ACTION_HUB_TITLE");
     expect(source).toContain("Choose the next command for SPARKY.");
+    expect(source).toContain("Local User Mode · Ollama");
+    expect(source).toContain("Model selection shell");
+    expect(source).toContain("Check again");
+    expect(source).toContain("Ollama was not detected.");
   });
 });
