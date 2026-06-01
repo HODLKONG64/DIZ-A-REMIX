@@ -233,7 +233,7 @@ export default function ChatContainer({
     // If we are not auto-submitting, we can just emit the text to the prompt input.
     if (!autoSubmit) {
       setMessageEmit(text, writeMode);
-      return;
+      return false;
     }
 
     // When auto-submitting without an explicit runtime override, inherit the
@@ -320,6 +320,7 @@ export default function ChatContainer({
     setChatHistory(prevChatHistory);
     setMessageEmit("");
     setLoadingResponse(true);
+    return true;
   };
 
   useEffect(() => {
@@ -366,14 +367,17 @@ export default function ChatContainer({
         activeLocalUserRuntimeRef.current = null;
         sessionStorage.removeItem(SWARMSY_LOCAL_USER_ACTIVE_RUNTIME);
       }
-      setTimeout(() => {
-        sessionStorage.removeItem(PENDING_HOME_MESSAGE);
-        sendCommand({
+      setTimeout(async () => {
+        const result = await sendCommand({
           text: pending.message,
           attachments: pending.attachments || [],
           runtime,
           autoSubmit: true,
         });
+
+        if (result !== false) {
+          sessionStorage.removeItem(PENDING_HOME_MESSAGE);
+        }
       }, 100);
     }
   }, [workspace?.slug]);

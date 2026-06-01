@@ -22,6 +22,9 @@ describe("SWARMSY runtime chat flow wiring", () => {
     expect(source).toContain("storedRuntime?.workspaceSlug");
     expect(source).toContain("storedRuntimeWorkspaceSlug !== normalizedWorkspaceSlug");
     expect(source).toContain("workspaceSlug: workspace.slug");
+    expect(source).toContain("const result = await sendCommand");
+    expect(source).toContain("if (result !== false)");
+    expect(source).toContain("sessionStorage.removeItem(PENDING_HOME_MESSAGE)");
   });
 
   it("sends runtime overrides in workspace and thread chat requests", () => {
