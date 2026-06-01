@@ -220,7 +220,7 @@ export default function ChatContainer({
    * @param {Object[import("./DnDWrapper").Attachment]} options.attachments - The attachments to send to the LLM for this message
    * @param {Object|null} options.runtime - Optional runtime override for this message
    * @param {'replace' | 'append' | 'prepend'} options.writeMode - Replace current text or append to existing text (default: replace)
-   * @returns {void}
+   * @returns {Promise<boolean>} Resolves to false if sending was blocked/no-op; otherwise true once send progression begins.
    */
   const sendCommand = async ({
     text = "",
