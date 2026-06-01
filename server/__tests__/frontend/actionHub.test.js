@@ -237,7 +237,11 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toContain(
       "localOllamaRefreshControllerRef.current = controller;"
     );
-    expect(source).toContain("if (controller.signal.aborted) return;");
+    expect(source).toContain("} finally {");
+    expect(source).toContain(
+      "localOllamaRefreshControllerRef.current === controller"
+    );
+    expect(source).toContain("if (!controller.signal.aborted) {");
   });
 
   it("clears stale fields when transitioning to checking state", () => {

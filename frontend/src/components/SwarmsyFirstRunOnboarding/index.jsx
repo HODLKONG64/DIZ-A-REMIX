@@ -431,13 +431,23 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
 
   async function checkLocalUserOllama() {
     if (busyAction) return;
+
     setBusyAction("local-ollama-refresh");
+
     localOllamaRefreshControllerRef.current?.abort();
     const controller = new AbortController();
     localOllamaRefreshControllerRef.current = controller;
-    await syncLocalUserOllamaStatus({ signal: controller.signal });
-    if (controller.signal.aborted) return;
-    setBusyAction(null);
+
+    try {
+      await syncLocalUserOllamaStatus({ signal: controller.signal });
+    } finally {
+      if (localOllamaRefreshControllerRef.current === controller) {
+        localOllamaRefreshControllerRef.current = null;
+        if (!controller.signal.aborted) {
+          setBusyAction(null);
+        }
+      }
+    }
   }
 
   async function createHive() {
