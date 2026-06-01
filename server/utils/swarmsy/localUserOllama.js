@@ -18,7 +18,9 @@ function normalizeOllamaModels(models = []) {
 }
 
 function toOllamaTagsEndpoint(basePath = "") {
-  const trimmedBasePath = String(basePath || "").trim().replace(/\/+$/, "");
+  const trimmedBasePath = String(basePath || "")
+    .trim()
+    .replace(/\/+$/, "");
   if (!trimmedBasePath) return DEFAULT_LOCAL_OLLAMA_TAGS_URL;
   if (trimmedBasePath.endsWith("/api/tags")) return trimmedBasePath;
   if (trimmedBasePath.endsWith("/api")) return `${trimmedBasePath}/tags`;
@@ -108,7 +110,11 @@ async function detectLocalOllama({
   }
 
   try {
-    const response = await fetchWithTimeout(fetchImpl, resolvedEndpoint, timeoutMs);
+    const response = await fetchWithTimeout(
+      fetchImpl,
+      resolvedEndpoint,
+      timeoutMs
+    );
     if (!response?.ok) {
       return errorResult(
         resolvedEndpoint,
