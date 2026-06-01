@@ -109,13 +109,17 @@ Gaps that are already documented in spec docs have a cross-reference. Gaps that 
 
 **What exists today:** The required doctrine docs are ingested via `POST /api/swarmsy/onboarding/ingest-required-docs`. Optional doctrine groups (`spark-library` and `sparky-operator`) are registered in the manifest with `required: false` and do not block first-run readiness.
 
-**What does not exist:** A user-facing UI to optionally load the Spark Library or SPARKY Operator Playbooks after completing core setup. Users who want these loaded must use the admin ingestion route or wait for a future UI.
+**What does not exist:** A user-facing UI or route to optionally load the Spark Library or SPARKY Operator Playbooks after completing core setup.
+
+The current required-docs ingestion route only ingests required doctrine groups. Optional groups are visible in the manifest/status layer but are not ingested by the current required-docs ingestion route.
+
+A future PR should add an optional advanced-doctrine ingestion/selection flow if users need Spark Library or SPARKY Operator docs loaded automatically.
 
 | Property | Detail |
 |---|---|
 | Impact | Power users cannot self-serve optional doctrine expansion today |
 | Priority | Low — optional docs are not needed for MVP; blocking readiness check ignores them |
-| Recommended future PR | Add an optional advanced doctrine expansion step to the onboarding surface |
+| Recommended future PR | Add optional advanced doctrine ingestion/selection flow |
 | Blocks MVP? | No |
 
 ---

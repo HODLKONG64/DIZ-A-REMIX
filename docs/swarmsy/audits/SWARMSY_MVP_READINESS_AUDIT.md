@@ -87,7 +87,7 @@ All handoffs are `sessionStorage`-based pending-home-message chat starters. None
 | Uses user-safe routes | ✅ yes | Only calls `/api/swarmsy/...` endpoints |
 | No admin route calls | ✅ confirmed | No calls to `/api/admin/...` in component tree |
 | Uses pending-home-message handoff | ✅ yes | `sessionStorage.setItem(PENDING_HOME_MESSAGE, ...)` before navigate |
-| Known risks | `sessionStorage` write failures show toast errors correctly; no silent drops |
+| Known risks | `sessionStorage` write failures surface as either toast errors (intake/campaign) or inline panel errors (memory lock/proof); no silent drops |
 
 ### Action Hub (`actionHub.js`)
 

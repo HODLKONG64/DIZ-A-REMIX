@@ -57,11 +57,11 @@ Every claim in this document is based on code that exists. Features described as
 
 **What works now:**
 
-- When HIVE exists, the onboarding surface exposes a `Load Required Docs` action.
+- When HIVE exists, the onboarding surface exposes a `Load Required Doctrine Docs` action.
 - Clicking it calls `POST /api/swarmsy/onboarding/ingest-required-docs`.
 - The route discovers required doctrine docs, verifies they are present in the docs root, and runs the collector + embed pipeline.
 - Already-attached docs are skipped via `chunkSource` deduplication.
-- Partial-failure results show a warning toast listing failed items.
+- Partial-failure results show a warning toast, and the onboarding surface renders a failed-item list with paths and reasons.
 - `COLLECTOR_OFFLINE` returns a 503 and shows an error toast.
 - On success, the UI re-polls status to confirm readiness.
 
