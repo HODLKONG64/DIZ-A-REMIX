@@ -24,7 +24,10 @@ import SpeechRecognition, {
 import { ChatTooltips } from "./ChatTooltips";
 import { MetricsProvider } from "./ChatHistory/HistoricalMessage/Actions/RenderMetrics";
 import useChatContainerQuickScroll from "@/hooks/useChatContainerQuickScroll";
-import { PENDING_HOME_MESSAGE } from "@/utils/constants";
+import {
+  PENDING_HOME_MESSAGE,
+  SWARMSY_LOCAL_USER_ACTIVE_RUNTIME,
+} from "@/utils/constants";
 import { clearPromptInputDraft } from "@/hooks/usePromptInputStorage";
 import { safeJsonParse } from "@/utils/request";
 import { useTranslation } from "react-i18next";
@@ -53,6 +56,11 @@ export default function ChatContainer({
   const { chatHistoryRef } = useChatContainerQuickScroll();
   const pendingMessageChecked = useRef(false);
   const pendingResetRef = useRef(false);
+  const activeLocalUserRuntimeRef = useRef(
+    normalizeLocalUserOllamaRuntimeSelection(
+      safeJsonParse(sessionStorage.getItem(SWARMSY_LOCAL_USER_ACTIVE_RUNTIME))
+    )
+  );
 
   const isEmpty =
     chatHistory.length === 0 && !sessionStorage.getItem(PENDING_HOME_MESSAGE);
@@ -100,6 +108,18 @@ export default function ChatContainer({
       document.getElementById(PROMPT_INPUT_ID)?.value || "";
     if (!currentMessage) return false;
 
+    const activeRuntime = activeLocalUserRuntimeRef.current;
+
+    // Block Local User chat if the active runtime has lost its model
+    if (activeRuntime !== null && !activeRuntime?.model) {
+      window.toastr?.error(
+        "Selected local Ollama model is no longer available. Recheck Ollama models and choose another.",
+        "Local model unavailable",
+        { timeOut: 8000 }
+      );
+      return false;
+    }
+
     // Clear the localStorage draft for this thread/workspace so that if the
     // PromptInput remounts (empty→chat transition), it won't restore stale text
     clearPromptInputDraft(threadSlug ?? workspace.slug);
@@ -110,12 +130,14 @@ export default function ChatContainer({
         content: currentMessage,
         role: "user",
         attachments: parseAttachments(),
+        runtime: activeRuntime,
       },
       {
         content: "",
         role: "assistant",
         pending: true,
         userMessage: currentMessage,
+        runtime: activeRuntime,
         animate: true,
       },
     ];
@@ -177,6 +199,11 @@ export default function ChatContainer({
       return;
     }
 
+    // When auto-submitting without an explicit runtime override, inherit the
+    // active Local User runtime so follow-up messages (suggested messages,
+    // regenerate, quick actions) also use the selected Ollama model.
+    const effectiveRuntime = runtime ?? activeLocalUserRuntimeRef.current;
+
     if (writeMode === "prepend") {
       const currentText = document.getElementById(PROMPT_INPUT_ID)?.value ?? "";
       text = currentText + " " + text;
@@ -211,7 +238,7 @@ export default function ChatContainer({
           pending: true,
           userMessage: text,
           attachments,
-          runtime,
+          runtime: effectiveRuntime,
           animate: true,
         },
       ];
@@ -222,7 +249,7 @@ export default function ChatContainer({
           content: text,
           role: "user",
           attachments,
-          runtime,
+          runtime: effectiveRuntime,
         },
         {
           content: "",
@@ -230,7 +257,7 @@ export default function ChatContainer({
           pending: true,
           userMessage: text,
           attachments,
-          runtime,
+          runtime: effectiveRuntime,
           animate: true,
         },
       ];
@@ -250,6 +277,15 @@ export default function ChatContainer({
       const runtime = normalizeLocalUserOllamaRuntimeSelection(
         pending?.runtime
       );
+      // Persist the validated Local User runtime for the entire chat/session
+      // so follow-up messages continue using the selected Ollama model.
+      if (runtime) {
+        activeLocalUserRuntimeRef.current = runtime;
+        sessionStorage.setItem(
+          SWARMSY_LOCAL_USER_ACTIVE_RUNTIME,
+          JSON.stringify(runtime)
+        );
+      }
       setTimeout(() => {
         sessionStorage.removeItem(PENDING_HOME_MESSAGE);
         sendCommand({
