@@ -23,7 +23,10 @@ export function readLocalUserOllamaModelSelection({ storage } = {}) {
   }
 }
 
-export function persistLocalUserOllamaModelSelection(modelId, { storage } = {}) {
+export function persistLocalUserOllamaModelSelection(
+  modelId,
+  { storage } = {}
+) {
   const localStorage = resolveStorage(storage);
   if (!localStorage) return false;
 
