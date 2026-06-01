@@ -101,6 +101,60 @@ describe("SWARMSY HIVE action hub", () => {
     expect(state.actions.reviewProof.disabled).toBe(false);
   });
 
+  it("blocks local-user intake without a selected installed Ollama model", () => {
+    const actionHub = loadActionHubModule();
+    const state = actionHub.getActionHubActionState({
+      status: buildReadyStatus(),
+      selectedMode: "face",
+      busyAction: null,
+      runtimeMode: "local_user",
+      localOllamaStatus: "reachable",
+      selectedLocalOllamaModel: "",
+      localOllamaModels: [{ id: "llama3.1:8b" }],
+    });
+
+    expect(state.actions.startIntake.disabled).toBe(true);
+    expect(state.actions.startIntake.disabledReason).toBe(
+      "Select an installed Ollama model before starting intake."
+    );
+  });
+
+  it("blocks local-user intake when selected model is not in verified model list", () => {
+    const actionHub = loadActionHubModule();
+    const state = actionHub.getActionHubActionState({
+      status: buildReadyStatus(),
+      selectedMode: "face",
+      busyAction: null,
+      runtimeMode: "local_user",
+      localOllamaStatus: "reachable",
+      selectedLocalOllamaModel: "missing:model",
+      localOllamaModels: [{ id: "llama3.1:8b" }],
+    });
+
+    expect(state.actions.startIntake.disabled).toBe(true);
+    expect(state.actions.startIntake.disabledReason).toBe(
+      "Select an installed Ollama model before starting intake."
+    );
+  });
+
+  it("blocks local-user intake when Ollama model list is not verified yet", () => {
+    const actionHub = loadActionHubModule();
+    const state = actionHub.getActionHubActionState({
+      status: buildReadyStatus(),
+      selectedMode: "face",
+      busyAction: null,
+      runtimeMode: "local_user",
+      localOllamaStatus: "checking",
+      selectedLocalOllamaModel: "llama3.1:8b",
+      localOllamaModels: [{ id: "llama3.1:8b" }],
+    });
+
+    expect(state.actions.startIntake.disabled).toBe(true);
+    expect(state.actions.startIntake.disabledReason).toBe(
+      "Check Local User Mode Ollama status and select an installed model before starting intake."
+    );
+  });
+
   it("keeps the no-HIVE state in the create flow", () => {
     const actionHub = loadActionHubModule();
     const status = buildReadyStatus({ workspace: { exists: false } });
@@ -358,8 +412,26 @@ describe("SWARMSY HIVE action hub", () => {
     );
 
     expect(source).toContain("getLocalUserOllamaRuntimeSelection");
-    expect(source).toContain("runtime: runtimeSelection");
+    expect(source).toContain("if (runtimeSelection)");
+    expect(source).toContain("handoffPayload.runtime = runtimeSelection");
     expect(source).toContain('mode: isLocalUserMode ? "local_user" : "hosted_admin"');
+  });
+
+  it("preserves saved local-user model selection through unverified status states", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain('localOllamaStatus.status === "reachable"');
+    expect(source).toContain('localOllamaStatus.status === "no_models"');
+    expect(source).toContain("if (!hasVerifiedLocalOllamaModels)");
+    expect(source).not.toContain(
+      "} else {\n      clearLocalUserOllamaModelSelection();"
+    );
   });
 
   it("fallback before local-user mode confirmed hides the panel; fallback after confirmed keeps panel with error state", () => {

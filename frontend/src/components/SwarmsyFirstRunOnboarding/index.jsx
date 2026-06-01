@@ -13,6 +13,8 @@ import { PENDING_HOME_MESSAGE } from "@/utils/constants";
 import {
   ACTION_HUB_GROUPS,
   ACTION_HUB_HELPER_COPY,
+  INTAKE_LOCAL_USER_MODEL_REQUIRED_MESSAGE,
+  INTAKE_LOCAL_USER_MODEL_UNVERIFIED_MESSAGE,
   ACTION_HUB_TITLE,
   getActionHubActionState,
 } from "./actionHub";
@@ -426,6 +428,14 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   }, []);
 
   useEffect(() => {
+    const hasVerifiedLocalOllamaModels =
+      localOllamaStatus.status === "reachable" ||
+      localOllamaStatus.status === "no_models";
+    if (!hasVerifiedLocalOllamaModels) {
+      setLocalOllamaSelectionMessage(null);
+      return;
+    }
+
     const selectedModel = localOllamaStatus.models.find(
       (model) => model.id === selectedLocalOllamaModel
     );
@@ -441,8 +451,6 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
 
     if (resolved.modelId) {
       persistLocalUserOllamaModelSelection(resolved.modelId);
-    } else {
-      clearLocalUserOllamaModelSelection();
     }
 
     if (resolved.modelId !== selectedLocalOllamaModel) {
@@ -471,7 +479,8 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
       !selectedModel &&
       localOllamaStatus.models.length === 1
     ) {
-      const selectedName = localOllamaStatus.models[0]?.name || resolved.modelId;
+      const selectedName =
+        localOllamaStatus.models[0]?.name || resolved.modelId;
       setLocalOllamaSelectionMessage(
         `Only one installed Ollama model was found, so it was selected automatically: ${selectedName}.`
       );
@@ -479,7 +488,11 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     }
 
     setLocalOllamaSelectionMessage(null);
-  }, [localOllamaStatus.models, selectedLocalOllamaModel]);
+  }, [
+    localOllamaStatus.models,
+    localOllamaStatus.status,
+    selectedLocalOllamaModel,
+  ]);
 
   const copy = statusCopy(activeStatus);
   const intakeStarter = getIntakeStarterMessage(selectedMode);
@@ -488,6 +501,10 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     status: activeStatus,
     selectedMode,
     busyAction,
+    runtimeMode: isLocalUserMode ? "local_user" : "hosted_admin",
+    localOllamaStatus: localOllamaStatus.status,
+    selectedLocalOllamaModel,
+    localOllamaModels: localOllamaStatus.models,
   });
   const selectedIdentityMode = IDENTITY_MODES.find(
     (mode) => mode.id === selectedMode && mode.id !== "memory-lock"
@@ -500,6 +517,14 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   const verifyGroup = ACTION_HUB_GROUPS.find((group) => group.id === "verify");
   const localOllamaTone = localOllamaStatusTone(localOllamaStatus.status);
   const localOllamaTitle = localOllamaStatusTitle(localOllamaStatus.status);
+  const hasVerifiedLocalOllamaModels =
+    localOllamaStatus.status === "reachable" ||
+    localOllamaStatus.status === "no_models";
+  const selectedLocalOllamaModelIsInstalled =
+    selectedLocalOllamaModel &&
+    localOllamaStatus.models.some(
+      (model) => model.id === selectedLocalOllamaModel
+    );
 
   async function refreshReadiness() {
     setBusyAction("refresh");
@@ -576,20 +601,35 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
       showToast(disabledReason, "warning");
       return;
     }
-    setBusyAction("start-intake");
+    if (isLocalUserMode) {
+      if (!hasVerifiedLocalOllamaModels) {
+        showToast(INTAKE_LOCAL_USER_MODEL_UNVERIFIED_MESSAGE, "warning");
+        return;
+      }
+      if (!selectedLocalOllamaModel || !selectedLocalOllamaModelIsInstalled) {
+        showToast(INTAKE_LOCAL_USER_MODEL_REQUIRED_MESSAGE, "warning");
+        return;
+      }
+    }
 
     const runtimeSelection = getLocalUserOllamaRuntimeSelection({
       mode: isLocalUserMode ? "local_user" : "hosted_admin",
       model: selectedLocalOllamaModel,
     });
+
+    const handoffPayload = {
+      message: intakeStarter,
+      attachments: [],
+    };
+    if (runtimeSelection) {
+      handoffPayload.runtime = runtimeSelection;
+    }
+
+    setBusyAction("start-intake");
     try {
       sessionStorage.setItem(
         PENDING_HOME_MESSAGE,
-        JSON.stringify({
-          message: intakeStarter,
-          attachments: [],
-          runtime: runtimeSelection,
-        })
+        JSON.stringify(handoffPayload)
       );
     } catch {
       showToast(
