@@ -21,7 +21,7 @@ This path keeps frontend + server + collector managed together in one hosted ser
 
 1. Provision a Linux host and DNS name (example: `swarmsy.your-domain.com`).
 2. Put TLS in front of the app using your reverse proxy/load balancer so users get HTTPS.
-3. In `/docker`, copy `.env.example` to `.env` and set production values.
+3. From the repo root, copy `docker/.env.example` to `docker/.env` and set production values.
 4. Start/update the hosted app from the repo root with Docker Compose:
    - `docker compose -f docker/docker-compose.yml up -d --build`
 5. Keep `server/storage` and collector folders persistent (already mapped by compose).
@@ -39,17 +39,42 @@ Do not send users local URLs, repo links, or terminal instructions.
 
 Set these in `docker/.env` (or equivalent host environment):
 
-- `STORAGE_DIR` (persistent absolute path)
-- `JWT_SECRET`
-- `SIG_KEY`
-- `SIG_SALT`
+- `STORAGE_DIR` (path inside the container; default `/app/server/storage`, persisted via the Docker Compose volume mapping)
 - `LLM_PROVIDER` + provider credentials/model settings
 - `EMBEDDING_ENGINE` + required embedding credentials/model settings
-- `AUTH_TOKEN` (required if exposing the app remotely without SSO)
+- `JWT_SECRET` (required for multi-user sessions; generated during initial setup if unset)
+- `AUTH_TOKEN` (optional single-user password gate; set this if you are not enabling multi-user mode and still want to require a password)
+- `SIG_KEY` / `SIG_SALT` (persistent encryption key/salt; generated and written to `/app/server/.env` if unset)
+- `SWARMSY_DOCTRINE_DOCS_ROOT` (set to the parent directory containing `docs/` inside the running server container, for example `/app` when `/app/docs` is mounted)
 
-SWARMSY-specific requirement:
+Remote deployments should use either multi-user login sessions with `JWT_SECRET`, or the single-user password gate with `AUTH_TOKEN` plus `JWT_SECRET`.
 
-- `SWARMSY_DOCTRINE_DOCS_ROOT` when doctrine docs are not accessible from the default repo-root path on the host.
+## Mount SWARMSY Doctrine Docs
+
+SWARMSY doctrine docs must be readable inside the running server container.
+
+The required-docs manifest paths include the leading `docs/` prefix, so `SWARMSY_DOCTRINE_DOCS_ROOT` must point to the parent directory that contains `docs/`.
+
+For Docker Compose deployments, mount or copy the repo `docs/` folder into the container.
+
+Example volume mount:
+
+```yaml
+volumes:
+  - "../docs:/app/docs:ro"
+```
+
+Then set:
+
+`SWARMSY_DOCTRINE_DOCS_ROOT=/app`
+
+Do not set:
+
+`SWARMSY_DOCTRINE_DOCS_ROOT=/app/docs`
+
+because that would resolve manifest paths as `/app/docs/docs/swarmsy/...`.
+
+If `docs/` is not mounted or copied into the server container, the onboarding **Load Required Doctrine Docs** flow will report no loadable doctrine files.
 
 Common production hardening settings (recommended):
 
