@@ -204,6 +204,9 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toContain("Model selection shell");
     expect(source).toContain("Check again");
     expect(source).toContain("Ollama was not detected.");
+    expect(source).toContain(
+      "Model selection is stored in Local User Mode browser storage"
+    );
   });
 
   it("wires abort-safe local-user Ollama sync in onboarding mount effect", () => {
@@ -327,6 +330,36 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toContain("hasConfirmedLocalUserModeRef");
     expect(source).toContain("hasConfirmedLocalUserModeRef.current = true");
     expect(source).toContain("hasConfirmedLocalUserModeRef.current");
+  });
+
+  it("persists and restores local-user model selection via dedicated helper", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("readLocalUserOllamaModelSelection");
+    expect(source).toContain("resolveLocalUserOllamaModelSelection");
+    expect(source).toContain("persistLocalUserOllamaModelSelection");
+    expect(source).toContain("clearLocalUserOllamaModelSelection");
+    expect(source).toContain("stale_missing");
+  });
+
+  it("adds runtime handoff contract payload for local-user ollama selection", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("getLocalUserOllamaRuntimeSelection");
+    expect(source).toContain("runtime: runtimeSelection");
+    expect(source).toContain('mode: isLocalUserMode ? "local_user" : "hosted_admin"');
   });
 
   it("fallback before local-user mode confirmed hides the panel; fallback after confirmed keeps panel with error state", () => {
