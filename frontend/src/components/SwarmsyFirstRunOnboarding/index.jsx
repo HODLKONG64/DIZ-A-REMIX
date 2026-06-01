@@ -146,7 +146,8 @@ function localOllamaStatusTone(status = "checking") {
 function localOllamaStatusTitle(status = "checking") {
   if (status === "checking") return "Checking Local User Mode Ollama status...";
   if (status === "reachable") return "Ollama is reachable.";
-  if (status === "no_models") return "Ollama is reachable, but no models are installed.";
+  if (status === "no_models")
+    return "Ollama is reachable, but no models are installed.";
   if (status === "unreachable") return "Ollama was not detected.";
   return "Ollama status could not be confirmed.";
 }
@@ -716,7 +717,9 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
         </div>
 
         {isLocalUserMode && (
-          <div className={`rounded-2xl border p-5 ${toneClasses(localOllamaTone)}`}>
+          <div
+            className={`rounded-2xl border p-5 ${toneClasses(localOllamaTone)}`}
+          >
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
                 <p className="text-sm font-semibold uppercase tracking-[0.2em]">
@@ -724,7 +727,9 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                 </p>
                 <h2 className="text-lg font-semibold">{localOllamaTitle}</h2>
                 {localOllamaStatus.message && (
-                  <p className="text-sm leading-6">{localOllamaStatus.message}</p>
+                  <p className="text-sm leading-6">
+                    {localOllamaStatus.message}
+                  </p>
                 )}
                 {localOllamaStatus.endpoint && (
                   <p className="text-xs opacity-80">
