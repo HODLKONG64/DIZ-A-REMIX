@@ -53,9 +53,10 @@ const SwarmsyOnboarding = {
         message: "Failed to ingest SWARMSY required doctrine docs.",
       }));
   },
-  localUserOllamaStatus: async function () {
+  localUserOllamaStatus: async function ({ signal } = {}) {
     return await fetch(`${API_BASE}/swarmsy/local-user/ollama/status`, {
       headers: baseHeaders(),
+      signal,
     })
       .then((response) =>
         parseResponse(
@@ -63,10 +64,18 @@ const SwarmsyOnboarding = {
           "Failed to resolve SWARMSY local-user Ollama status."
         )
       )
-      .catch(() => ({
-        success: false,
-        message: "Failed to resolve SWARMSY local-user Ollama status.",
-      }));
+      .catch((error) => {
+        if (error?.name === "AbortError") throw error;
+        return {
+          success: false,
+          mode: "local_user",
+          provider: "ollama",
+          status: "error",
+          reachable: false,
+          models: [],
+          message: "Failed to resolve SWARMSY local-user Ollama status.",
+        };
+      });
   },
 };
 

@@ -288,21 +288,30 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     return fallbackStatus;
   }, []);
 
-  const syncLocalUserOllamaStatus = useCallback(async () => {
+  const syncLocalUserOllamaStatus = useCallback(async ({ signal } = {}) => {
+    if (signal?.aborted) return null;
     setLocalOllamaStatus((current) => ({
       ...current,
       status: "checking",
     }));
-    const response = await SwarmsyOnboarding.localUserOllamaStatus();
-    const normalizedStatus = normalizeLocalUserOllamaStatus(response);
-    if (!normalizedStatus) {
-      setIsLocalUserMode(false);
-      return null;
-    }
+    try {
+      const response = await SwarmsyOnboarding.localUserOllamaStatus({
+        signal,
+      });
+      if (signal?.aborted) return null;
+      const normalizedStatus = normalizeLocalUserOllamaStatus(response);
+      if (!normalizedStatus) {
+        setIsLocalUserMode(false);
+        return null;
+      }
 
-    setIsLocalUserMode(true);
-    setLocalOllamaStatus(normalizedStatus);
-    return normalizedStatus;
+      setIsLocalUserMode(true);
+      setLocalOllamaStatus(normalizedStatus);
+      return normalizedStatus;
+    } catch (error) {
+      if (signal?.aborted || error?.name === "AbortError") return null;
+      throw error;
+    }
   }, []);
 
   useEffect(() => {
@@ -339,7 +348,9 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   }, [canUseProofTracker]);
 
   useEffect(() => {
-    syncLocalUserOllamaStatus();
+    const controller = new AbortController();
+    syncLocalUserOllamaStatus({ signal: controller.signal });
+    return () => controller.abort();
   }, [syncLocalUserOllamaStatus]);
 
   useEffect(() => {

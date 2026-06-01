@@ -205,4 +205,21 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toContain("Check again");
     expect(source).toContain("Ollama was not detected.");
   });
+
+  it("wires abort-safe local-user Ollama sync in onboarding mount effect", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("const controller = new AbortController();");
+    expect(source).toContain(
+      "syncLocalUserOllamaStatus({ signal: controller.signal });"
+    );
+    expect(source).toContain("return () => controller.abort();");
+    expect(source).toContain("if (signal?.aborted) return null;");
+  });
 });
