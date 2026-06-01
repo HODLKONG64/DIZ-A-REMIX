@@ -215,12 +215,13 @@ describe("SWARMSY HIVE action hub", () => {
       "utf8"
     );
 
-    expect(source).toContain("const controller = new AbortController();");
+    expect(source).toContain("const controller = beginLocalUserOllamaRequest();");
     expect(source).toContain(
       "syncLocalUserOllamaStatus({ signal: controller.signal });"
     );
-    expect(source).toContain("return () => controller.abort();");
-    expect(source).toContain("if (signal?.aborted) return null;");
+    expect(source).toContain("releaseLocalUserOllamaRequest(controller);");
+    expect(source).toContain("if (signal?.aborted || !isLatestLocalUserOllamaRequest(signal))");
+    expect(source).toContain("return null;");
   });
 
   it("uses abort-safe manual refresh with shared ref in checkLocalUserOllama", () => {
@@ -233,15 +234,30 @@ describe("SWARMSY HIVE action hub", () => {
     );
 
     expect(source).toContain("localOllamaRefreshControllerRef");
-    expect(source).toContain("localOllamaRefreshControllerRef.current?.abort();");
     expect(source).toContain(
-      "localOllamaRefreshControllerRef.current = controller;"
+      "const controller = beginLocalUserOllamaRequest();"
     );
     expect(source).toContain("} finally {");
     expect(source).toContain(
-      "localOllamaRefreshControllerRef.current === controller"
+      "releaseLocalUserOllamaRequest(controller)"
     );
-    expect(source).toContain("if (!controller.signal.aborted) {");
+    expect(source).toContain("!controller.signal.aborted");
+  });
+
+  it("guards Local Ollama updates so only the latest request may set state", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("isLatestLocalUserOllamaRequest");
+    expect(source).toContain(
+      "localOllamaRefreshControllerRef.current?.signal === signal"
+    );
+    expect(source).toContain("releaseLocalUserOllamaRequest");
   });
 
   it("clears stale fields when transitioning to checking state", () => {

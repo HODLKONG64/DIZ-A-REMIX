@@ -16,13 +16,13 @@ function loadSwarmsyOnboardingModule(fetchImpl) {
   const script = new vm.Script(
     `const API_BASE = "http://localhost/api";
 const baseHeaders = () => ({});
-const fetch = globalThis.__mockFetch;
+const fetch = __mockFetch;
 ${source}`
   );
   const sandbox = {
     module: { exports: {} },
     exports: {},
-    globalThis: { __mockFetch: fetchImpl },
+    __mockFetch: fetchImpl,
   };
   vm.createContext(sandbox);
   script.runInContext(sandbox);
