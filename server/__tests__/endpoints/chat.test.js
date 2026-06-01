@@ -60,6 +60,7 @@ jest.mock("../../endpoints/utils", () => ({
 }));
 
 const { chatEndpoints } = require("../../endpoints/chat");
+const { Telemetry } = require("../../models/telemetry");
 
 function buildResponse({ isMultiUser = false, workspace = null } = {}) {
   const res = {
@@ -73,7 +74,7 @@ function buildResponse({ isMultiUser = false, workspace = null } = {}) {
   return res;
 }
 
-function buildRequest({ message = "hello", runtime = null } = {}) {
+function buildRequest() {
   return {};
 }
 
@@ -129,6 +130,13 @@ describe("chat endpoint runtime gating", () => {
         null,
         []
       );
+      expect(Telemetry.sendTelemetry).toHaveBeenCalledWith(
+        "sent_chat",
+        expect.objectContaining({
+          LLMSelection: workspace.chatProvider,
+          LLMModel: workspace.chatModel,
+        })
+      );
     });
 
     it("applies runtime override in single-user mode", async () => {
@@ -185,6 +193,13 @@ describe("chat endpoint runtime gating", () => {
         null,
         []
       );
+      expect(Telemetry.sendTelemetry).toHaveBeenCalledWith(
+        "sent_chat",
+        expect.objectContaining({
+          LLMSelection: runtimeWorkspace.chatProvider,
+          LLMModel: runtimeWorkspace.chatModel,
+        })
+      );
     });
   });
 
@@ -233,6 +248,13 @@ describe("chat endpoint runtime gating", () => {
         { id: 42 },
         thread,
         []
+      );
+      expect(Telemetry.sendTelemetry).toHaveBeenCalledWith(
+        "sent_chat",
+        expect.objectContaining({
+          LLMSelection: workspace.chatProvider,
+          LLMModel: workspace.chatModel,
+        })
       );
     });
 
@@ -291,6 +313,13 @@ describe("chat endpoint runtime gating", () => {
         { id: 42 },
         thread,
         []
+      );
+      expect(Telemetry.sendTelemetry).toHaveBeenCalledWith(
+        "sent_chat",
+        expect.objectContaining({
+          LLMSelection: runtimeWorkspace.chatProvider,
+          LLMModel: runtimeWorkspace.chatModel,
+        })
       );
     });
   });
