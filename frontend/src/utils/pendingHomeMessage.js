@@ -50,7 +50,9 @@ export function getPendingHomeMessageForDestination({
 
   const normalizedWorkspaceSlug = normalizePendingScopeValue(workspaceSlug);
   const normalizedThreadSlug = normalizePendingScopeValue(threadSlug);
-  const pendingWorkspaceSlug = normalizePendingScopeValue(pending.workspaceSlug);
+  const pendingWorkspaceSlug = normalizePendingScopeValue(
+    pending.workspaceSlug
+  );
   const pendingThreadSlug = normalizePendingScopeValue(pending.threadSlug);
 
   if (

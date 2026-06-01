@@ -397,12 +397,11 @@ export default function ChatContainer({
         });
 
         if (result !== false) {
-          const { pending: currentPending } = getPendingHomeMessageForDestination(
-            {
+          const { pending: currentPending } =
+            getPendingHomeMessageForDestination({
               workspaceSlug: workspace?.slug,
               threadSlug,
-            }
-          );
+            });
 
           if (
             currentPending?.workspaceSlug === latestPending.workspaceSlug &&
