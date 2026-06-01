@@ -379,18 +379,46 @@ export default function ChatContainer({
         activeLocalUserRuntimeRef.current = null;
         sessionStorage.removeItem(SWARMSY_LOCAL_USER_ACTIVE_RUNTIME);
       }
-      setTimeout(async () => {
+      const timeoutId = setTimeout(async () => {
+        const { pending: latestPending } = getPendingHomeMessageForDestination({
+          workspaceSlug: workspace?.slug,
+          threadSlug,
+        });
+        if (!latestPending?.message) return;
+
+        const latestRuntime = normalizeLocalUserOllamaRuntimeSelection(
+          latestPending?.runtime
+        );
         const result = await sendCommand({
-          text: pending.message,
-          attachments: pending.attachments || [],
-          runtime,
+          text: latestPending.message,
+          attachments: latestPending.attachments || [],
+          runtime: latestRuntime,
           autoSubmit: true,
         });
 
         if (result !== false) {
-          sessionStorage.removeItem(PENDING_HOME_MESSAGE);
+          const { pending: currentPending } = getPendingHomeMessageForDestination(
+            {
+              workspaceSlug: workspace?.slug,
+              threadSlug,
+            }
+          );
+
+          if (
+            currentPending?.workspaceSlug === latestPending.workspaceSlug &&
+            currentPending?.threadSlug === latestPending.threadSlug &&
+            currentPending?.message === latestPending.message &&
+            JSON.stringify(currentPending?.attachments || []) ===
+              JSON.stringify(latestPending?.attachments || []) &&
+            JSON.stringify(currentPending?.runtime || null) ===
+              JSON.stringify(latestPending?.runtime || null)
+          ) {
+            sessionStorage.removeItem(PENDING_HOME_MESSAGE);
+          }
         }
       }, 100);
+
+      return () => clearTimeout(timeoutId);
     }
   }, [workspace?.slug, threadSlug]);
 
