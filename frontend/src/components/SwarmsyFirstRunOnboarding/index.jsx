@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ArrowClockwise,
   CheckCircle,
@@ -114,8 +114,9 @@ const LOCAL_OLLAMA_SETUP_GUIDANCE = [
 function normalizeLocalUserModel(model = null, index = 0) {
   const name = String(model?.name || model?.id || "").trim();
   if (!name) return null;
+  const rawId = String(model?.id ?? "").trim();
   return {
-    id: String(model?.id || name || `model-${index}`).trim(),
+    id: rawId || name || `model-${index}`,
     name,
   };
 }
@@ -264,6 +265,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     message: null,
   });
   const [selectedLocalOllamaModel, setSelectedLocalOllamaModel] = useState("");
+  const localOllamaRefreshControllerRef = useRef(null);
   const activeStatus = status || createFallbackStatus();
   const canLoadMemoryLock = canContinueFromMemoryLock(activeStatus);
   const canUseProofTracker = canReviewProof(activeStatus);
@@ -293,6 +295,9 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     setLocalOllamaStatus((current) => ({
       ...current,
       status: "checking",
+      models: [],
+      endpoint: null,
+      message: null,
     }));
     try {
       const response = await SwarmsyOnboarding.localUserOllamaStatus({
@@ -354,6 +359,10 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   }, [syncLocalUserOllamaStatus]);
 
   useEffect(() => {
+    return () => localOllamaRefreshControllerRef.current?.abort();
+  }, []);
+
+  useEffect(() => {
     const nextModelId = localOllamaStatus.models[0]?.id || "";
     if (!nextModelId) {
       setSelectedLocalOllamaModel("");
@@ -405,7 +414,11 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   async function checkLocalUserOllama() {
     if (busyAction) return;
     setBusyAction("local-ollama-refresh");
-    await syncLocalUserOllamaStatus();
+    localOllamaRefreshControllerRef.current?.abort();
+    const controller = new AbortController();
+    localOllamaRefreshControllerRef.current = controller;
+    await syncLocalUserOllamaStatus({ signal: controller.signal });
+    if (controller.signal.aborted) return;
     setBusyAction(null);
   }
 

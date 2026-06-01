@@ -222,4 +222,49 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toContain("return () => controller.abort();");
     expect(source).toContain("if (signal?.aborted) return null;");
   });
+
+  it("uses abort-safe manual refresh with shared ref in checkLocalUserOllama", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("localOllamaRefreshControllerRef");
+    expect(source).toContain("localOllamaRefreshControllerRef.current?.abort();");
+    expect(source).toContain(
+      "localOllamaRefreshControllerRef.current = controller;"
+    );
+    expect(source).toContain("if (controller.signal.aborted) return;");
+  });
+
+  it("clears stale fields when transitioning to checking state", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain('status: "checking"');
+    expect(source).toContain("models: [],");
+    expect(source).toContain("endpoint: null,");
+    expect(source).toContain("message: null,");
+  });
+
+  it("trims model.id before falling back to name in normalizeLocalUserModel", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain('const rawId = String(model?.id ?? "").trim();');
+    expect(source).toContain("id: rawId || name ||");
+  });
 });
