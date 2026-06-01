@@ -39,6 +39,19 @@ export function normalizeLocalUserOllamaRuntimeSelection(runtime = null) {
   };
 }
 
+/**
+ * Returns true if the runtime payload has the Local User Ollama provider/mode
+ * regardless of whether the model is present or valid. Used to detect that a
+ * session was *intended* to be a Local User session even when the validated
+ * runtime (from normalizeLocalUserOllamaRuntimeSelection) returns null.
+ */
+export function isLocalUserOllamaIntent(runtime = null) {
+  return (
+    String(runtime?.provider || "").trim() === "ollama" &&
+    String(runtime?.mode || "").trim() === "local_user"
+  );
+}
+
 export function canStartSwarmsyIntake(status, selectedMode) {
   if (selectedMode === "memory-lock") return false;
 

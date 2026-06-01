@@ -18,7 +18,8 @@ function loadHandoffModule() {
     `${source}
 module.exports = {
   getLocalUserOllamaRuntimeSelection,
-  normalizeLocalUserOllamaRuntimeSelection
+  normalizeLocalUserOllamaRuntimeSelection,
+  isLocalUserOllamaIntent
 };`
   );
 
@@ -85,5 +86,51 @@ describe("Local User Ollama runtime handoff contract", () => {
         model: "gpt-4o",
       })
     ).toBeNull();
+  });
+
+  describe("isLocalUserOllamaIntent", () => {
+    it("returns true when provider is ollama and mode is local_user regardless of model", () => {
+      const handoff = loadHandoffModule();
+
+      // Valid runtime with model
+      expect(
+        handoff.isLocalUserOllamaIntent({
+          provider: "ollama",
+          mode: "local_user",
+          model: "llama3.1:8b",
+        })
+      ).toBe(true);
+
+      // Correct intent but empty model — normalization returns null, but intent is still detected
+      expect(
+        handoff.isLocalUserOllamaIntent({
+          provider: "ollama",
+          mode: "local_user",
+          model: "",
+        })
+      ).toBe(true);
+
+      // Correct intent but model omitted entirely
+      expect(
+        handoff.isLocalUserOllamaIntent({
+          provider: "ollama",
+          mode: "local_user",
+        })
+      ).toBe(true);
+    });
+
+    it("returns false when provider or mode does not match local user ollama", () => {
+      const handoff = loadHandoffModule();
+
+      expect(
+        handoff.isLocalUserOllamaIntent({ provider: "openai", mode: "local_user", model: "gpt-4o" })
+      ).toBe(false);
+      expect(
+        handoff.isLocalUserOllamaIntent({ provider: "ollama", mode: "hosted_admin", model: "llama3" })
+      ).toBe(false);
+      expect(handoff.isLocalUserOllamaIntent(null)).toBe(false);
+      expect(handoff.isLocalUserOllamaIntent(undefined)).toBe(false);
+      expect(handoff.isLocalUserOllamaIntent({})).toBe(false);
+    });
   });
 });

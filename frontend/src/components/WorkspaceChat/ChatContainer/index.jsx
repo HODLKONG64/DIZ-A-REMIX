@@ -39,7 +39,10 @@ import WorkspaceModelPicker from "./WorkspaceModelPicker";
 import { ChatSidebarProvider } from "./ChatSidebar";
 import SourcesSidebar from "./SourcesSidebar";
 import MemoriesSidebar from "./MemoriesSidebar";
-import { normalizeLocalUserOllamaRuntimeSelection } from "@/components/SwarmsyFirstRunOnboarding/handoff";
+import {
+  normalizeLocalUserOllamaRuntimeSelection,
+  isLocalUserOllamaIntent,
+} from "@/components/SwarmsyFirstRunOnboarding/handoff";
 
 export default function ChatContainer({
   workspace,
@@ -58,6 +61,15 @@ export default function ChatContainer({
   const pendingResetRef = useRef(false);
   const activeLocalUserRuntimeRef = useRef(
     normalizeLocalUserOllamaRuntimeSelection(
+      safeJsonParse(sessionStorage.getItem(SWARMSY_LOCAL_USER_ACTIVE_RUNTIME))
+    )
+  );
+  // Tracks whether this chat session was started as a Local User (Ollama) session,
+  // even if the current active runtime normalizes to null (e.g., empty model).
+  // Kept separate from activeLocalUserRuntimeRef so the missing-model guard can fire
+  // when normalization returns null rather than silently falling back to the workspace provider.
+  const isLocalUserSessionRef = useRef(
+    isLocalUserOllamaIntent(
       safeJsonParse(sessionStorage.getItem(SWARMSY_LOCAL_USER_ACTIVE_RUNTIME))
     )
   );
@@ -110,8 +122,12 @@ export default function ChatContainer({
 
     const activeRuntime = activeLocalUserRuntimeRef.current;
 
-    // Block Local User chat if the active runtime has lost its model
-    if (activeRuntime !== null && !activeRuntime?.model) {
+    // Block Local User chat if this is a local user session but the runtime is
+    // missing or invalid (e.g. model cleared). activeLocalUserRuntimeRef is
+    // always either a valid normalized object or null — never {model: ""} — so
+    // checking the session flag separately is the only reliable way to catch the
+    // "in a local user session but no valid runtime" state.
+    if (isLocalUserSessionRef.current && !activeRuntime) {
       window.toastr?.error(
         "Selected local Ollama model is no longer available. Recheck Ollama models and choose another.",
         "Local model unavailable",
@@ -204,6 +220,19 @@ export default function ChatContainer({
     // regenerate, quick actions) also use the selected Ollama model.
     const effectiveRuntime = runtime ?? activeLocalUserRuntimeRef.current;
 
+    // Block Local User chat if this is a local user session but the runtime is
+    // missing or invalid. Same guard as handleSubmit — auto-submitted commands
+    // (suggested messages, regenerate, quick actions) must not silently fall back
+    // to the workspace/default provider when a local user session is expected.
+    if (isLocalUserSessionRef.current && !effectiveRuntime) {
+      window.toastr?.error(
+        "Selected local Ollama model is no longer available. Recheck Ollama models and choose another.",
+        "Local model unavailable",
+        { timeOut: 8000 }
+      );
+      return false;
+    }
+
     if (writeMode === "prepend") {
       const currentText = document.getElementById(PROMPT_INPUT_ID)?.value ?? "";
       text = currentText + " " + text;
@@ -274,6 +303,12 @@ export default function ChatContainer({
 
     const pending = safeJsonParse(sessionStorage.getItem(PENDING_HOME_MESSAGE));
     if (pending?.message) {
+      // Mark this as a Local User session if the pending message carries a local
+      // user Ollama intent (regardless of whether the model is valid), so the
+      // missing-model guard can fire on follow-up messages if validation fails.
+      if (isLocalUserOllamaIntent(pending?.runtime)) {
+        isLocalUserSessionRef.current = true;
+      }
       const runtime = normalizeLocalUserOllamaRuntimeSelection(
         pending?.runtime
       );
