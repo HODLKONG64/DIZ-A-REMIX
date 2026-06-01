@@ -5,6 +5,25 @@ const {
 } = require("../../../utils/swarmsy/localUserOllama");
 
 describe("swarmsy local-user Ollama detection", () => {
+  const originalSwarmsyLocalOllamaTagsUrl =
+    process.env.SWARMSY_LOCAL_OLLAMA_TAGS_URL;
+  const originalOllamaBasePath = process.env.OLLAMA_BASE_PATH;
+
+  afterEach(() => {
+    if (typeof originalSwarmsyLocalOllamaTagsUrl === "undefined") {
+      delete process.env.SWARMSY_LOCAL_OLLAMA_TAGS_URL;
+    } else {
+      process.env.SWARMSY_LOCAL_OLLAMA_TAGS_URL =
+        originalSwarmsyLocalOllamaTagsUrl;
+    }
+
+    if (typeof originalOllamaBasePath === "undefined") {
+      delete process.env.OLLAMA_BASE_PATH;
+    } else {
+      process.env.OLLAMA_BASE_PATH = originalOllamaBasePath;
+    }
+  });
+
   it("lists installed Ollama models when localhost is reachable", async () => {
     const fetchImpl = jest.fn().mockResolvedValue({
       ok: true,
@@ -75,7 +94,7 @@ describe("swarmsy local-user Ollama detection", () => {
       status: "unreachable",
       reachable: false,
       models: [],
-      message: "Local Ollama is not reachable at the default localhost endpoint.",
+      message: `Local Ollama is not reachable at ${DEFAULT_LOCAL_OLLAMA_TAGS_URL}.`,
     });
   });
 
@@ -127,5 +146,83 @@ describe("swarmsy local-user Ollama detection", () => {
         modifiedAt: null,
       },
     ]);
+  });
+
+  it("uses an explicit endpoint over environment configuration", async () => {
+    process.env.SWARMSY_LOCAL_OLLAMA_TAGS_URL =
+      "http://ignored-env:11434/api/tags";
+    process.env.OLLAMA_BASE_PATH = "http://ignored-base:11434";
+    const endpoint = "http://explicit:11434/api/tags";
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ models: [] }),
+    });
+
+    await detectLocalOllama({ endpoint, fetchImpl });
+
+    expect(fetchImpl).toHaveBeenCalledWith(endpoint, {
+      method: "GET",
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it("uses SWARMSY_LOCAL_OLLAMA_TAGS_URL when set", async () => {
+    const endpoint = "http://docker-ollama:11434/api/tags";
+    process.env.SWARMSY_LOCAL_OLLAMA_TAGS_URL = endpoint;
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ models: [] }),
+    });
+
+    await detectLocalOllama({ fetchImpl });
+
+    expect(fetchImpl).toHaveBeenCalledWith(endpoint, {
+      method: "GET",
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it("derives tags endpoint from OLLAMA_BASE_PATH when set", async () => {
+    process.env.OLLAMA_BASE_PATH = "http://hermes-ollama:11434";
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ models: [] }),
+    });
+
+    await detectLocalOllama({ fetchImpl });
+
+    expect(fetchImpl).toHaveBeenCalledWith("http://hermes-ollama:11434/api/tags", {
+      method: "GET",
+      signal: expect.any(AbortSignal),
+    });
+  });
+
+  it("trims model names in normalized id and name fields", () => {
+    expect(
+      normalizeOllamaModels([
+        { name: "  qwen3:8b  ", size: 1 },
+        { name: "   " },
+      ])
+    ).toEqual([
+      {
+        id: "qwen3:8b",
+        name: "qwen3:8b",
+        size: 1,
+        digest: null,
+        modifiedAt: null,
+      },
+    ]);
+  });
+
+  it("includes the checked endpoint in unreachable responses", async () => {
+    const endpoint = "http://hermes-ollama:11434/api/tags";
+    const fetchImpl = jest
+      .fn()
+      .mockRejectedValue(new TypeError("fetch failed: ECONNREFUSED"));
+
+    const status = await detectLocalOllama({ endpoint, fetchImpl });
+
+    expect(status.message).toBe(`Local Ollama is not reachable at ${endpoint}.`);
+    expect(status.endpoint).toBe(endpoint);
   });
 });

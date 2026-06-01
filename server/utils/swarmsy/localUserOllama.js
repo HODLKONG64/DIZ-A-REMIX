@@ -3,14 +3,41 @@ const DEFAULT_TIMEOUT_MS = 2_500;
 
 function normalizeOllamaModels(models = []) {
   return models
-    .filter((model) => typeof model?.name === "string" && model.name.trim())
-    .map((model) => ({
-      id: model.name,
-      name: model.name,
-      size: Number.isFinite(model?.size) ? model.size : null,
-      digest: model?.digest || null,
-      modifiedAt: model?.modified_at || null,
-    }));
+    .map((model) => {
+      const name = typeof model?.name === "string" ? model.name.trim() : "";
+      if (!name) return null;
+      return {
+        id: name,
+        name,
+        size: Number.isFinite(model?.size) ? model.size : null,
+        digest: model?.digest || null,
+        modifiedAt: model?.modified_at || null,
+      };
+    })
+    .filter(Boolean);
+}
+
+function toOllamaTagsEndpoint(basePath = "") {
+  const trimmedBasePath = String(basePath || "").trim().replace(/\/+$/, "");
+  if (!trimmedBasePath) return DEFAULT_LOCAL_OLLAMA_TAGS_URL;
+  if (trimmedBasePath.endsWith("/api/tags")) return trimmedBasePath;
+  if (trimmedBasePath.endsWith("/api")) return `${trimmedBasePath}/tags`;
+  return `${trimmedBasePath}/api/tags`;
+}
+
+function resolveLocalOllamaTagsEndpoint(endpoint) {
+  const explicitEndpoint = String(endpoint || "").trim();
+  if (explicitEndpoint) return explicitEndpoint;
+
+  const configuredTagsEndpoint = String(
+    process.env.SWARMSY_LOCAL_OLLAMA_TAGS_URL || ""
+  ).trim();
+  if (configuredTagsEndpoint) return configuredTagsEndpoint;
+
+  const configuredBasePath = String(process.env.OLLAMA_BASE_PATH || "").trim();
+  if (configuredBasePath) return toOllamaTagsEndpoint(configuredBasePath);
+
+  return DEFAULT_LOCAL_OLLAMA_TAGS_URL;
 }
 
 function unreachableResult(endpoint) {
@@ -22,7 +49,7 @@ function unreachableResult(endpoint) {
     reachable: false,
     status: "unreachable",
     models: [],
-    message: "Local Ollama is not reachable at the default localhost endpoint.",
+    message: `Local Ollama is not reachable at ${endpoint}.`,
   };
 }
 
@@ -68,22 +95,23 @@ async function fetchWithTimeout(fetchImpl, endpoint, timeoutMs) {
 }
 
 async function detectLocalOllama({
-  endpoint = DEFAULT_LOCAL_OLLAMA_TAGS_URL,
+  endpoint,
   fetchImpl = global.fetch,
   timeoutMs = DEFAULT_TIMEOUT_MS,
 } = {}) {
+  const resolvedEndpoint = resolveLocalOllamaTagsEndpoint(endpoint);
   if (typeof fetchImpl !== "function") {
     return errorResult(
-      endpoint,
+      resolvedEndpoint,
       "Fetch is unavailable for local Ollama detection."
     );
   }
 
   try {
-    const response = await fetchWithTimeout(fetchImpl, endpoint, timeoutMs);
+    const response = await fetchWithTimeout(fetchImpl, resolvedEndpoint, timeoutMs);
     if (!response?.ok) {
       return errorResult(
-        endpoint,
+        resolvedEndpoint,
         `Local Ollama returned an unexpected status (${response?.status ?? "unknown"}).`
       );
     }
@@ -91,7 +119,7 @@ async function detectLocalOllama({
     const payload = await response.json();
     if (!Array.isArray(payload?.models)) {
       return errorResult(
-        endpoint,
+        resolvedEndpoint,
         "Local Ollama returned an unexpected response payload."
       );
     }
@@ -102,7 +130,7 @@ async function detectLocalOllama({
         success: true,
         mode: "local_user",
         provider: "ollama",
-        endpoint,
+        endpoint: resolvedEndpoint,
         reachable: true,
         status: "no_models",
         models: [],
@@ -114,16 +142,16 @@ async function detectLocalOllama({
       success: true,
       mode: "local_user",
       provider: "ollama",
-      endpoint,
+      endpoint: resolvedEndpoint,
       reachable: true,
       status: "reachable",
       models,
       message: "Local Ollama is reachable and installed models were detected.",
     };
   } catch (error) {
-    if (isUnreachableError(error)) return unreachableResult(endpoint);
+    if (isUnreachableError(error)) return unreachableResult(resolvedEndpoint);
     return errorResult(
-      endpoint,
+      resolvedEndpoint,
       error?.message || "Local Ollama detection failed unexpectedly."
     );
   }
@@ -133,4 +161,5 @@ module.exports = {
   DEFAULT_LOCAL_OLLAMA_TAGS_URL,
   detectLocalOllama,
   normalizeOllamaModels,
+  resolveLocalOllamaTagsEndpoint,
 };
