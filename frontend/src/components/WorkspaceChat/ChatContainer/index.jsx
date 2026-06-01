@@ -217,7 +217,7 @@ export default function ChatContainer({
    * @param {string} options.text - The text to send to the LLM
    * @param {boolean} options.autoSubmit - Determines if the text should be sent immediately or if it should be added to the message state (default: false)
    * @param {Object[]} options.history - The history of the chat prior to this message for overriding the current chat history
-   * @param {Object[import("./DnDWrapper").Attachment]} options.attachments - The attachments to send to the LLM for this message
+   * @param {import("./DnDWrapper").Attachment[]} options.attachments - The attachments to send to the LLM for this message
    * @param {Object|null} options.runtime - Optional runtime override for this message
    * @param {'replace' | 'append' | 'prepend'} options.writeMode - Replace current text or append to existing text (default: replace)
    * @returns {Promise<boolean>} Resolves to false if sending was blocked/no-op; otherwise true once send progression begins.
