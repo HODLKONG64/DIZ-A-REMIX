@@ -31,9 +31,9 @@ function chatEndpoints(app) {
         const user = await userFromSession(request, response);
         const { message, attachments = [], runtime = null } = reqBody(request);
         const workspace = response.locals.workspace;
-        const { workspace: runtimeWorkspace } = multiUserMode(response)
-          ? { workspace }
-          : applyRuntimeSelectionToWorkspace(workspace, runtime);
+        const runtimeWorkspace = multiUserMode(response)
+          ? workspace
+          : applyRuntimeSelectionToWorkspace(workspace, runtime).workspace;
 
         if (typeof message !== "string" || message.trim().length === 0) {
           response.status(400).json({
@@ -124,9 +124,9 @@ function chatEndpoints(app) {
         const { message, attachments = [], runtime = null } = reqBody(request);
         const workspace = response.locals.workspace;
         const thread = response.locals.thread;
-        const { workspace: runtimeWorkspace } = multiUserMode(response)
-          ? { workspace }
-          : applyRuntimeSelectionToWorkspace(workspace, runtime);
+        const runtimeWorkspace = multiUserMode(response)
+          ? workspace
+          : applyRuntimeSelectionToWorkspace(workspace, runtime).workspace;
 
         if (typeof message !== "string" || message.trim().length === 0) {
           response.status(400).json({
