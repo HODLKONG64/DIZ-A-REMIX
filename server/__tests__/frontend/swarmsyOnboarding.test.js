@@ -30,7 +30,7 @@ ${source}`
 }
 
 describe("Swarmsy onboarding model", () => {
-  it("returns the local-user Ollama error shape on network failure", async () => {
+  it("returns an unknown/fallback shape on network failure (not local_user mode)", async () => {
     const fetchImpl = jest.fn().mockRejectedValue(new Error("network down"));
     const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
 
@@ -38,13 +38,16 @@ describe("Swarmsy onboarding model", () => {
 
     expect(response).toEqual({
       success: false,
-      mode: "local_user",
+      mode: "unknown",
       provider: "ollama",
       status: "error",
       reachable: false,
       models: [],
+      source: "fallback",
       message: "Failed to resolve SWARMSY local-user Ollama status.",
     });
+    expect(response.mode).not.toBe("local_user");
+    expect(response.source).toBe("fallback");
   });
 
   it("rethrows abort errors so callers can bail out safely", async () => {

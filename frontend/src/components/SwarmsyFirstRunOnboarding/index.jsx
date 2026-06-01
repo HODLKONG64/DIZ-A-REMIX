@@ -122,7 +122,8 @@ function normalizeLocalUserModel(model = null, index = 0) {
 }
 
 function normalizeLocalUserOllamaStatus(response = null) {
-  if (response?.mode !== "local_user") return null;
+  if (response?.mode !== "local_user" || response?.source === "fallback")
+    return null;
   const status = LOCAL_OLLAMA_UI_STATES.has(response?.status)
     ? response.status
     : "error";

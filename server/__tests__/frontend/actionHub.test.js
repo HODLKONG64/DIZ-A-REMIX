@@ -267,4 +267,31 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toContain('const rawId = String(model?.id ?? "").trim();');
     expect(source).toContain("id: rawId || name ||");
   });
+
+  it("normalizeLocalUserOllamaStatus rejects fallback/unknown mode responses", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain('response?.mode !== "local_user"');
+    expect(source).toContain('response?.source === "fallback"');
+  });
+
+  it("network failure fallback uses mode unknown with source fallback, not local_user", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/models/swarmsyOnboarding.js"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain('mode: "unknown"');
+    expect(source).toContain('source: "fallback"');
+    expect(source).not.toMatch(/catch[\s\S]*?mode:\s*"local_user"/);
+  });
 });

@@ -68,11 +68,12 @@ const SwarmsyOnboarding = {
         if (error?.name === "AbortError") throw error;
         return {
           success: false,
-          mode: "local_user",
+          mode: "unknown",
           provider: "ollama",
           status: "error",
           reachable: false,
           models: [],
+          source: "fallback",
           message: "Failed to resolve SWARMSY local-user Ollama status.",
         };
       });
