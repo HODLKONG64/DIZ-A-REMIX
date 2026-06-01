@@ -48,7 +48,7 @@ describe("SWARMSY runtime chat flow wiring", () => {
     );
 
     expect(source).toContain("applyRuntimeSelectionToWorkspace");
-    expect(source).toContain("const { workspace: runtimeWorkspace } =");
+    expect(source).toContain("const runtimeWorkspace =");
     expect(source).toContain("workspaceName: workspace?.name");
     expect(source).toContain("runtimeWorkspace?.chatModel || \"System Default\"");
   });
