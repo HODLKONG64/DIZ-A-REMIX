@@ -294,4 +294,50 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toContain('source: "fallback"');
     expect(source).not.toMatch(/catch[\s\S]*?mode:\s*"local_user"/);
   });
+
+  it("tracks confirmed local-user mode via hasConfirmedLocalUserModeRef", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("hasConfirmedLocalUserModeRef");
+    expect(source).toContain("hasConfirmedLocalUserModeRef.current = true");
+    expect(source).toContain("hasConfirmedLocalUserModeRef.current");
+  });
+
+  it("fallback before local-user mode confirmed hides the panel; fallback after confirmed keeps panel with error state", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain('response?.source === "fallback"');
+    expect(source).toContain("hasConfirmedLocalUserModeRef.current");
+    expect(source).toContain('status: "error"');
+  });
+
+  it("setup guidance for unreachable only, not for error state", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain('localOllamaStatus.status === "unreachable"');
+    expect(source).not.toMatch(
+      /localOllamaStatus\.status === "unreachable"[\s\S]*?localOllamaStatus\.status === "error"[\s\S]*?LOCAL_OLLAMA_SETUP_GUIDANCE/
+    );
+    expect(source).not.toMatch(
+      /\(localOllamaStatus\.status === "unreachable" \|\|\s*localOllamaStatus\.status === "error"\)/
+    );
+  });
 });

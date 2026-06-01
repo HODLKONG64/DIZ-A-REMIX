@@ -267,6 +267,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   });
   const [selectedLocalOllamaModel, setSelectedLocalOllamaModel] = useState("");
   const localOllamaRefreshControllerRef = useRef(null);
+  const hasConfirmedLocalUserModeRef = useRef(false);
   const activeStatus = status || createFallbackStatus();
   const canLoadMemoryLock = canContinueFromMemoryLock(activeStatus);
   const canUseProofTracker = canReviewProof(activeStatus);
@@ -305,12 +306,28 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
         signal,
       });
       if (signal?.aborted) return null;
+      if (response?.source === "fallback") {
+        if (hasConfirmedLocalUserModeRef.current) {
+          setLocalOllamaStatus({
+            status: "error",
+            models: [],
+            endpoint: null,
+            message:
+              response?.message ||
+              "Failed to resolve SWARMSY local-user Ollama status.",
+          });
+        } else {
+          setIsLocalUserMode(false);
+        }
+        return null;
+      }
       const normalizedStatus = normalizeLocalUserOllamaStatus(response);
       if (!normalizedStatus) {
         setIsLocalUserMode(false);
         return null;
       }
 
+      hasConfirmedLocalUserModeRef.current = true;
       setIsLocalUserMode(true);
       setLocalOllamaStatus(normalizedStatus);
       return normalizedStatus;
@@ -774,8 +791,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
               </ActionButton>
             </div>
 
-            {(localOllamaStatus.status === "unreachable" ||
-              localOllamaStatus.status === "error") && (
+            {localOllamaStatus.status === "unreachable" && (
               <ul className="mt-4 list-disc space-y-1 pl-5 text-sm leading-6">
                 {LOCAL_OLLAMA_SETUP_GUIDANCE.map((step) => (
                   <li key={step}>{step}</li>
