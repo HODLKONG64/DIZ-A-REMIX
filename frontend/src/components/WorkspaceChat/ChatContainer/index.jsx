@@ -43,6 +43,7 @@ import {
   normalizeLocalUserOllamaRuntimeSelection,
   isLocalUserOllamaIntent,
 } from "@/components/SwarmsyFirstRunOnboarding/handoff";
+import { getPendingHomeMessageForDestination } from "@/utils/pendingHomeMessage";
 
 function getStoredLocalUserRuntimeForWorkspace(workspaceSlug = "") {
   const storedRuntime = safeJsonParse(
@@ -93,8 +94,11 @@ export default function ChatContainer({
     initialStoredLocalRuntime.isLocalUserSession
   );
 
-  const isEmpty =
-    chatHistory.length === 0 && !sessionStorage.getItem(PENDING_HOME_MESSAGE);
+  const { pending: pendingHomeMessage } = getPendingHomeMessageForDestination({
+    workspaceSlug: workspace?.slug,
+    threadSlug,
+  });
+  const isEmpty = chatHistory.length === 0 && !pendingHomeMessage;
 
   /**
    * Keep chat history bottom-padding in sync with the prompt input's
@@ -330,13 +334,21 @@ export default function ChatContainer({
     activeLocalUserRuntimeRef.current = scopedStoredRuntime.runtime;
     isLocalUserSessionRef.current = scopedStoredRuntime.isLocalUserSession;
     pendingMessageChecked.current = false;
-  }, [workspace?.slug]);
+  }, [workspace?.slug, threadSlug]);
 
   useEffect(() => {
     if (pendingMessageChecked.current || !workspace?.slug) return;
     pendingMessageChecked.current = true;
 
-    const pending = safeJsonParse(sessionStorage.getItem(PENDING_HOME_MESSAGE));
+    const { pending, shouldClearLegacy } = getPendingHomeMessageForDestination({
+      workspaceSlug: workspace?.slug,
+      threadSlug,
+    });
+    if (shouldClearLegacy) {
+      sessionStorage.removeItem(PENDING_HOME_MESSAGE);
+      return;
+    }
+
     if (pending?.message) {
       // Mark this as a Local User session if the pending message carries a local
       // user Ollama intent (regardless of whether the model is valid), so the
@@ -380,7 +392,7 @@ export default function ChatContainer({
         }
       }, 100);
     }
-  }, [workspace?.slug]);
+  }, [workspace?.slug, threadSlug]);
 
   useEffect(() => {
     async function fetchReply() {

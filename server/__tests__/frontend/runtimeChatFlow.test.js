@@ -12,6 +12,7 @@ describe("SWARMSY runtime chat flow wiring", () => {
     );
 
     expect(source).toContain("normalizeLocalUserOllamaRuntimeSelection");
+    expect(source).toContain("getPendingHomeMessageForDestination");
     expect(source).toContain("runtime: lastUserMessage?.runtime");
     expect(source).toContain("runtime: promptMessage?.runtime");
     expect(source).toContain("const runtime = normalizeLocalUserOllamaRuntimeSelection");
@@ -24,7 +25,40 @@ describe("SWARMSY runtime chat flow wiring", () => {
     expect(source).toContain("workspaceSlug: workspace.slug");
     expect(source).toContain("const result = await sendCommand");
     expect(source).toContain("if (result !== false)");
+    expect(source).toContain("if (shouldClearLegacy)");
     expect(source).toContain("sessionStorage.removeItem(PENDING_HOME_MESSAGE)");
+  });
+
+  it("scopes pending handoff payloads to the destination workspace and thread", () => {
+    const homeSource = fs.readFileSync(
+      path.resolve(__dirname, "../../../frontend/src/pages/Main/Home/index.jsx"),
+      "utf8"
+    );
+    const onboardingSource = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+    const pendingSource = fs.readFileSync(
+      path.resolve(__dirname, "../../../frontend/src/utils/pendingHomeMessage.js"),
+      "utf8"
+    );
+
+    expect(homeSource).toContain("buildPendingHomeMessage");
+    expect(homeSource).toContain("workspaceSlug: targetWorkspace.slug");
+    expect(homeSource).toContain("threadSlug: targetThread || null");
+    expect(onboardingSource).toContain("buildPendingHomeMessage");
+    expect(onboardingSource).toContain("workspaceSlug: activeStatus.workspace.slug");
+    expect(onboardingSource).toContain("threadSlug: null");
+    expect(pendingSource).toContain(
+      'Object.prototype.hasOwnProperty.call(pending, "workspaceSlug")'
+    );
+    expect(pendingSource).toContain(
+      'Object.prototype.hasOwnProperty.call(pending, "threadSlug")'
+    );
+    expect(pendingSource).toContain("pendingThreadSlug !== normalizedThreadSlug");
   });
 
   it("sends runtime overrides in workspace and thread chat requests", () => {
