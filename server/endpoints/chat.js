@@ -16,6 +16,9 @@ const { writeResponseChunk } = require("../utils/helpers/chat/responses");
 const { WorkspaceThread } = require("../models/workspaceThread");
 const { User } = require("../models/user");
 const { getModelTag } = require("./utils");
+const {
+  applyRuntimeSelectionToWorkspace,
+} = require("../utils/swarmsy/runtimeSelection");
 
 function chatEndpoints(app) {
   if (!app) return;
@@ -26,8 +29,10 @@ function chatEndpoints(app) {
     async (request, response) => {
       try {
         const user = await userFromSession(request, response);
-        const { message, attachments = [] } = reqBody(request);
+        const { message, attachments = [], runtime = null } = reqBody(request);
         const workspace = response.locals.workspace;
+        const { workspace: runtimeWorkspace } =
+          applyRuntimeSelectionToWorkspace(workspace, runtime);
 
         if (typeof message !== "string" || message.trim().length === 0) {
           response.status(400).json({
@@ -61,9 +66,9 @@ function chatEndpoints(app) {
 
         await streamChatWithWorkspace(
           response,
-          workspace,
+          runtimeWorkspace,
           message,
-          workspace?.chatMode,
+          runtimeWorkspace?.chatMode,
           user,
           null,
           attachments
@@ -82,7 +87,7 @@ function chatEndpoints(app) {
           "sent_chat",
           {
             workspaceName: workspace?.name,
-            chatModel: workspace?.chatModel || "System Default",
+            chatModel: runtimeWorkspace?.chatModel || "System Default",
           },
           user?.id
         );
@@ -112,9 +117,11 @@ function chatEndpoints(app) {
     async (request, response) => {
       try {
         const user = await userFromSession(request, response);
-        const { message, attachments = [] } = reqBody(request);
+        const { message, attachments = [], runtime = null } = reqBody(request);
         const workspace = response.locals.workspace;
         const thread = response.locals.thread;
+        const { workspace: runtimeWorkspace } =
+          applyRuntimeSelectionToWorkspace(workspace, runtime);
 
         if (typeof message !== "string" || message.trim().length === 0) {
           response.status(400).json({
@@ -148,9 +155,9 @@ function chatEndpoints(app) {
 
         await streamChatWithWorkspace(
           response,
-          workspace,
+          runtimeWorkspace,
           message,
-          workspace?.chatMode,
+          runtimeWorkspace?.chatMode,
           user,
           thread,
           attachments
@@ -186,9 +193,9 @@ function chatEndpoints(app) {
         await EventLogs.logEvent(
           "sent_chat",
           {
-            workspaceName: workspace.name,
+            workspaceName: runtimeWorkspace?.name,
             thread: thread.name,
-            chatModel: workspace?.chatModel || "System Default",
+            chatModel: runtimeWorkspace?.chatModel || "System Default",
           },
           user?.id
         );

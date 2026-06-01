@@ -36,6 +36,7 @@ import WorkspaceModelPicker from "./WorkspaceModelPicker";
 import { ChatSidebarProvider } from "./ChatSidebar";
 import SourcesSidebar from "./SourcesSidebar";
 import MemoriesSidebar from "./MemoriesSidebar";
+import { normalizeLocalUserOllamaRuntimeSelection } from "@/components/SwarmsyFirstRunOnboarding/handoff";
 
 export default function ChatContainer({
   workspace,
@@ -145,6 +146,7 @@ export default function ChatContainer({
           autoSubmit: true,
           history: filteredHistory,
           attachments: lastUserMessage?.attachments,
+          runtime: lastUserMessage?.runtime,
         })
       )
       .catch((e) => console.error(e));
@@ -157,15 +159,17 @@ export default function ChatContainer({
    * @param {boolean} options.autoSubmit - Determines if the text should be sent immediately or if it should be added to the message state (default: false)
    * @param {Object[]} options.history - The history of the chat prior to this message for overriding the current chat history
    * @param {Object[import("./DnDWrapper").Attachment]} options.attachments - The attachments to send to the LLM for this message
+   * @param {Object|null} options.runtime - Optional runtime override for this message
    * @param {'replace' | 'append' | 'prepend'} options.writeMode - Replace current text or append to existing text (default: replace)
    * @returns {void}
    */
   const sendCommand = async ({
-    text = "",
-    autoSubmit = false,
-    history = [],
-    attachments = [],
-    writeMode = "replace",
+   text = "",
+   autoSubmit = false,
+   history = [],
+   attachments = [],
+   runtime = null,
+   writeMode = "replace",
   } = {}) => {
     // If we are not auto-submitting, we can just emit the text to the prompt input.
     if (!autoSubmit) {
@@ -207,6 +211,7 @@ export default function ChatContainer({
           pending: true,
           userMessage: text,
           attachments,
+          runtime,
           animate: true,
         },
       ];
@@ -217,6 +222,7 @@ export default function ChatContainer({
           content: text,
           role: "user",
           attachments,
+          runtime,
         },
         {
           content: "",
@@ -224,6 +230,7 @@ export default function ChatContainer({
           pending: true,
           userMessage: text,
           attachments,
+          runtime,
           animate: true,
         },
       ];
@@ -240,11 +247,13 @@ export default function ChatContainer({
 
     const pending = safeJsonParse(sessionStorage.getItem(PENDING_HOME_MESSAGE));
     if (pending?.message) {
+      const runtime = normalizeLocalUserOllamaRuntimeSelection(pending?.runtime);
       setTimeout(() => {
         sessionStorage.removeItem(PENDING_HOME_MESSAGE);
         sendCommand({
           text: pending.message,
           attachments: pending.attachments || [],
+          runtime,
           autoSubmit: true,
         });
       }, 100);
@@ -290,6 +299,7 @@ export default function ChatContainer({
         workspaceSlug: workspace.slug,
         threadSlug,
         prompt: promptMessage.userMessage,
+        runtime: promptMessage?.runtime,
         chatHandler: (chatResult) =>
           handleChat(
             chatResult,

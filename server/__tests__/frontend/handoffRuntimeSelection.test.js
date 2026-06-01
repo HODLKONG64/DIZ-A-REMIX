@@ -17,7 +17,8 @@ function loadHandoffModule() {
   const script = new vm.Script(
     `${source}
 module.exports = {
-  getLocalUserOllamaRuntimeSelection
+  getLocalUserOllamaRuntimeSelection,
+  normalizeLocalUserOllamaRuntimeSelection
 };`
   );
 
@@ -59,6 +60,29 @@ describe("Local User Ollama runtime handoff contract", () => {
       handoff.getLocalUserOllamaRuntimeSelection({
         mode: "local_user",
         model: "",
+      })
+    ).toBeNull();
+  });
+
+  it("normalizes stored runtime payloads before chat execution", () => {
+    const handoff = loadHandoffModule();
+
+    expect(
+      handoff.normalizeLocalUserOllamaRuntimeSelection({
+        provider: "ollama",
+        mode: "local_user",
+        model: " llama3.1:8b ",
+      })
+    ).toEqual({
+      provider: "ollama",
+      mode: "local_user",
+      model: "llama3.1:8b",
+    });
+    expect(
+      handoff.normalizeLocalUserOllamaRuntimeSelection({
+        provider: "openai",
+        mode: "local_user",
+        model: "gpt-4o",
       })
     ).toBeNull();
   });
