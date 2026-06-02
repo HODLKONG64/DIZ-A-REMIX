@@ -1,5 +1,31 @@
 const path = require("path");
-const { app, BrowserWindow } = require("electron");
+const { app, BrowserWindow, ipcMain, shell } = require("electron");
+const {
+  getDesktopStorageContract,
+} = require("../foundation/storageContractBridge.cjs");
+
+const STORAGE_CONTRACT_CHANNEL = "swarmsy:get-storage-contract";
+const TRUSTED_DESKTOP_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
+
+function normalizeTrustedHost(hostname = "") {
+  return String(hostname || "")
+    .trim()
+    .replace(/^\[/, "")
+    .replace(/\]$/, "")
+    .toLowerCase();
+}
+
+function isTrustedDesktopOrigin(targetUrl) {
+  try {
+    const parsed = new URL(String(targetUrl || "").trim());
+    return (
+      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
+      TRUSTED_DESKTOP_HOSTS.has(normalizeTrustedHost(parsed.hostname))
+    );
+  } catch {
+    return false;
+  }
+}
 
 function resolveStartUrl() {
   const configured = String(process.env.SWARMSY_DESKTOP_START_URL || "").trim();
@@ -39,8 +65,61 @@ function renderFailurePage(error) {
   `)}`;
 }
 
-async function createWindow() {
-  const window = new BrowserWindow({
+function getOrigin(targetUrl) {
+  try {
+    return new URL(String(targetUrl || "").trim()).origin;
+  } catch {
+    return "";
+  }
+}
+
+function shouldOpenExternally(targetUrl, allowedOrigin) {
+  try {
+    const parsed = new URL(String(targetUrl || "").trim());
+    return !allowedOrigin || parsed.origin !== allowedOrigin;
+  } catch {
+    return false;
+  }
+}
+
+function configureWindowSecurity(window, startUrl, { shellApi = shell } = {}) {
+  const allowedOrigin = getOrigin(startUrl);
+
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (shouldOpenExternally(url, allowedOrigin)) {
+      shellApi.openExternal(url);
+    }
+    return { action: "deny" };
+  });
+
+  window.webContents.on("will-navigate", (event, url) => {
+    if (shouldOpenExternally(url, allowedOrigin)) {
+      event.preventDefault();
+      shellApi.openExternal(url);
+    }
+  });
+}
+
+function registerDesktopIpc({ ipcMainApi = ipcMain } = {}) {
+  ipcMainApi.removeHandler?.(STORAGE_CONTRACT_CHANNEL);
+  ipcMainApi.handle(STORAGE_CONTRACT_CHANNEL, (event) => {
+    const senderUrl =
+      event?.senderFrame?.url || event?.sender?.getURL?.() || "";
+
+    if (!isTrustedDesktopOrigin(senderUrl)) {
+      return null;
+    }
+
+    return getDesktopStorageContract();
+  });
+}
+
+async function createWindow({
+  BrowserWindowCtor = BrowserWindow,
+  startUrl = resolveStartUrl(),
+  shellApi = shell,
+} = {}) {
+  const window = new BrowserWindowCtor({
     width: 1366,
     height: 860,
     minWidth: 1024,
@@ -52,21 +131,53 @@ async function createWindow() {
       preload: path.resolve(__dirname, "preload.cjs"),
     },
   });
+  configureWindowSecurity(window, startUrl, { shellApi });
 
   try {
-    await window.loadURL(resolveStartUrl());
+    await window.loadURL(startUrl);
   } catch (error) {
     await window.loadURL(renderFailurePage(error));
   }
+
+  return window;
 }
 
-app.whenReady().then(() => {
-  createWindow();
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
-});
+function bootstrapDesktopApp({
+  appInstance = app,
+  BrowserWindowCtor = BrowserWindow,
+  ipcMainApi = ipcMain,
+  shellApi = shell,
+} = {}) {
+  registerDesktopIpc({ ipcMainApi });
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
-});
+  appInstance.whenReady().then(() => {
+    createWindow({ BrowserWindowCtor, shellApi });
+    appInstance.on("activate", () => {
+      if (BrowserWindowCtor.getAllWindows().length === 0) {
+        createWindow({ BrowserWindowCtor, shellApi });
+      }
+    });
+  });
+
+  appInstance.on("window-all-closed", () => {
+    if (process.platform !== "darwin") appInstance.quit();
+  });
+}
+
+if (require.main === module) {
+  bootstrapDesktopApp();
+}
+
+module.exports = {
+  STORAGE_CONTRACT_CHANNEL,
+  TRUSTED_DESKTOP_HOSTS,
+  normalizeTrustedHost,
+  resolveStartUrl,
+  renderFailurePage,
+  isTrustedDesktopOrigin,
+  shouldOpenExternally,
+  configureWindowSecurity,
+  registerDesktopIpc,
+  createWindow,
+  bootstrapDesktopApp,
+};
