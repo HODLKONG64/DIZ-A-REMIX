@@ -180,7 +180,8 @@ export default function SwarmsyLocalUserSettingsHub({
                   }
                   className="w-full rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary px-3 py-2 text-sm text-theme-text-primary outline-none focus:border-teal"
                 >
-                  {localOllamaStatus.models.length > 1 && (
+                  {(localOllamaStatus.models.length > 1 ||
+                    !selectedLocalOllamaModel) && (
                     <option value="">Select an installed model</option>
                   )}
                   {localOllamaStatus.models.map((model) => (

@@ -601,6 +601,20 @@ describe("SWARMSY HIVE action hub", () => {
     );
   });
 
+  it("renders model placeholder when selection is empty even with one installed model", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyLocalUserSettingsHub/index.jsx"
+      ),
+      "utf8"
+    );
+    expect(source).toMatch(
+      /\(localOllamaStatus\.models\.length > 1 \|\|\s*!selectedLocalOllamaModel\) &&/
+    );
+    expect(source).not.toContain("localOllamaStatus.models.length > 1 && (");
+  });
+
   it("avoids Local User status fetches in hosted/admin mode", () => {
     const source = fs.readFileSync(
       path.resolve(
