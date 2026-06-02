@@ -32,7 +32,12 @@ describe("SWARMSY local user storage contract", () => {
       });
 
       expect(root).toBe(
-        path.join("/Users/alice", "Library", "Application Support", "SWARMSY")
+        path.posix.join(
+          "/Users/alice",
+          "Library",
+          "Application Support",
+          "SWARMSY"
+        )
       );
     });
 
@@ -43,7 +48,7 @@ describe("SWARMSY local user storage contract", () => {
         homeDir: "/home/alice",
       });
 
-      expect(root).toBe(path.join("/home/alice/.xdg", "swarmsy"));
+      expect(root).toBe(path.posix.join("/home/alice/.xdg", "swarmsy"));
     });
 
     it("uses safe fallback for unknown platforms", () => {
@@ -52,7 +57,7 @@ describe("SWARMSY local user storage contract", () => {
         homeDir: "/home/alice",
       });
 
-      expect(root).toBe(path.join("/home/alice", ".config", "swarmsy"));
+      expect(root).toBe(path.posix.join("/home/alice", ".config", "swarmsy"));
     });
   });
 
@@ -66,7 +71,7 @@ describe("SWARMSY local user storage contract", () => {
       expect(Object.keys(layout.paths).sort()).toEqual([...REQUIRED_PATH_KEYS].sort());
 
       for (const [key, segment] of Object.entries(STORAGE_LAYOUT_SEGMENTS)) {
-        expect(layout.paths[key]).toBe(path.join(layout.root, segment));
+        expect(layout.paths[key]).toBe(path.posix.join(layout.root, segment));
       }
     });
   });
@@ -98,7 +103,13 @@ describe("SWARMSY local user storage contract", () => {
     });
 
     it("rejects traversal outside root", () => {
-      const outside = path.resolve(layout.root, "..", "..", "server", "storage");
+      const outside = path.posix.resolve(
+        layout.root,
+        "..",
+        "..",
+        "server",
+        "storage"
+      );
       const result = validateLocalUserStoragePath(outside, { layout });
       expect(result.valid).toBe(false);
       expect(result.reason).toContain("inside the SWARMSY Local User data root");
