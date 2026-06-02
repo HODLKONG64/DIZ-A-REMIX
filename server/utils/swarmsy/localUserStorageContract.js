@@ -32,30 +32,25 @@ const MANIFEST_ALLOWED_TOP_LEVEL_KEYS = new Set([
   "paths",
 ]);
 
-function isLikelyWindowsPath(input = "") {
-  return /^[a-zA-Z]:\\/.test(input) || input.includes("\\");
-}
-
-function getPathModule(platform = process.platform, samplePath = "") {
-  if (platform === "win32" || isLikelyWindowsPath(samplePath)) {
-    return path.win32;
-  }
-  return path.posix;
+function getPathModule(platform = process.platform) {
+  return platform === "win32" ? path.win32 : path.posix;
 }
 
 function isPathInsideRoot(candidatePath, rootPath, pathModule) {
   const relative = pathModule.relative(rootPath, candidatePath);
+  const parentPrefix = `..${pathModule.sep}`;
   return (
     relative !== "" &&
     relative !== "." &&
-    !relative.startsWith("..") &&
+    relative !== ".." &&
+    !relative.startsWith(parentPrefix) &&
     !pathModule.isAbsolute(relative)
   );
 }
 
 function normalizeRoot(rootPath = "", platform = process.platform) {
   const cleaned = String(rootPath || "").trim();
-  return getPathModule(platform, cleaned).resolve(cleaned);
+  return getPathModule(platform).resolve(cleaned);
 }
 
 function getLocalUserDataRoot({
@@ -63,7 +58,7 @@ function getLocalUserDataRoot({
   env = process.env,
   homeDir = os.homedir(),
 } = {}) {
-  const pathModule = getPathModule(platform, homeDir);
+  const pathModule = getPathModule(platform);
   const normalizedHome = normalizeRoot(homeDir, platform);
 
   if (platform === "win32") {
@@ -96,7 +91,7 @@ function getLocalUserDataRoot({
 
 function getLocalUserStorageLayout(options = {}) {
   const root = getLocalUserDataRoot(options);
-  const pathModule = getPathModule(options.platform, root);
+  const pathModule = getPathModule(options.platform);
   const paths = {};
 
   for (const [key, segment] of Object.entries(STORAGE_LAYOUT_SEGMENTS)) {
@@ -121,11 +116,14 @@ function validateLocalUserStoragePath(
   }
 
   const resolvedLayout = layout || getLocalUserStorageLayout();
+  if (!resolvedLayout?.root || typeof resolvedLayout.root !== "string") {
+    return {
+      valid: false,
+      reason: "Storage layout root must be a non-empty string.",
+    };
+  }
   const platform = resolvedLayout.platform || process.platform;
-  const pathModule = getPathModule(
-    platform,
-    resolvedLayout.root || candidatePath
-  );
+  const pathModule = getPathModule(platform);
   const resolvedCandidate = normalizeRoot(candidatePath, platform);
   const resolvedRoot = normalizeRoot(resolvedLayout.root, platform);
 
@@ -148,7 +146,7 @@ function createLocalUserStorageManifest({
   createdAt = new Date().toISOString(),
   updatedAt = createdAt,
 } = {}) {
-  const pathModule = getPathModule(layout.platform, layout.root);
+  const pathModule = getPathModule(layout.platform);
   const manifestPaths = {};
   for (const key of REQUIRED_PATH_KEYS) {
     manifestPaths[key] =
@@ -230,6 +228,10 @@ function validateLocalUserStorageManifest(manifest, { layout } = {}) {
     errors.push("paths must be a plain object.");
   } else {
     const contractLayout = layout || getLocalUserStorageLayout();
+    if (!contractLayout?.root || typeof contractLayout.root !== "string") {
+      errors.push("Storage layout root must be a non-empty string.");
+      return { valid: false, errors };
+    }
 
     for (const key of Object.keys(manifest.paths)) {
       if (!REQUIRED_PATH_KEYS_SET.has(key)) {

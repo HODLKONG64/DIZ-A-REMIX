@@ -82,9 +82,51 @@ describe("SWARMSY local user storage contract", () => {
       homeDir: "/home/alice",
       env: { XDG_CONFIG_HOME: "/home/alice/.config" },
     });
+    const winLayout = getLocalUserStorageLayout({
+      platform: "win32",
+      homeDir: "C:\\Users\\alice",
+      env: { APPDATA: "C:\\Users\\alice\\AppData\\Roaming" },
+    });
+    const darwinLayout = getLocalUserStorageLayout({
+      platform: "darwin",
+      homeDir: "/Users/alice",
+    });
 
     it("accepts valid paths under local root", () => {
       const result = validateLocalUserStoragePath(layout.paths.profile, { layout });
+      expect(result.valid).toBe(true);
+    });
+
+    it("keeps linux path validation on posix semantics for backslash-looking paths", () => {
+      const result = validateLocalUserStoragePath(
+        "C:\\Users\\alice\\AppData\\Roaming\\SWARMSY\\profile",
+        { layout }
+      );
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain("inside the SWARMSY Local User data root");
+    });
+
+    it("keeps darwin path validation on posix semantics for backslash-looking paths", () => {
+      const result = validateLocalUserStoragePath(
+        "C:\\Users\\alice\\AppData\\Roaming\\SWARMSY\\profile",
+        { layout: darwinLayout }
+      );
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain("inside the SWARMSY Local User data root");
+    });
+
+    it("keeps win32 path validation on win32 semantics", () => {
+      const result = validateLocalUserStoragePath(winLayout.paths.profile, {
+        layout: winLayout,
+      });
+      expect(result.valid).toBe(true);
+    });
+
+    it("accepts child directory names that start with two dots", () => {
+      const result = validateLocalUserStoragePath(
+        path.posix.join(layout.root, "..foo"),
+        { layout }
+      );
       expect(result.valid).toBe(true);
     });
 
@@ -122,6 +164,30 @@ describe("SWARMSY local user storage contract", () => {
       );
 
       expect(result.valid).toBe(false);
+    });
+
+    it("rejects empty layout roots before any cwd-based fallback", () => {
+      const result = validateLocalUserStoragePath("/some/path", {
+        layout: { root: "", platform: "linux" },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe("Storage layout root must be a non-empty string.");
+    });
+
+    it("rejects undefined layout roots before any cwd-based fallback", () => {
+      const result = validateLocalUserStoragePath("/some/path", {
+        layout: { platform: "linux" },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe("Storage layout root must be a non-empty string.");
+    });
+
+    it("rejects null layout roots before any cwd-based fallback", () => {
+      const result = validateLocalUserStoragePath("/some/path", {
+        layout: { root: null, platform: "linux" },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe("Storage layout root must be a non-empty string.");
     });
   });
 
@@ -256,6 +322,17 @@ describe("SWARMSY local user storage contract", () => {
           error.includes('Unknown paths key "extraDir"')
         )
       ).toBe(true);
+    });
+
+    it("rejects manifest validation when storage layout root is invalid", () => {
+      const manifest = createLocalUserStorageManifest({ layout });
+      const validation = validateLocalUserStorageManifest(manifest, {
+        layout: { root: "", platform: "linux" },
+      });
+      expect(validation.valid).toBe(false);
+      expect(validation.errors).toContain(
+        "Storage layout root must be a non-empty string."
+      );
     });
   });
 });
