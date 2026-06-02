@@ -233,6 +233,82 @@ describe("SWARMSY local user storage contract", () => {
       );
     });
 
+    it("rejects win32 drive-relative homeDir (\\foo) and falls back to os.homedir", () => {
+      const homedirSpy = jest.spyOn(os, "homedir").mockReturnValue("C:\\Users\\fallback");
+      try {
+        const root = getLocalUserDataRoot({
+          platform: "win32",
+          env: {},
+          homeDir: "\\Users\\alice",
+        });
+        expect(root).toBe(
+          path.win32.join("C:\\Users\\fallback", "AppData", "Roaming", "SWARMSY")
+        );
+      } finally {
+        homedirSpy.mockRestore();
+      }
+    });
+
+    it("rejects win32 root-relative homeDir (/foo) and falls back to os.homedir", () => {
+      const homedirSpy = jest.spyOn(os, "homedir").mockReturnValue("C:\\Users\\fallback");
+      try {
+        const root = getLocalUserDataRoot({
+          platform: "win32",
+          env: {},
+          homeDir: "/Users/alice",
+        });
+        expect(root).toBe(
+          path.win32.join("C:\\Users\\fallback", "AppData", "Roaming", "SWARMSY")
+        );
+      } finally {
+        homedirSpy.mockRestore();
+      }
+    });
+
+    it("accepts UNC homeDir on win32 platform", () => {
+      const root = getLocalUserDataRoot({
+        platform: "win32",
+        env: {},
+        homeDir: "\\\\server\\share\\alice",
+      });
+      expect(root).toBe(
+        path.win32.join("\\\\server\\share\\alice", "AppData", "Roaming", "SWARMSY")
+      );
+    });
+
+    it("rejects win32 drive-relative APPDATA (\\foo) and falls back to home-based path", () => {
+      const root = getLocalUserDataRoot({
+        platform: "win32",
+        env: { APPDATA: "\\Users\\alice\\AppData\\Roaming" },
+        homeDir: "C:\\Users\\alice",
+      });
+      expect(root).toBe(
+        path.win32.join("C:\\Users\\alice", "AppData", "Roaming", "SWARMSY")
+      );
+    });
+
+    it("rejects win32 root-relative APPDATA (/foo) and falls back to home-based path", () => {
+      const root = getLocalUserDataRoot({
+        platform: "win32",
+        env: { APPDATA: "/Users/alice/AppData/Roaming" },
+        homeDir: "C:\\Users\\alice",
+      });
+      expect(root).toBe(
+        path.win32.join("C:\\Users\\alice", "AppData", "Roaming", "SWARMSY")
+      );
+    });
+
+    it("accepts UNC APPDATA on win32 platform", () => {
+      const root = getLocalUserDataRoot({
+        platform: "win32",
+        env: { APPDATA: "\\\\server\\share\\AppData\\Roaming" },
+        homeDir: "C:\\Users\\alice",
+      });
+      expect(root).toBe(
+        path.win32.join("\\\\server\\share\\AppData\\Roaming", "SWARMSY")
+      );
+    });
+
     it("trims platform string before branching", () => {
       const rootLinux = getLocalUserDataRoot({
         platform: "linux",

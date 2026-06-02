@@ -45,6 +45,16 @@ function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 
+function isStrictAbsolutePath(input, platform) {
+  if (!isNonEmptyString(input)) return false;
+  if (sanitizePlatform(platform) === "win32") {
+    return (
+      /^[a-zA-Z]:[\\/]/.test(input) || /^\\\\[^\\]+\\[^\\]+/.test(input)
+    );
+  }
+  return path.posix.isAbsolute(input);
+}
+
 function isStrictIsoTimestamp(value) {
   return (
     typeof value === "string" &&
@@ -83,7 +93,7 @@ function getLocalUserDataRoot({
   const pathModule = getPathModule(platform);
   const trimmedHomeDir = typeof homeDir === "string" ? homeDir.trim() : "";
   const safeHomeDir =
-    trimmedHomeDir && pathModule.isAbsolute(trimmedHomeDir)
+    isStrictAbsolutePath(trimmedHomeDir, platform)
       ? trimmedHomeDir
       : os.homedir();
   const normalizedHome = normalizeRoot(safeHomeDir, platform);
@@ -91,7 +101,7 @@ function getLocalUserDataRoot({
   if (platform === "win32") {
     const appData = String(env?.APPDATA || "").trim();
     const appDataAbsolute =
-      appData && pathModule.isAbsolute(appData) ? appData : "";
+      isStrictAbsolutePath(appData, platform) ? appData : "";
     const base = appDataAbsolute
       ? normalizeRoot(appDataAbsolute, platform)
       : pathModule.join(normalizedHome, "AppData", "Roaming");
