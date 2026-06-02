@@ -329,4 +329,123 @@ describe("SWARMSY desktop wrapper foundation", () => {
     expect(main.isExternalWebUrl("data:text/plain,hi")).toBe(false);
     expect(main.isExternalWebUrl("custom-protocol://launch")).toBe(false);
   });
+
+  it.each([
+    ["malformed start URL", "not a valid url"],
+    ["unsupported protocol", "file:///tmp/swarmsy.txt"],
+  ])("renders the launch failure page for %s", async (_label, configuredUrl) => {
+    jest.resetModules();
+    jest.doMock(
+      "electron",
+      () => ({
+        app: {},
+        BrowserWindow: jest.fn(),
+        ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+        shell: { openExternal: jest.fn() },
+      }),
+      { virtual: true }
+    );
+
+    const previousStartUrl = process.env.SWARMSY_DESKTOP_START_URL;
+    process.env.SWARMSY_DESKTOP_START_URL = configuredUrl;
+
+    try {
+      const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
+      const webContents = {
+        setWindowOpenHandler: jest.fn(),
+        on: jest.fn(),
+      };
+      const loadURL = jest.fn().mockResolvedValue(undefined);
+      const BrowserWindowCtor = jest.fn(() => ({
+        webContents,
+        loadURL,
+      }));
+
+      await main.createWindow({ BrowserWindowCtor });
+
+      expect(loadURL).toHaveBeenCalledTimes(1);
+      expect(loadURL).toHaveBeenCalledWith(
+        expect.stringMatching(/^data:text\/html;charset=utf-8,/)
+      );
+
+      const failureMarkup = decodeURIComponent(loadURL.mock.calls[0][0].split(",")[1]);
+      expect(failureMarkup).toContain("SWARMSY Desktop Foundation Launch Failed");
+      expect(failureMarkup).toContain("SWARMSY_DESKTOP_START_URL");
+      expect(webContents.setWindowOpenHandler).not.toHaveBeenCalled();
+    } finally {
+      if (previousStartUrl === undefined) {
+        delete process.env.SWARMSY_DESKTOP_START_URL;
+      } else {
+        process.env.SWARMSY_DESKTOP_START_URL = previousStartUrl;
+      }
+    }
+  });
+
+  it("bootstrapDesktopApp renders the launch failure page without unhandled rejection", async () => {
+    jest.resetModules();
+    jest.doMock(
+      "electron",
+      () => ({
+        app: {},
+        BrowserWindow: jest.fn(),
+        ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+        shell: { openExternal: jest.fn() },
+      }),
+      { virtual: true }
+    );
+
+    const previousStartUrl = process.env.SWARMSY_DESKTOP_START_URL;
+    process.env.SWARMSY_DESKTOP_START_URL = "bad:// url";
+
+    const unhandledRejections = [];
+    const onUnhandledRejection = (error) => unhandledRejections.push(error);
+    process.on("unhandledRejection", onUnhandledRejection);
+
+    try {
+      const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
+      const webContents = {
+        setWindowOpenHandler: jest.fn(),
+        on: jest.fn(),
+      };
+      const loadURL = jest.fn().mockResolvedValue(undefined);
+      const BrowserWindowCtor = jest.fn(() => ({
+        webContents,
+        loadURL,
+      }));
+      BrowserWindowCtor.getAllWindows = jest.fn(() => []);
+
+      const appInstance = {
+        whenReady: jest.fn(() => Promise.resolve()),
+        on: jest.fn(),
+        quit: jest.fn(),
+      };
+      const ipcMainApi = {
+        handle: jest.fn(),
+        removeHandler: jest.fn(),
+      };
+
+      main.bootstrapDesktopApp({
+        appInstance,
+        BrowserWindowCtor,
+        ipcMainApi,
+        shellApi: { openExternal: jest.fn() },
+      });
+
+      await Promise.resolve();
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(unhandledRejections).toHaveLength(0);
+      expect(loadURL).toHaveBeenCalledTimes(1);
+      expect(loadURL).toHaveBeenCalledWith(
+        expect.stringMatching(/^data:text\/html;charset=utf-8,/)
+      );
+    } finally {
+      process.off("unhandledRejection", onUnhandledRejection);
+      if (previousStartUrl === undefined) {
+        delete process.env.SWARMSY_DESKTOP_START_URL;
+      } else {
+        process.env.SWARMSY_DESKTOP_START_URL = previousStartUrl;
+      }
+    }
+  });
 });

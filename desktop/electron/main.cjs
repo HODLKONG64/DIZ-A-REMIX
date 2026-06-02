@@ -130,7 +130,7 @@ function registerDesktopIpc({ ipcMainApi = ipcMain } = {}) {
 
 async function createWindow({
   BrowserWindowCtor = BrowserWindow,
-  startUrl = resolveStartUrl(),
+  startUrl = null,
   shellApi = shell,
 } = {}) {
   const window = new BrowserWindowCtor({
@@ -145,10 +145,12 @@ async function createWindow({
       preload: path.resolve(__dirname, "preload.cjs"),
     },
   });
-  configureWindowSecurity(window, startUrl, { shellApi });
 
   try {
-    await window.loadURL(startUrl);
+    const resolvedStartUrl =
+      startUrl !== null && startUrl !== undefined ? startUrl : resolveStartUrl();
+    configureWindowSecurity(window, resolvedStartUrl, { shellApi });
+    await window.loadURL(resolvedStartUrl);
   } catch (error) {
     await window.loadURL(renderFailurePage(error));
   }
