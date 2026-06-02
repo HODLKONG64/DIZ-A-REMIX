@@ -454,6 +454,8 @@ describe("SWARMSY desktop wrapper foundation", () => {
       );
       expect(failureMarkup).toContain("Expected local runtime URL");
       expect(failureMarkup).toContain("yarn desktop:dev");
+      expect(failureMarkup).toContain("http://127.0.0.1:3000");
+      expect(failureMarkup).toMatch(/Expected local runtime URL:.*<code>http:\/\/127\.0\.0\.1:3000<\/code>/s);
       expect(webContents.setWindowOpenHandler).not.toHaveBeenCalled();
     } finally {
       if (previousStartUrl === undefined) {
@@ -463,6 +465,115 @@ describe("SWARMSY desktop wrapper foundation", () => {
       }
     }
   });
+
+  it.each([
+    ["malformed URL", "not a valid url"],
+    ["unsupported protocol", "file:///tmp/swarmsy.txt"],
+    ["untrusted host", "https://evil.example.com"],
+    ["custom protocol", "custom-protocol://open"],
+  ])("resolveStartUrl does not throw for %s", (_label, configuredUrl) => {
+    jest.resetModules();
+    jest.doMock(
+      "electron",
+      () => ({
+        app: {},
+        BrowserWindow: jest.fn(),
+        ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+        shell: { openExternal: jest.fn() },
+      }),
+      { virtual: true }
+    );
+
+    const previousStartUrl = process.env.SWARMSY_DESKTOP_START_URL;
+    process.env.SWARMSY_DESKTOP_START_URL = configuredUrl;
+
+    try {
+      const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
+      expect(() => main.resolveStartUrl()).not.toThrow();
+      expect(typeof main.resolveStartUrl()).toBe("string");
+    } finally {
+      if (previousStartUrl === undefined) {
+        delete process.env.SWARMSY_DESKTOP_START_URL;
+      } else {
+        process.env.SWARMSY_DESKTOP_START_URL = previousStartUrl;
+      }
+    }
+  });
+
+  it("failure page for runtime_unreachable shows the attempted local URL", async () => {
+    jest.resetModules();
+    jest.doMock(
+      "electron",
+      () => ({
+        app: {},
+        BrowserWindow: jest.fn(),
+        ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+        shell: { openExternal: jest.fn() },
+      }),
+      { virtual: true }
+    );
+
+    const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
+    const loadURL = jest.fn().mockResolvedValue(undefined);
+    const BrowserWindowCtor = jest.fn(() => ({
+      webContents: { setWindowOpenHandler: jest.fn(), on: jest.fn() },
+      loadURL,
+    }));
+
+    await main.createWindow({
+      BrowserWindowCtor,
+      startUrl: "http://localhost:3001",
+      runtimeHealthcheck: jest.fn().mockResolvedValue({
+        ok: false,
+        reason: "runtime_unreachable",
+        message: "SWARMSY local runtime is not reachable at http://localhost:3001.",
+        startUrl: "http://localhost:3001",
+      }),
+    });
+
+    expect(loadURL).toHaveBeenCalledTimes(1);
+    const failureMarkup = decodeURIComponent(loadURL.mock.calls[0][0].split(",")[1]);
+    expect(failureMarkup).toContain("http://localhost:3001");
+  });
+
+  it("failure page for untrusted_host failure shows default expected URL", async () => {
+    jest.resetModules();
+    jest.doMock(
+      "electron",
+      () => ({
+        app: {},
+        BrowserWindow: jest.fn(),
+        ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+        shell: { openExternal: jest.fn() },
+      }),
+      { virtual: true }
+    );
+
+    const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
+    const loadURL = jest.fn().mockResolvedValue(undefined);
+    const BrowserWindowCtor = jest.fn(() => ({
+      webContents: { setWindowOpenHandler: jest.fn(), on: jest.fn() },
+      loadURL,
+    }));
+
+    await main.createWindow({
+      BrowserWindowCtor,
+      startUrl: "https://evil.example.com",
+      runtimeHealthcheck: jest.fn().mockResolvedValue({
+        ok: false,
+        reason: "untrusted_host",
+        message: "SWARMSY Desktop only connects to trusted local runtime hosts.",
+        startUrl: "https://evil.example.com",
+      }),
+    });
+
+    expect(loadURL).toHaveBeenCalledTimes(1);
+    const failureMarkup = decodeURIComponent(loadURL.mock.calls[0][0].split(",")[1]);
+    expect(failureMarkup).toContain("http://127.0.0.1:3000");
+    expect(failureMarkup).not.toContain("evil.example.com");
+  });
+
+
 
   it("bootstrapDesktopApp renders the launch failure page without unhandled rejection", async () => {
     jest.resetModules();

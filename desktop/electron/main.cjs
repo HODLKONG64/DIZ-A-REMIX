@@ -6,7 +6,6 @@ const {
 const {
   TRUSTED_DESKTOP_HOSTS,
   normalizeTrustedHost,
-  parseDesktopStartUrl,
   isTrustedDesktopOrigin,
   runDesktopRuntimeHealthcheck,
 } = require("../foundation/runtimeHealthcheck.cjs");
@@ -15,16 +14,7 @@ const STORAGE_CONTRACT_CHANNEL = "swarmsy:get-storage-contract";
 
 function resolveStartUrl() {
   const configured = String(process.env.SWARMSY_DESKTOP_START_URL || "").trim();
-  if (!configured) return "http://127.0.0.1:3000";
-
-  const parsed = parseDesktopStartUrl(configured);
-  if (!parsed.ok && parsed.reason !== "untrusted_host") {
-    throw new Error(
-      `SWARMSY_DESKTOP_START_URL must be a valid local http(s) URL. Received "${configured}". ${parsed.message}`
-    );
-  }
-  if (!parsed.ok) return configured;
-  return parsed.startUrl;
+  return configured || "http://127.0.0.1:3000";
 }
 
 function renderFailurePage(failure) {
@@ -38,9 +28,14 @@ function renderFailurePage(failure) {
   const message = String(
     failure?.message || failure || "Unknown desktop launch error"
   );
-  const expectedUrl = String(
-    failure?.startUrl || process.env.SWARMSY_DESKTOP_START_URL || "http://127.0.0.1:3000"
-  );
+  const expectedUrl =
+    failure?.reason === "runtime_unreachable"
+      ? String(
+          failure?.startUrl ||
+            process.env.SWARMSY_DESKTOP_START_URL ||
+            "http://127.0.0.1:3000"
+        )
+      : "http://127.0.0.1:3000";
   const escaped = escapeHtml(message);
   const escapedExpectedUrl = escapeHtml(expectedUrl);
 
