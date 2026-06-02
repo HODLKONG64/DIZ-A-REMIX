@@ -63,7 +63,18 @@ function isTrustedDesktopOrigin(targetUrl) {
 }
 
 function probeRuntimeReachability(startUrl, { timeoutMs = DEFAULT_RUNTIME_TIMEOUT_MS } = {}) {
-  const { parsed } = parseDesktopStartUrl(startUrl);
+  const parsedResult = parseDesktopStartUrl(startUrl);
+
+  if (!parsedResult.ok) {
+    return Promise.resolve({
+      ok: false,
+      reason: parsedResult.reason || "invalid_start_url",
+      message: parsedResult.message,
+      error: new Error(parsedResult.message),
+    });
+  }
+
+  const { parsed } = parsedResult;
   const transport = parsed.protocol === "https:" ? https : http;
 
   return new Promise((resolve) => {

@@ -7,6 +7,19 @@ const {
 describe("SWARMSY desktop wrapper foundation", () => {
   const repoRoot = path.resolve(__dirname, "../../..");
 
+  it("preload does not require local runtimeHealthcheck or non-Electron modules", () => {
+    const preloadSource = fs.readFileSync(
+      path.resolve(repoRoot, "desktop/electron/preload.cjs"),
+      "utf8"
+    );
+    expect(preloadSource).not.toMatch(/require\s*\(\s*["']\.\.\/foundation\/runtimeHealthcheck/);
+    expect(preloadSource).not.toMatch(/require\s*\(\s*["']\.\.\/foundation\/storageContractBridge/);
+    expect(preloadSource).not.toMatch(/require\s*\(\s*["']http[s"']/);
+    expect(preloadSource).not.toMatch(/require\s*\(\s*["']path["']/);
+    expect(preloadSource).not.toMatch(/require\s*\(\s*["']fs["']/);
+    expect(preloadSource).not.toMatch(/require\s*\(\s*["']os["']/);
+  });
+
   it("registers desktop foundation scripts at repo root", () => {
     const packageJson = JSON.parse(
       fs.readFileSync(path.resolve(repoRoot, "package.json"), "utf8")

@@ -79,4 +79,30 @@ describe("desktop runtime healthcheck foundation", () => {
       })
     );
   });
+
+  describe("probeRuntimeReachability direct call safety", () => {
+    it.each([
+      ["empty string", ""],
+      ["malformed URL", "not a valid url"],
+      ["file protocol", "file:///tmp/swarmsy.txt"],
+      ["javascript protocol", "javascript:alert(1)"],
+      ["data URL", "data:text/html,hello"],
+      ["custom protocol", "custom-protocol://open"],
+      ["untrusted host", "https://example.com"],
+    ])(
+      "returns structured { ok: false } without throwing for %s",
+      async (_label, startUrl) => {
+        const { probeRuntimeReachability } = require(healthcheckPath);
+        let result;
+        await expect(
+          (async () => {
+            result = await probeRuntimeReachability(startUrl);
+          })()
+        ).resolves.toBeUndefined();
+        expect(result.ok).toBe(false);
+        expect(typeof result.reason).toBe("string");
+        expect(result.reason.length).toBeGreaterThan(0);
+      }
+    );
+  });
 });
