@@ -23,18 +23,30 @@ const REQUIRED_PATH_KEYS = Object.freeze(Object.keys(STORAGE_LAYOUT_SEGMENTS));
 const FORBIDDEN_MANIFEST_FIELD_PATTERN =
   /(token|secret|api[_-]?key|auth|session|credential)/i;
 
-function isPathInsideRoot(candidatePath, rootPath) {
-  const relative = path.relative(rootPath, candidatePath);
+function isLikelyWindowsPath(input = "") {
+  return /^[a-zA-Z]:\\/.test(input) || input.includes("\\");
+}
+
+function getPathModule(platform = process.platform, samplePath = "") {
+  if (platform === "win32" || isLikelyWindowsPath(samplePath)) {
+    return path.win32;
+  }
+  return path.posix;
+}
+
+function isPathInsideRoot(candidatePath, rootPath, pathModule) {
+  const relative = pathModule.relative(rootPath, candidatePath);
   return (
     relative !== "" &&
     relative !== "." &&
     !relative.startsWith("..") &&
-    !path.isAbsolute(relative)
+    !pathModule.isAbsolute(relative)
   );
 }
 
-function normalizeRoot(rootPath = "") {
-  return path.resolve(String(rootPath || "").trim());
+function normalizeRoot(rootPath = "", platform = process.platform) {
+  const cleaned = String(rootPath || "").trim();
+  return getPathModule(platform, cleaned).resolve(cleaned);
 }
 
 function getLocalUserDataRoot({
@@ -42,38 +54,50 @@ function getLocalUserDataRoot({
   env = process.env,
   homeDir = os.homedir(),
 } = {}) {
-  const normalizedHome = normalizeRoot(homeDir);
+  const pathModule = getPathModule(platform, homeDir);
+  const normalizedHome = normalizeRoot(homeDir, platform);
 
   if (platform === "win32") {
     const appData = String(env?.APPDATA || "").trim();
-    const base = appData ? normalizeRoot(appData) : path.join(normalizedHome, "AppData", "Roaming");
-    return path.join(base, LOCAL_USER_APP_NAME);
+    const base = appData
+      ? normalizeRoot(appData, platform)
+      : pathModule.join(normalizedHome, "AppData", "Roaming");
+    return pathModule.join(base, LOCAL_USER_APP_NAME);
   }
 
   if (platform === "darwin") {
-    return path.join(normalizedHome, "Library", "Application Support", LOCAL_USER_APP_NAME);
+    return pathModule.join(
+      normalizedHome,
+      "Library",
+      "Application Support",
+      LOCAL_USER_APP_NAME
+    );
   }
 
   if (platform === "linux") {
     const xdgConfigHome = String(env?.XDG_CONFIG_HOME || "").trim();
-    const base = xdgConfigHome ? normalizeRoot(xdgConfigHome) : path.join(normalizedHome, ".config");
-    return path.join(base, "swarmsy");
+    const base = xdgConfigHome
+      ? normalizeRoot(xdgConfigHome, platform)
+      : pathModule.join(normalizedHome, ".config");
+    return pathModule.join(base, "swarmsy");
   }
 
-  return path.join(normalizedHome, ".config", "swarmsy");
+  return pathModule.join(normalizedHome, ".config", "swarmsy");
 }
 
 function getLocalUserStorageLayout(options = {}) {
   const root = getLocalUserDataRoot(options);
+  const pathModule = getPathModule(options.platform, root);
   const paths = {};
 
   for (const [key, segment] of Object.entries(STORAGE_LAYOUT_SEGMENTS)) {
-    paths[key] = path.join(root, segment);
+    paths[key] = pathModule.join(root, segment);
   }
 
   return {
     app: LOCAL_USER_APP_NAME,
     mode: LOCAL_USER_STORAGE_MODE,
+    platform: options.platform || process.platform,
     root,
     paths,
   };
@@ -84,15 +108,20 @@ function validateLocalUserStoragePath(candidatePath, { layout } = {}) {
     return { valid: false, reason: "Storage path must be a non-empty string." };
   }
 
-  const resolvedCandidate = normalizeRoot(candidatePath);
   const resolvedLayout = layout || getLocalUserStorageLayout();
-  const resolvedRoot = normalizeRoot(resolvedLayout.root);
+  const platform = resolvedLayout.platform || process.platform;
+  const pathModule = getPathModule(
+    platform,
+    resolvedLayout.root || candidatePath
+  );
+  const resolvedCandidate = normalizeRoot(candidatePath, platform);
+  const resolvedRoot = normalizeRoot(resolvedLayout.root, platform);
 
   if (resolvedCandidate === resolvedRoot) {
     return { valid: true, reason: null };
   }
 
-  if (!isPathInsideRoot(resolvedCandidate, resolvedRoot)) {
+  if (!isPathInsideRoot(resolvedCandidate, resolvedRoot, pathModule)) {
     return {
       valid: false,
       reason: "Storage path must stay inside the SWARMSY Local User data root.",
@@ -107,9 +136,12 @@ function createLocalUserStorageManifest({
   createdAt = new Date().toISOString(),
   updatedAt = createdAt,
 } = {}) {
+  const pathModule = getPathModule(layout.platform, layout.root);
   const manifestPaths = {};
   for (const key of REQUIRED_PATH_KEYS) {
-    manifestPaths[key] = layout.paths?.[key] || path.join(layout.root, STORAGE_LAYOUT_SEGMENTS[key]);
+    manifestPaths[key] =
+      layout.paths?.[key] ||
+      pathModule.join(layout.root, STORAGE_LAYOUT_SEGMENTS[key]);
   }
 
   return {
@@ -126,41 +158,57 @@ function createLocalUserStorageManifest({
 function validateLocalUserStorageManifest(manifest, { layout } = {}) {
   const errors = [];
 
-  if (manifest === null || typeof manifest !== "object" || Array.isArray(manifest)) {
+  if (
+    manifest === null ||
+    typeof manifest !== "object" ||
+    Array.isArray(manifest)
+  ) {
     return { valid: false, errors: ["Manifest must be a plain object."] };
   }
 
   if (manifest.schema !== LOCAL_USER_STORAGE_SCHEMA) {
     errors.push(
-      `Invalid schema \"${manifest.schema}\". Expected \"${LOCAL_USER_STORAGE_SCHEMA}\".`
+      `Invalid schema "${manifest.schema}". Expected "${LOCAL_USER_STORAGE_SCHEMA}".`
     );
   }
 
   if (manifest.version !== LOCAL_USER_STORAGE_VERSION) {
     errors.push(
-      `Unsupported manifest version \"${manifest.version}\". Expected ${LOCAL_USER_STORAGE_VERSION}.`
+      `Unsupported manifest version "${manifest.version}". Expected ${LOCAL_USER_STORAGE_VERSION}.`
     );
   }
 
   if (manifest.app !== LOCAL_USER_APP_NAME) {
-    errors.push(`Invalid app \"${manifest.app}\". Expected \"${LOCAL_USER_APP_NAME}\".`);
+    errors.push(
+      `Invalid app "${manifest.app}". Expected "${LOCAL_USER_APP_NAME}".`
+    );
   }
 
   if (manifest.mode !== LOCAL_USER_STORAGE_MODE) {
     errors.push(
-      `Invalid mode \"${manifest.mode}\". Expected \"${LOCAL_USER_STORAGE_MODE}\".`
+      `Invalid mode "${manifest.mode}". Expected "${LOCAL_USER_STORAGE_MODE}".`
     );
   }
 
-  if (typeof manifest.createdAt !== "string" || Number.isNaN(Date.parse(manifest.createdAt))) {
+  if (
+    typeof manifest.createdAt !== "string" ||
+    Number.isNaN(Date.parse(manifest.createdAt))
+  ) {
     errors.push("createdAt must be a valid ISO date string.");
   }
 
-  if (typeof manifest.updatedAt !== "string" || Number.isNaN(Date.parse(manifest.updatedAt))) {
+  if (
+    typeof manifest.updatedAt !== "string" ||
+    Number.isNaN(Date.parse(manifest.updatedAt))
+  ) {
     errors.push("updatedAt must be a valid ISO date string.");
   }
 
-  if (manifest.paths === null || typeof manifest.paths !== "object" || Array.isArray(manifest.paths)) {
+  if (
+    manifest.paths === null ||
+    typeof manifest.paths !== "object" ||
+    Array.isArray(manifest.paths)
+  ) {
     errors.push("paths must be a plain object.");
   } else {
     const contractLayout = layout || getLocalUserStorageLayout();
@@ -184,14 +232,18 @@ function validateLocalUserStorageManifest(manifest, { layout } = {}) {
   for (const topLevelKey of Object.keys(manifest)) {
     if (topLevelKey === "paths") continue;
     if (FORBIDDEN_MANIFEST_FIELD_PATTERN.test(topLevelKey)) {
-      errors.push(`Forbidden manifest field \"${topLevelKey}\" is not allowed.`);
+      errors.push(`Forbidden manifest field "${topLevelKey}" is not allowed.`);
     }
   }
 
-  if (manifest.paths && typeof manifest.paths === "object" && !Array.isArray(manifest.paths)) {
+  if (
+    manifest.paths &&
+    typeof manifest.paths === "object" &&
+    !Array.isArray(manifest.paths)
+  ) {
     for (const key of Object.keys(manifest.paths)) {
       if (FORBIDDEN_MANIFEST_FIELD_PATTERN.test(key)) {
-        errors.push(`Forbidden path key \"${key}\" is not allowed.`);
+        errors.push(`Forbidden path key "${key}" is not allowed.`);
       }
     }
   }

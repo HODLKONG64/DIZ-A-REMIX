@@ -21,7 +21,7 @@ describe("SWARMSY local user storage contract", () => {
       });
 
       expect(root).toBe(
-        path.join("C:\\Users\\alice\\AppData\\Roaming", "SWARMSY")
+        path.win32.join("C:\\Users\\alice\\AppData\\Roaming", "SWARMSY")
       );
     });
 
