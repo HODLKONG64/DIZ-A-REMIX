@@ -196,22 +196,46 @@ function validateLocalUserStoragePath(
   return { valid: true, reason: null };
 }
 
+function isUsableLocalUserStorageLayout(layout) {
+  if (!layout || typeof layout !== "object" || Array.isArray(layout)) return false;
+  const platform = sanitizePlatform(layout.platform);
+  const root = typeof layout.root === "string" ? layout.root.trim() : "";
+  if (!root) return false;
+  if (!isStrictAbsolutePath(root, platform)) return false;
+
+  if (layout.paths !== undefined) {
+    if (
+      !layout.paths ||
+      typeof layout.paths !== "object" ||
+      Array.isArray(layout.paths)
+    )
+      return false;
+    const pathModule = getPathModule(platform);
+    const resolvedRoot = normalizeRoot(root, platform);
+    for (const [key, value] of Object.entries(layout.paths)) {
+      if (!REQUIRED_PATH_KEYS_SET.has(key)) return false;
+      if (!isNonEmptyString(value)) return false;
+      if (!isStrictAbsolutePath(value, platform)) return false;
+      const resolvedValue = normalizeRoot(value, platform);
+      if (!isPathInsideRoot(resolvedValue, resolvedRoot, pathModule)) return false;
+    }
+  }
+
+  return true;
+}
+
 function createLocalUserStorageManifest({
   layout,
   createdAt = new Date().toISOString(),
   updatedAt = createdAt,
 } = {}) {
-  const resolvedLayout =
-    layout &&
-    typeof layout === "object" &&
-    !Array.isArray(layout) &&
-    isNonEmptyString(layout.root)
-      ? {
-          ...layout,
-          root: layout.root.trim(),
-          platform: sanitizePlatform(layout.platform),
-        }
-      : getLocalUserStorageLayout();
+  const resolvedLayout = isUsableLocalUserStorageLayout(layout)
+    ? {
+        ...layout,
+        root: layout.root.trim(),
+        platform: sanitizePlatform(layout.platform),
+      }
+    : getLocalUserStorageLayout();
   const pathModule = getPathModule(resolvedLayout.platform);
   const manifestPaths = {};
   for (const key of REQUIRED_PATH_KEYS) {

@@ -653,6 +653,102 @@ describe("SWARMSY local user storage contract", () => {
       expect(Object.keys(manifest.paths).sort()).toEqual([...REQUIRED_PATH_KEYS].sort());
     });
 
+    it("falls back to default layout and validates when layout.root is relative (e.g. 'tmp')", () => {
+      const manifest = createLocalUserStorageManifest({ layout: { root: "tmp" } });
+      expect(manifest.schema).toBe(LOCAL_USER_STORAGE_SCHEMA);
+      expect(Object.keys(manifest.paths).sort()).toEqual([...REQUIRED_PATH_KEYS].sort());
+      const validation = validateLocalUserStorageManifest(manifest);
+      expect(validation.valid).toBe(true);
+    });
+
+    it("falls back to default layout and validates when layout.root is dot-relative (e.g. './tmp')", () => {
+      const manifest = createLocalUserStorageManifest({ layout: { root: "./tmp" } });
+      expect(manifest.schema).toBe(LOCAL_USER_STORAGE_SCHEMA);
+      const validation = validateLocalUserStorageManifest(manifest);
+      expect(validation.valid).toBe(true);
+    });
+
+    it("falls back to default layout and validates when layout.root is parent-relative (e.g. '../tmp')", () => {
+      const manifest = createLocalUserStorageManifest({ layout: { root: "../tmp" } });
+      expect(manifest.schema).toBe(LOCAL_USER_STORAGE_SCHEMA);
+      const validation = validateLocalUserStorageManifest(manifest);
+      expect(validation.valid).toBe(true);
+    });
+
+    it("falls back to default layout when win32 layout.root is drive-relative (\\foo)", () => {
+      const manifest = createLocalUserStorageManifest({
+        layout: { root: "\\foo", platform: "win32" },
+      });
+      expect(manifest.schema).toBe(LOCAL_USER_STORAGE_SCHEMA);
+      expect(Object.keys(manifest.paths).sort()).toEqual([...REQUIRED_PATH_KEYS].sort());
+    });
+
+    it("falls back to default layout when win32 layout.root is root-relative (/foo)", () => {
+      const manifest = createLocalUserStorageManifest({
+        layout: { root: "/foo", platform: "win32" },
+      });
+      expect(manifest.schema).toBe(LOCAL_USER_STORAGE_SCHEMA);
+      expect(Object.keys(manifest.paths).sort()).toEqual([...REQUIRED_PATH_KEYS].sort());
+    });
+
+    it("accepts a win32 drive-letter layout.root and produces a valid manifest", () => {
+      const winLayout = getLocalUserStorageLayout({
+        platform: "win32",
+        homeDir: "C:\\Users\\alice",
+        env: { APPDATA: "C:\\Users\\alice\\AppData\\Roaming" },
+      });
+      const manifest = createLocalUserStorageManifest({
+        layout: winLayout,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      });
+      expect(manifest.schema).toBe(LOCAL_USER_STORAGE_SCHEMA);
+      const validation = validateLocalUserStorageManifest(manifest, { layout: winLayout });
+      expect(validation.valid).toBe(true);
+    });
+
+    it("falls back to default layout when layout.paths contains an unknown key", () => {
+      const manifest = createLocalUserStorageManifest({
+        layout: {
+          ...layout,
+          paths: { ...layout.paths, unknownKey: path.posix.join(layout.root, "unknown") },
+        },
+      });
+      expect(manifest.schema).toBe(LOCAL_USER_STORAGE_SCHEMA);
+      const validation = validateLocalUserStorageManifest(manifest);
+      expect(validation.valid).toBe(true);
+    });
+
+    it("falls back to default layout when a layout.paths value escapes root", () => {
+      const manifest = createLocalUserStorageManifest({
+        layout: {
+          ...layout,
+          paths: { ...layout.paths, profile: "/etc/passwd" },
+        },
+      });
+      expect(manifest.schema).toBe(LOCAL_USER_STORAGE_SCHEMA);
+      const validation = validateLocalUserStorageManifest(manifest);
+      expect(validation.valid).toBe(true);
+    });
+
+    it("falls back to default layout when layout.paths is an array", () => {
+      const manifest = createLocalUserStorageManifest({
+        layout: { ...layout, paths: [] },
+      });
+      expect(manifest.schema).toBe(LOCAL_USER_STORAGE_SCHEMA);
+      const validation = validateLocalUserStorageManifest(manifest);
+      expect(validation.valid).toBe(true);
+    });
+
+    it("falls back to default layout when a layout.paths value is relative", () => {
+      const manifest = createLocalUserStorageManifest({
+        layout: { ...layout, paths: { ...layout.paths, hives: "relative/path" } },
+      });
+      expect(manifest.schema).toBe(LOCAL_USER_STORAGE_SCHEMA);
+      const validation = validateLocalUserStorageManifest(manifest);
+      expect(validation.valid).toBe(true);
+    });
+
     it("rejects wrong schema", () => {
       const manifest = createLocalUserStorageManifest({ layout });
       manifest.schema = "wrong_schema";
