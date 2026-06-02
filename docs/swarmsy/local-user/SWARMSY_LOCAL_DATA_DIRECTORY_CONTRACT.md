@@ -22,7 +22,7 @@ Target root path for Local User app data:
 ## Required directory layout
 
 ```text
-SWARMSY/
+<app-data-root>/
   profile/
   settings/
   hives/

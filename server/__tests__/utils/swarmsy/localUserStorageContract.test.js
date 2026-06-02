@@ -184,5 +184,44 @@ describe("SWARMSY local user storage contract", () => {
       expect(validation.errors.some((error) => error.includes("sessionId"))).toBe(true);
       expect(validation.errors.some((error) => error.includes("apiKey"))).toBe(true);
     });
+
+    it("rejects unknown top-level field not related to secrets", () => {
+      const manifest = createLocalUserStorageManifest({ layout });
+      manifest.metadata = { extra: true };
+
+      const validation = validateLocalUserStorageManifest(manifest, { layout });
+      expect(validation.valid).toBe(false);
+      expect(
+        validation.errors.some((error) =>
+          error.includes('Unknown manifest field "metadata"')
+        )
+      ).toBe(true);
+    });
+
+    it("rejects unknown paths key not related to secrets", () => {
+      const manifest = createLocalUserStorageManifest({ layout });
+      manifest.paths.extraDir = layout.root + "/extra";
+
+      const validation = validateLocalUserStorageManifest(manifest, { layout });
+      expect(validation.valid).toBe(false);
+      expect(
+        validation.errors.some((error) =>
+          error.includes('Unknown paths key "extraDir"')
+        )
+      ).toBe(true);
+    });
+
+    it("rejects unknown paths key pointing outside root", () => {
+      const manifest = createLocalUserStorageManifest({ layout });
+      manifest.paths.extraDir = "/var/lib/anythingllm/server/storage";
+
+      const validation = validateLocalUserStorageManifest(manifest, { layout });
+      expect(validation.valid).toBe(false);
+      expect(
+        validation.errors.some((error) =>
+          error.includes('Unknown paths key "extraDir"')
+        )
+      ).toBe(true);
+    });
   });
 });

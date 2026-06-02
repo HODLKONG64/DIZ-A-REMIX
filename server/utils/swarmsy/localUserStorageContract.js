@@ -20,6 +20,18 @@ const STORAGE_LAYOUT_SEGMENTS = Object.freeze({
 });
 
 const REQUIRED_PATH_KEYS = Object.freeze(Object.keys(STORAGE_LAYOUT_SEGMENTS));
+const REQUIRED_PATH_KEYS_SET = new Set(REQUIRED_PATH_KEYS);
+
+const MANIFEST_ALLOWED_TOP_LEVEL_KEYS = new Set([
+  "schema",
+  "version",
+  "createdAt",
+  "updatedAt",
+  "app",
+  "mode",
+  "paths",
+]);
+
 const FORBIDDEN_MANIFEST_FIELD_PATTERN =
   /(token|secret|api[_-]?key|auth|session|credential)/i;
 
@@ -166,6 +178,12 @@ function validateLocalUserStorageManifest(manifest, { layout } = {}) {
     return { valid: false, errors: ["Manifest must be a plain object."] };
   }
 
+  for (const topLevelKey of Object.keys(manifest)) {
+    if (!MANIFEST_ALLOWED_TOP_LEVEL_KEYS.has(topLevelKey)) {
+      errors.push(`Unknown manifest field "${topLevelKey}" is not allowed.`);
+    }
+  }
+
   if (manifest.schema !== LOCAL_USER_STORAGE_SCHEMA) {
     errors.push(
       `Invalid schema "${manifest.schema}". Expected "${LOCAL_USER_STORAGE_SCHEMA}".`
@@ -213,6 +231,12 @@ function validateLocalUserStorageManifest(manifest, { layout } = {}) {
   } else {
     const contractLayout = layout || getLocalUserStorageLayout();
 
+    for (const key of Object.keys(manifest.paths)) {
+      if (!REQUIRED_PATH_KEYS_SET.has(key)) {
+        errors.push(`Unknown paths key "${key}" is not allowed.`);
+      }
+    }
+
     for (const key of REQUIRED_PATH_KEYS) {
       if (!Object.prototype.hasOwnProperty.call(manifest.paths, key)) {
         errors.push(`Missing required paths.${key}.`);
@@ -229,25 +253,6 @@ function validateLocalUserStorageManifest(manifest, { layout } = {}) {
     }
   }
 
-  for (const topLevelKey of Object.keys(manifest)) {
-    if (topLevelKey === "paths") continue;
-    if (FORBIDDEN_MANIFEST_FIELD_PATTERN.test(topLevelKey)) {
-      errors.push(`Forbidden manifest field "${topLevelKey}" is not allowed.`);
-    }
-  }
-
-  if (
-    manifest.paths &&
-    typeof manifest.paths === "object" &&
-    !Array.isArray(manifest.paths)
-  ) {
-    for (const key of Object.keys(manifest.paths)) {
-      if (FORBIDDEN_MANIFEST_FIELD_PATTERN.test(key)) {
-        errors.push(`Forbidden path key "${key}" is not allowed.`);
-      }
-    }
-  }
-
   return { valid: errors.length === 0, errors };
 }
 
@@ -258,6 +263,8 @@ module.exports = {
   LOCAL_USER_APP_NAME,
   STORAGE_LAYOUT_SEGMENTS,
   REQUIRED_PATH_KEYS,
+  REQUIRED_PATH_KEYS_SET,
+  MANIFEST_ALLOWED_TOP_LEVEL_KEYS,
   FORBIDDEN_MANIFEST_FIELD_PATTERN,
   getLocalUserDataRoot,
   getLocalUserStorageLayout,

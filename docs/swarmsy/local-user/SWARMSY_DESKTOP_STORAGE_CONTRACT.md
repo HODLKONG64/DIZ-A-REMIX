@@ -41,7 +41,8 @@ This is a spec + helper foundation only. It does not package desktop runtime yet
 - `paths` must include all required contract keys.
 - Every path must remain inside the resolved Local User data root.
 - Hosted/server paths are rejected by root-boundary validation.
-- Forbidden field names related to secrets are rejected (`token`, `auth`, `session`, `apiKey`, `secret`, `credential`).
+- Only the v1 schema keys are allowed at the top level (`schema`, `version`, `createdAt`, `updatedAt`, `app`, `mode`, `paths`); any other top-level key is rejected.
+- Only the required contract path keys are allowed inside `paths`; any unknown path key is rejected.
 
 ## Security boundary
 
@@ -73,6 +74,8 @@ Tests cover:
 - manifest schema/version/path validation
 - missing required paths rejection
 - path traversal/hosted-path rejection
+- unknown top-level field rejection (allowlist enforcement)
+- unknown paths key rejection (allowlist enforcement)
 - secret/auth/session/API-key field rejection
 
 ## Non-goals (this PR)
