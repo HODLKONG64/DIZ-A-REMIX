@@ -167,10 +167,14 @@ function bootstrapDesktopApp({
   registerDesktopIpc({ ipcMainApi });
 
   appInstance.whenReady().then(() => {
-    createWindow({ BrowserWindowCtor, shellApi });
+    createWindow({ BrowserWindowCtor, shellApi }).catch((error) => {
+      console.error("[desktop] Failed to create window:", error);
+    });
     appInstance.on("activate", () => {
       if (BrowserWindowCtor.getAllWindows().length === 0) {
-        createWindow({ BrowserWindowCtor, shellApi });
+        createWindow({ BrowserWindowCtor, shellApi }).catch((error) => {
+          console.error("[desktop] Failed to re-create window:", error);
+        });
       }
     });
   });

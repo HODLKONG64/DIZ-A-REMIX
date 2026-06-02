@@ -272,8 +272,18 @@ describe("SWARMSY desktop wrapper foundation", () => {
       { virtual: true }
     );
 
-    global.location = { href: "https://hosted.example.com" };
-    const preload = require(path.resolve(repoRoot, "desktop/electron/preload.cjs"));
+    const previousLocation = global.location;
+    let preload;
+    try {
+      global.location = { href: "https://hosted.example.com" };
+      preload = require(path.resolve(repoRoot, "desktop/electron/preload.cjs"));
+    } finally {
+      if (previousLocation === undefined) {
+        delete global.location;
+      } else {
+        global.location = previousLocation;
+      }
+    }
     expect(exposeInMainWorld).not.toHaveBeenCalled();
 
     const trustedContextBridge = { exposeInMainWorld: jest.fn() };
