@@ -536,8 +536,25 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toContain("const [showLocalUserSettingsHub, setShowLocalUserSettingsHub]");
     expect(source).toContain("setShowMenu(false);");
     expect(source).toContain("setShowLocalUserSettingsHub(true);");
-    expect(source).toContain("<ModalWrapper isOpen={showLocalUserSettingsHub}>");
-    expect(source).toContain("SwarmsyLocalUserSettingsHub controller={localUserSettingsHubController}");
+    expect(source).toContain("<LocalUserSettingsHubModal");
+    expect(source).toContain("if (!isOpen) return null;");
+    expect(source).toContain("const localUserSettingsHubController = useLocalUserSettingsHub();");
+  });
+
+  it("mounts Local User controller only while chat settings modal is open", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/WorkspaceChat/ChatContainer/ChatSettingsMenu/index.jsx"
+      ),
+      "utf8"
+    );
+    const lazyMountGateIndex = source.indexOf("if (!isOpen) return null;");
+    const hookMountIndex = source.indexOf(
+      "const localUserSettingsHubController = useLocalUserSettingsHub();"
+    );
+    expect(lazyMountGateIndex).toBeGreaterThan(-1);
+    expect(hookMountIndex).toBeGreaterThan(lazyMountGateIndex);
   });
 
   it("keeps Local User Settings Hub row as an entrypoint only (no row-local modal state)", () => {
@@ -549,6 +566,8 @@ describe("SWARMSY HIVE action hub", () => {
       "utf8"
     );
     expect(source).toContain("onOpen?.()");
+    expect(source).toContain("<button");
+    expect(source).toContain('type="button"');
     expect(source).not.toContain("useState(");
     expect(source).not.toContain("ModalWrapper");
   });
@@ -610,5 +629,21 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toContain('reason: "backup_import"');
     expect(source).toContain("window.addEventListener(LOCAL_USER_SETTINGS_SYNC_EVENT");
     expect(source).toContain("window.removeEventListener(");
+  });
+
+  it("uses declared onboarding dependencies for local-user sync event effect", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+    expect(source).toContain(
+      "}, [localOllamaStatus.status, localOllamaStatus.models]);"
+    );
+    expect(source).not.toContain(
+      "}, [hasVerifiedLocalOllamaModels, localOllamaStatus.models]);"
+    );
   });
 });

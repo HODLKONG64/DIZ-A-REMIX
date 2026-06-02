@@ -525,7 +525,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
         LOCAL_USER_SETTINGS_SYNC_EVENT,
         syncFromSettingsHub
       );
-  }, [hasVerifiedLocalOllamaModels, localOllamaStatus.models]);
+  }, [localOllamaStatus.status, localOllamaStatus.models]);
 
   const copy = statusCopy(activeStatus);
   const intakeStarter = getIntakeStarterMessage(selectedMode);

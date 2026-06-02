@@ -9,14 +9,48 @@ import TextSizeRow from "./TextSize";
 import MemoriesRow from "./Memories";
 import LocalUserSettingsHubRow from "./LocalUserSettingsHubRow";
 
+function LocalUserSettingsHubModal({ isOpen, onClose }) {
+  if (!isOpen) return null;
+
+  return (
+    <ModalWrapper isOpen={isOpen}>
+      <LocalUserSettingsHubModalInner onClose={onClose} />
+    </ModalWrapper>
+  );
+}
+
+function LocalUserSettingsHubModalInner({ onClose }) {
+  const localUserSettingsHubController = useLocalUserSettingsHub();
+
+  return (
+    <div className="w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-2xl border border-theme-sidebar-border bg-theme-bg-primary p-4 shadow-2xl">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-base font-semibold text-theme-text-primary">
+          Local User Settings Hub
+        </h3>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary px-3 py-1 text-sm text-theme-text-primary"
+        >
+          Close
+        </button>
+      </div>
+      <SwarmsyLocalUserSettingsHub
+        controller={localUserSettingsHubController}
+      />
+    </div>
+  );
+}
+
 export default function ChatSettingsMenu() {
   const location = useLocation();
   const mode = useLoginMode();
   const [showMenu, setShowMenu] = useState(false);
-  const [showLocalUserSettingsHub, setShowLocalUserSettingsHub] = useState(false);
+  const [showLocalUserSettingsHub, setShowLocalUserSettingsHub] =
+    useState(false);
   const menuRef = useRef(null);
   const buttonRef = useRef(null);
-  const localUserSettingsHubController = useLocalUserSettingsHub();
 
   useEffect(() => {
     if (!showMenu) return;
@@ -82,23 +116,10 @@ export default function ChatSettingsMenu() {
           </div>
         )}
       </div>
-      <ModalWrapper isOpen={showLocalUserSettingsHub}>
-        <div className="w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-2xl border border-theme-sidebar-border bg-theme-bg-primary p-4 shadow-2xl">
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-base font-semibold text-theme-text-primary">
-              Local User Settings Hub
-            </h3>
-            <button
-              type="button"
-              onClick={() => setShowLocalUserSettingsHub(false)}
-              className="rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary px-3 py-1 text-sm text-theme-text-primary"
-            >
-              Close
-            </button>
-          </div>
-          <SwarmsyLocalUserSettingsHub controller={localUserSettingsHubController} />
-        </div>
-      </ModalWrapper>
+      <LocalUserSettingsHubModal
+        isOpen={showLocalUserSettingsHub}
+        onClose={() => setShowLocalUserSettingsHub(false)}
+      />
     </>
   );
 }
