@@ -1,27 +1,11 @@
 const { contextBridge, ipcRenderer } = require("electron");
+const {
+  TRUSTED_DESKTOP_HOSTS,
+  normalizeTrustedHost,
+  isTrustedDesktopOrigin,
+} = require("../foundation/runtimeHealthcheck.cjs");
 
 const STORAGE_CONTRACT_CHANNEL = "swarmsy:get-storage-contract";
-const TRUSTED_DESKTOP_HOSTS = new Set(["127.0.0.1", "localhost", "::1"]);
-
-function normalizeTrustedHost(hostname = "") {
-  return String(hostname || "")
-    .trim()
-    .replace(/^\[/, "")
-    .replace(/\]$/, "")
-    .toLowerCase();
-}
-
-function isTrustedDesktopOrigin(targetUrl) {
-  try {
-    const parsed = new URL(String(targetUrl || "").trim());
-    return (
-      (parsed.protocol === "http:" || parsed.protocol === "https:") &&
-      TRUSTED_DESKTOP_HOSTS.has(normalizeTrustedHost(parsed.hostname))
-    );
-  } catch {
-    return false;
-  }
-}
 
 function createDesktopBridge({ ipcRendererApi = ipcRenderer } = {}) {
   return {

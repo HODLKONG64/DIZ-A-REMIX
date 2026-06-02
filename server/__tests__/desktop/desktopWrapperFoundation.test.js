@@ -159,6 +159,12 @@ describe("SWARMSY desktop wrapper foundation", () => {
       BrowserWindowCtor,
       startUrl: "http://127.0.0.1:3000",
       shellApi,
+      runtimeHealthcheck: jest.fn().mockResolvedValue({
+        ok: true,
+        startUrl: "http://127.0.0.1:3000",
+        origin: "http://127.0.0.1:3000",
+        mode: "desktop_local_runtime",
+      }),
     });
 
     expect(BrowserWindowCtor).toHaveBeenCalledWith(
@@ -430,8 +436,11 @@ describe("SWARMSY desktop wrapper foundation", () => {
       );
 
       const failureMarkup = decodeURIComponent(loadURL.mock.calls[0][0].split(",")[1]);
-      expect(failureMarkup).toContain("SWARMSY Desktop Foundation Launch Failed");
-      expect(failureMarkup).toContain("SWARMSY_DESKTOP_START_URL");
+      expect(failureMarkup).toContain(
+        "SWARMSY Desktop could not reach the local runtime"
+      );
+      expect(failureMarkup).toContain("Expected local runtime URL");
+      expect(failureMarkup).toContain("yarn desktop:dev");
       expect(webContents.setWindowOpenHandler).not.toHaveBeenCalled();
     } finally {
       if (previousStartUrl === undefined) {
@@ -508,5 +517,48 @@ describe("SWARMSY desktop wrapper foundation", () => {
         process.env.SWARMSY_DESKTOP_START_URL = previousStartUrl;
       }
     }
+  });
+
+  it("renders launch failure page when trusted local runtime is unreachable", async () => {
+    jest.resetModules();
+    jest.doMock(
+      "electron",
+      () => ({
+        app: {},
+        BrowserWindow: jest.fn(),
+        ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+        shell: { openExternal: jest.fn() },
+      }),
+      { virtual: true }
+    );
+
+    const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
+    const webContents = {
+      setWindowOpenHandler: jest.fn(),
+      on: jest.fn(),
+    };
+    const loadURL = jest.fn().mockResolvedValue(undefined);
+    const BrowserWindowCtor = jest.fn(() => ({
+      webContents,
+      loadURL,
+    }));
+
+    await main.createWindow({
+      BrowserWindowCtor,
+      startUrl: "http://localhost:3000",
+      runtimeHealthcheck: jest.fn().mockResolvedValue({
+        ok: false,
+        reason: "runtime_unreachable",
+        message:
+          "SWARMSY local runtime is not reachable at http://localhost:3000.",
+        startUrl: "http://localhost:3000",
+      }),
+    });
+
+    expect(loadURL).toHaveBeenCalledTimes(1);
+    expect(loadURL).toHaveBeenCalledWith(
+      expect.stringMatching(/^data:text\/html;charset=utf-8,/)
+    );
+    expect(webContents.setWindowOpenHandler).not.toHaveBeenCalled();
   });
 });
