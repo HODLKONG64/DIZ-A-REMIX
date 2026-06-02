@@ -59,6 +59,68 @@ describe("SWARMSY desktop wrapper foundation", () => {
     ).toBe(path.win32.join("C:\\repo", "node_modules", ".bin", "electron.cmd"));
   });
 
+  it("uses shell: true when spawning the Electron shim on Windows", () => {
+    jest.resetModules();
+    const fs = require("fs");
+    const existsSyncSpy = jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+    try {
+      const { runDesktopDev } = require(path.resolve(
+        repoRoot,
+        "desktop/scripts/run-desktop-dev.cjs"
+      ));
+
+      const spawnImpl = jest.fn(() => ({ on: jest.fn() }));
+
+      runDesktopDev({
+        spawnImpl,
+        platform: "win32",
+        rootDir: path.resolve(repoRoot),
+        env: { ...process.env, SWARMSY_DESKTOP_START_URL: "http://localhost:3001" },
+      });
+
+      expect(spawnImpl).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.any(Array),
+        expect.objectContaining({ shell: true })
+      );
+    } finally {
+      existsSyncSpy.mockRestore();
+    }
+  });
+
+  it("does not set shell: true when spawning the Electron shim on macOS/Linux", () => {
+    jest.resetModules();
+    const fs = require("fs");
+    const existsSyncSpy = jest.spyOn(fs, "existsSync").mockReturnValue(true);
+
+    try {
+      const { runDesktopDev } = require(path.resolve(
+        repoRoot,
+        "desktop/scripts/run-desktop-dev.cjs"
+      ));
+
+      for (const platform of ["linux", "darwin"]) {
+        const spawnImpl = jest.fn(() => ({ on: jest.fn() }));
+
+        runDesktopDev({
+          spawnImpl,
+          platform,
+          rootDir: path.resolve(repoRoot),
+          env: { ...process.env, SWARMSY_DESKTOP_START_URL: "http://localhost:3001" },
+        });
+
+        expect(spawnImpl).toHaveBeenCalledWith(
+          expect.any(String),
+          expect.any(Array),
+          expect.not.objectContaining({ shell: true })
+        );
+      }
+    } finally {
+      existsSyncSpy.mockRestore();
+    }
+  });
+
   it("keeps BrowserWindow sandboxed and routes storage contract IPC through main", async () => {
     jest.resetModules();
     jest.doMock(

@@ -89,8 +89,8 @@ function getLocalUserDataRoot({
 } = {}) {
   platform = sanitizePlatform(platform);
   const pathModule = getPathModule(platform);
-  const safeHomeDir =
-    typeof homeDir === "string" && homeDir.trim() ? homeDir : os.homedir();
+  const trimmedHomeDir = typeof homeDir === "string" ? homeDir.trim() : "";
+  const safeHomeDir = trimmedHomeDir || os.homedir();
   const absoluteHomeDir = isStrictAbsolutePath(safeHomeDir, platform)
     ? safeHomeDir
     : os.homedir();

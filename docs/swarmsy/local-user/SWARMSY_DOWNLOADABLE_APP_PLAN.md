@@ -11,7 +11,7 @@ Create a downloadable SWARMSY user app while keeping the current hosted SWARMSY 
 - Do not change the current VPS/server app setup in this docs-first PR.
 - Do not remove Docker deployment.
 - Do not bundle Ollama or model weights in foundation work.
-- Do not ship signed installer/autoupdate in foundation work.
+- Do not ship signed installer/auto-update in foundation work.
 
 ## Target User Flow
 

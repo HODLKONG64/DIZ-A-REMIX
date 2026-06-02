@@ -66,6 +66,7 @@ Install Electron once in repo root:
     cwd: rootDir,
     stdio: "inherit",
     env,
+    shell: platform === "win32",
   });
 
   child.on("exit", (code, signal) => {
