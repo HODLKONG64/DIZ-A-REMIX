@@ -9,8 +9,17 @@ const {
   isTrustedDesktopOrigin,
   runDesktopRuntimeHealthcheck,
 } = require("../foundation/runtimeHealthcheck.cjs");
+const {
+  isDesktopRuntimeAutoStartEnabled,
+  getManualRuntimeStartCommand,
+  launchDesktopLocalRuntime,
+  waitForRuntimeHealthcheck,
+  stopDesktopLaunchedRuntime,
+} = require("../foundation/runtimeLauncher.cjs");
 
 const STORAGE_CONTRACT_CHANNEL = "swarmsy:get-storage-contract";
+const repoRoot = path.resolve(__dirname, "../..");
+let managedRuntimeChild = null;
 
 function resolveStartUrl() {
   const configured = String(process.env.SWARMSY_DESKTOP_START_URL || "").trim();
@@ -28,8 +37,18 @@ function renderFailurePage(failure) {
   const message = String(
     failure?.message || failure || "Unknown desktop launch error"
   );
+  const manualStartCommand = String(
+    failure?.manualStartCommand || "yarn desktop:runtime:dev"
+  );
+  const autoStartHint =
+    failure?.reason === "runtime_auto_start_disabled"
+      ? `<p>Auto-start is disabled by default. Set <code>SWARMSY_DESKTOP_AUTO_START_RUNTIME=true</code> to let desktop dev mode launch the local runtime.</p>`
+      : "";
   const expectedUrl =
     failure?.reason === "runtime_unreachable"
+      || failure?.reason === "runtime_auto_start_disabled"
+      || failure?.reason === "runtime_healthcheck_timeout"
+      || failure?.reason === "runtime_launch_failed"
       ? String(
           failure?.startUrl ||
             process.env.SWARMSY_DESKTOP_START_URL ||
@@ -45,7 +64,10 @@ function renderFailurePage(failure) {
         <h2>SWARMSY Desktop could not reach the local runtime</h2>
         <p>${escaped}</p>
         <p>Expected local runtime URL: <code>${escapedExpectedUrl}</code>.</p>
-        <p>Start the local runtime first (for example: <code>yarn dev:all</code>) and relaunch with <code>yarn desktop:dev</code>.</p>
+        ${autoStartHint}
+        <p>Start the local runtime first (for example: <code>${escapeHtml(
+          manualStartCommand
+        )}</code>) and relaunch with <code>yarn desktop:dev</code>.</p>
         <p>Hosted/Admin deployment is unchanged by this desktop local runtime foundation.</p>
       </body>
     </html>
@@ -120,10 +142,104 @@ function registerDesktopIpc({ ipcMainApi = ipcMain } = {}) {
   });
 }
 
+async function ensureDesktopRuntimeReady({
+  startUrl,
+  env = process.env,
+  rootDir = repoRoot,
+  runtimeHealthcheck = runDesktopRuntimeHealthcheck,
+  runtimeLauncher = launchDesktopLocalRuntime,
+  runtimeHealthWaiter = waitForRuntimeHealthcheck,
+  runtimeStopper = stopDesktopLaunchedRuntime,
+} = {}) {
+  const health = await runtimeHealthcheck({ startUrl });
+  if (health?.ok) {
+    return {
+      ok: true,
+      health,
+    };
+  }
+
+  if (health?.reason !== "runtime_unreachable") {
+    return {
+      ok: false,
+      failure: health,
+    };
+  }
+
+  if (!isDesktopRuntimeAutoStartEnabled({ env })) {
+    return {
+      ok: false,
+      failure: {
+        ...health,
+        reason: "runtime_auto_start_disabled",
+        message:
+          "SWARMSY local runtime is not reachable and desktop runtime auto-start is disabled.",
+        manualStartCommand: getManualRuntimeStartCommand({ env }),
+      },
+    };
+  }
+
+  const launchResult = await runtimeLauncher({
+    rootDir,
+    env,
+  });
+
+  if (!launchResult?.ok) {
+    return {
+      ok: false,
+      failure: {
+        ...launchResult,
+        startUrl,
+        manualStartCommand: getManualRuntimeStartCommand({ env }),
+      },
+    };
+  }
+
+  managedRuntimeChild = launchResult.child || managedRuntimeChild;
+
+  const waitedHealth = await runtimeHealthWaiter({
+    startUrl,
+    launchResult,
+    runtimeHealthcheckImpl: runtimeHealthcheck,
+  });
+
+  if (!waitedHealth?.ok) {
+    await runtimeStopper({
+      child: launchResult.child,
+    });
+    if (managedRuntimeChild === launchResult.child) {
+      managedRuntimeChild = null;
+    }
+    return {
+      ok: false,
+      failure: {
+        ...waitedHealth,
+        startUrl,
+        manualStartCommand: getManualRuntimeStartCommand({ env }),
+      },
+    };
+  }
+
+  return {
+    ok: true,
+    health: waitedHealth,
+  };
+}
+
+async function stopManagedRuntime({ runtimeStopper = stopDesktopLaunchedRuntime } = {}) {
+  if (!managedRuntimeChild) {
+    return { ok: true };
+  }
+  const child = managedRuntimeChild;
+  managedRuntimeChild = null;
+  return runtimeStopper({ child });
+}
+
 async function createWindow({
   BrowserWindowCtor = BrowserWindow,
   startUrl = null,
   shellApi = shell,
+  runtimeOrchestrator = ensureDesktopRuntimeReady,
   runtimeHealthcheck = runDesktopRuntimeHealthcheck,
 } = {}) {
   const window = new BrowserWindowCtor({
@@ -142,13 +258,23 @@ async function createWindow({
   try {
     const resolvedStartUrl =
       startUrl !== null && startUrl !== undefined ? startUrl : resolveStartUrl();
-    const health = await runtimeHealthcheck({ startUrl: resolvedStartUrl });
-    if (!health?.ok) {
-      await window.loadURL(renderFailurePage(health));
+    const runOrchestrator =
+      runtimeHealthcheck === runDesktopRuntimeHealthcheck
+        ? runtimeOrchestrator
+        : (options) =>
+            runtimeOrchestrator({
+              ...options,
+              runtimeHealthcheck,
+            });
+    const runtime = await runOrchestrator({
+      startUrl: resolvedStartUrl,
+    });
+    if (!runtime?.ok) {
+      await window.loadURL(renderFailurePage(runtime?.failure));
       return window;
     }
-    configureWindowSecurity(window, health.startUrl, { shellApi });
-    await window.loadURL(health.startUrl);
+    configureWindowSecurity(window, runtime.health.startUrl, { shellApi });
+    await window.loadURL(runtime.health.startUrl);
   } catch (error) {
     await window.loadURL(
       renderFailurePage({
@@ -166,6 +292,7 @@ function bootstrapDesktopApp({
   BrowserWindowCtor = BrowserWindow,
   ipcMainApi = ipcMain,
   shellApi = shell,
+  runtimeStopper = stopDesktopLaunchedRuntime,
 } = {}) {
   registerDesktopIpc({ ipcMainApi });
 
@@ -182,8 +309,14 @@ function bootstrapDesktopApp({
     });
   });
 
+  appInstance.on("before-quit", () => {
+    void stopManagedRuntime({ runtimeStopper });
+  });
+
   appInstance.on("window-all-closed", () => {
-    if (process.platform !== "darwin") appInstance.quit();
+    void stopManagedRuntime({ runtimeStopper }).finally(() => {
+      if (process.platform !== "darwin") appInstance.quit();
+    });
   });
 }
 
@@ -202,6 +335,8 @@ module.exports = {
   isExternalWebUrl,
   configureWindowSecurity,
   registerDesktopIpc,
+  ensureDesktopRuntimeReady,
+  stopManagedRuntime,
   createWindow,
   bootstrapDesktopApp,
 };
