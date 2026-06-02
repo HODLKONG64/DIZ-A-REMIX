@@ -21,7 +21,7 @@ Target root path for Local User app data:
 
 Deterministic root resolution rules:
 
-- `APPDATA` is used only when it is an absolute Windows path; blank/whitespace/relative values fall back to `~/AppData/Roaming`.
+- `APPDATA` is used only when it is a strict absolute Windows path, either a drive-letter path like `C:\Users\Alice\AppData\Roaming` or a UNC path like `\\server\share\AppData\Roaming`; blank, whitespace, relative, drive-relative/root-relative values like `\foo`, and root-relative values like `/foo` fall back to `~/AppData/Roaming`.
 - `XDG_CONFIG_HOME` is used only when it is an absolute POSIX path; blank/whitespace/relative values fall back to `~/.config`.
 
 ## Required directory layout
