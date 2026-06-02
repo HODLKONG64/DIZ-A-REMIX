@@ -93,13 +93,18 @@ function isExternalWebUrl(targetUrl) {
 
 function configureWindowSecurity(window, startUrl, { shellApi = shell } = {}) {
   const allowedOrigin = getOrigin(startUrl);
+  const openExternalSafely = (url) => {
+    void shellApi.openExternal(url).catch((error) => {
+      console.error("[desktop] Failed to open external URL:", error);
+    });
+  };
 
   window.webContents.setWindowOpenHandler(({ url }) => {
     if (
       shouldOpenExternally(url, allowedOrigin) &&
       isExternalWebUrl(url)
     ) {
-      shellApi.openExternal(url);
+      openExternalSafely(url);
     }
     return { action: "deny" };
   });
@@ -108,7 +113,7 @@ function configureWindowSecurity(window, startUrl, { shellApi = shell } = {}) {
     if (shouldOpenExternally(url, allowedOrigin)) {
       event.preventDefault();
       if (isExternalWebUrl(url)) {
-        shellApi.openExternal(url);
+        openExternalSafely(url);
       }
     }
   });

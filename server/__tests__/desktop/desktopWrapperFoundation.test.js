@@ -144,7 +144,7 @@ describe("SWARMSY desktop wrapper foundation", () => {
     );
 
     const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
-    const shellApi = { openExternal: jest.fn() };
+    const shellApi = { openExternal: jest.fn().mockResolvedValue(undefined) };
     const webContents = {
       setWindowOpenHandler: jest.fn(),
       on: jest.fn(),
@@ -338,6 +338,57 @@ describe("SWARMSY desktop wrapper foundation", () => {
     expect(main.isExternalWebUrl("javascript:alert(1)")).toBe(false);
     expect(main.isExternalWebUrl("data:text/plain,hi")).toBe(false);
     expect(main.isExternalWebUrl("custom-protocol://launch")).toBe(false);
+  });
+
+  it("handles openExternal rejections without unhandled errors", async () => {
+    jest.resetModules();
+    jest.doMock(
+      "electron",
+      () => ({
+        app: {},
+        BrowserWindow: jest.fn(),
+        ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+        shell: { openExternal: jest.fn() },
+      }),
+      { virtual: true }
+    );
+
+    const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
+    const webContents = {
+      setWindowOpenHandler: jest.fn(),
+      on: jest.fn(),
+    };
+    const openError = new Error("open failed");
+    const shellApi = { openExternal: jest.fn().mockRejectedValue(openError) };
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    try {
+      main.configureWindowSecurity(
+        { webContents },
+        "http://127.0.0.1:3000",
+        { shellApi }
+      );
+
+      const windowOpenHandler = webContents.setWindowOpenHandler.mock.calls[0][0];
+      windowOpenHandler({ url: "https://example.com/docs" });
+
+      const willNavigateHandler = webContents.on.mock.calls.find(
+        ([eventName]) => eventName === "will-navigate"
+      )[1];
+      willNavigateHandler({ preventDefault: jest.fn() }, "https://example.com");
+
+      await Promise.resolve();
+
+      expect(shellApi.openExternal).toHaveBeenCalledTimes(2);
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        "[desktop] Failed to open external URL:",
+        openError
+      );
+    } finally {
+      consoleErrorSpy.mockRestore();
+    }
   });
 
   it.each([
