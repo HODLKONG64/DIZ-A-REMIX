@@ -454,6 +454,12 @@ describe("SWARMSY local user storage contract", () => {
       expect(result.reason).toBe("Storage path must be a non-empty string.");
     });
 
+    it("rejects empty storage paths before any cwd-based fallback", () => {
+      const result = validateLocalUserStoragePath("", { layout });
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe("Storage path must be a non-empty string.");
+    });
+
     it("rejects relative candidate paths to avoid cwd-dependent resolution", () => {
       const result = validateLocalUserStoragePath("profile/data.json", { layout });
       expect(result.valid).toBe(false);
