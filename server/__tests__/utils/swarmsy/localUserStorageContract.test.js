@@ -98,6 +98,42 @@ describe("SWARMSY local user storage contract", () => {
         homedirSpy.mockRestore();
       }
     });
+
+    it("falls back to process.platform when platform is blank", () => {
+      const root = getLocalUserDataRoot({ platform: "", homeDir: "/home/alice" });
+      expect(typeof root).toBe("string");
+      expect(root.length).toBeGreaterThan(0);
+    });
+
+    it("falls back to process.platform when platform is whitespace", () => {
+      const root = getLocalUserDataRoot({ platform: "   ", homeDir: "/home/alice" });
+      expect(typeof root).toBe("string");
+      expect(root.length).toBeGreaterThan(0);
+    });
+
+    it("falls back to process.platform when platform is null", () => {
+      const root = getLocalUserDataRoot({ platform: null, homeDir: "/home/alice" });
+      expect(typeof root).toBe("string");
+      expect(root.length).toBeGreaterThan(0);
+    });
+
+    it("falls back to process.platform when platform is undefined", () => {
+      const root = getLocalUserDataRoot({ homeDir: "/home/alice" });
+      expect(typeof root).toBe("string");
+      expect(root.length).toBeGreaterThan(0);
+    });
+
+    it("trims platform string before branching", () => {
+      const rootLinux = getLocalUserDataRoot({
+        platform: "linux",
+        homeDir: "/home/alice",
+      });
+      const rootLinuxPadded = getLocalUserDataRoot({
+        platform: "  linux  ",
+        homeDir: "/home/alice",
+      });
+      expect(rootLinux).toBe(rootLinuxPadded);
+    });
   });
 
   describe("getLocalUserStorageLayout", () => {
@@ -111,6 +147,27 @@ describe("SWARMSY local user storage contract", () => {
 
       for (const [key, segment] of Object.entries(STORAGE_LAYOUT_SEGMENTS)) {
         expect(layout.paths[key]).toBe(path.posix.join(layout.root, segment));
+      }
+    });
+
+    it("reports a consistent platform when blank platform is passed", () => {
+      const layout = getLocalUserStorageLayout({ platform: "", homeDir: "/home/alice" });
+      expect(layout.platform).toBe(process.platform);
+    });
+
+    it("reports a consistent platform when null platform is passed", () => {
+      const layout = getLocalUserStorageLayout({ platform: null, homeDir: "/home/alice" });
+      expect(layout.platform).toBe(process.platform);
+    });
+
+    it("uses the same platform for root and paths when platform is sanitized", () => {
+      const layout = getLocalUserStorageLayout({
+        platform: "linux",
+        homeDir: "/home/alice",
+      });
+      expect(layout.platform).toBe("linux");
+      for (const childPath of Object.values(layout.paths)) {
+        expect(childPath.startsWith(layout.root)).toBe(true);
       }
     });
   });
@@ -269,6 +326,13 @@ describe("SWARMSY local user storage contract", () => {
       const validation = validateLocalUserStorageManifest(manifest, { layout });
       expect(validation.valid).toBe(true);
       expect(validation.errors).toHaveLength(0);
+    });
+
+    it("does not throw when layout is null, uses default layout", () => {
+      expect(() => createLocalUserStorageManifest({ layout: null })).not.toThrow();
+      const manifest = createLocalUserStorageManifest({ layout: null });
+      expect(manifest.schema).toBe(LOCAL_USER_STORAGE_SCHEMA);
+      expect(Object.keys(manifest.paths).sort()).toEqual([...REQUIRED_PATH_KEYS].sort());
     });
 
     it("rejects wrong schema", () => {

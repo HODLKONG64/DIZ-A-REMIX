@@ -54,10 +54,14 @@ function normalizeRoot(rootPath = "", platform = process.platform) {
 }
 
 function getLocalUserDataRoot({
-  platform = process.platform,
+  platform,
   env = process.env,
   homeDir = os.homedir(),
 } = {}) {
+  platform =
+    typeof platform === "string" && platform.trim()
+      ? platform.trim()
+      : process.platform;
   const pathModule = getPathModule(platform);
   const safeHomeDir =
     typeof homeDir === "string" && homeDir.trim() ? homeDir : os.homedir();
@@ -92,8 +96,12 @@ function getLocalUserDataRoot({
 }
 
 function getLocalUserStorageLayout(options = {}) {
-  const root = getLocalUserDataRoot(options);
-  const pathModule = getPathModule(options.platform);
+  const platform =
+    typeof options.platform === "string" && options.platform.trim()
+      ? options.platform.trim()
+      : process.platform;
+  const root = getLocalUserDataRoot({ ...options, platform });
+  const pathModule = getPathModule(platform);
   const paths = {};
 
   for (const [key, segment] of Object.entries(STORAGE_LAYOUT_SEGMENTS)) {
@@ -103,7 +111,7 @@ function getLocalUserStorageLayout(options = {}) {
   return {
     app: LOCAL_USER_APP_NAME,
     mode: LOCAL_USER_STORAGE_MODE,
-    platform: options.platform || process.platform,
+    platform,
     root,
     paths,
   };
@@ -148,16 +156,20 @@ function validateLocalUserStoragePath(
 }
 
 function createLocalUserStorageManifest({
-  layout = getLocalUserStorageLayout(),
+  layout,
   createdAt = new Date().toISOString(),
   updatedAt = createdAt,
 } = {}) {
-  const pathModule = getPathModule(layout.platform);
+  const resolvedLayout =
+    layout !== null && layout !== undefined && typeof layout === "object"
+      ? layout
+      : getLocalUserStorageLayout();
+  const pathModule = getPathModule(resolvedLayout.platform);
   const manifestPaths = {};
   for (const key of REQUIRED_PATH_KEYS) {
     manifestPaths[key] =
-      layout.paths?.[key] ||
-      pathModule.join(layout.root, STORAGE_LAYOUT_SEGMENTS[key]);
+      resolvedLayout.paths?.[key] ||
+      pathModule.join(resolvedLayout.root, STORAGE_LAYOUT_SEGMENTS[key]);
   }
 
   return {
