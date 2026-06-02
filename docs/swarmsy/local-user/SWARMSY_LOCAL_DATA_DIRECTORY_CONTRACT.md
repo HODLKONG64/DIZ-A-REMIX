@@ -19,6 +19,11 @@ Target root path for Local User app data:
 - **Linux:** `${XDG_CONFIG_HOME:-~/.config}/swarmsy`
 - **Unknown platform fallback:** `~/.config/swarmsy`
 
+Deterministic root resolution rules:
+
+- `APPDATA` is used only when it is an absolute Windows path; blank/whitespace/relative values fall back to `~/AppData/Roaming`.
+- `XDG_CONFIG_HOME` is used only when it is an absolute POSIX path; blank/whitespace/relative values fall back to `~/.config`.
+
 ## Required directory layout
 
 ```text

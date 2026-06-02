@@ -26,6 +26,34 @@ describe("SWARMSY local user storage contract", () => {
       );
     });
 
+    it("falls back to home-based Windows path when APPDATA is blank or relative", () => {
+      const expected = path.win32.join(
+        "C:\\Users\\alice",
+        "AppData",
+        "Roaming",
+        "SWARMSY"
+      );
+      const blankRoot = getLocalUserDataRoot({
+        platform: "win32",
+        env: { APPDATA: "" },
+        homeDir: "C:\\Users\\alice",
+      });
+      const whitespaceRoot = getLocalUserDataRoot({
+        platform: "win32",
+        env: { APPDATA: "   " },
+        homeDir: "C:\\Users\\alice",
+      });
+      const relativeRoot = getLocalUserDataRoot({
+        platform: "win32",
+        env: { APPDATA: "AppData\\Roaming" },
+        homeDir: "C:\\Users\\alice",
+      });
+
+      expect(blankRoot).toBe(expected);
+      expect(whitespaceRoot).toBe(expected);
+      expect(relativeRoot).toBe(expected);
+    });
+
     it("resolves macOS Application Support path", () => {
       const root = getLocalUserDataRoot({
         platform: "darwin",
@@ -50,6 +78,29 @@ describe("SWARMSY local user storage contract", () => {
       });
 
       expect(root).toBe(path.posix.join("/home/alice/.xdg", "swarmsy"));
+    });
+
+    it("falls back to ~/.config when XDG_CONFIG_HOME is blank or relative", () => {
+      const expected = path.posix.join("/home/alice", ".config", "swarmsy");
+      const blankRoot = getLocalUserDataRoot({
+        platform: "linux",
+        env: { XDG_CONFIG_HOME: "" },
+        homeDir: "/home/alice",
+      });
+      const whitespaceRoot = getLocalUserDataRoot({
+        platform: "linux",
+        env: { XDG_CONFIG_HOME: "   " },
+        homeDir: "/home/alice",
+      });
+      const relativeRoot = getLocalUserDataRoot({
+        platform: "linux",
+        env: { XDG_CONFIG_HOME: ".xdg" },
+        homeDir: "/home/alice",
+      });
+
+      expect(blankRoot).toBe(expected);
+      expect(whitespaceRoot).toBe(expected);
+      expect(relativeRoot).toBe(expected);
     });
 
     it("uses safe fallback for unknown platforms", () => {
@@ -199,7 +250,7 @@ describe("SWARMSY local user storage contract", () => {
         { layout }
       );
       expect(result.valid).toBe(false);
-      expect(result.reason).toContain("inside the SWARMSY Local User data root");
+      expect(result.reason).toBe("Storage path must be an absolute path.");
     });
 
     it("keeps darwin path validation on posix semantics for backslash-looking paths", () => {
@@ -208,7 +259,7 @@ describe("SWARMSY local user storage contract", () => {
         { layout: darwinLayout }
       );
       expect(result.valid).toBe(false);
-      expect(result.reason).toContain("inside the SWARMSY Local User data root");
+      expect(result.reason).toBe("Storage path must be an absolute path.");
     });
 
     it("keeps win32 path validation on win32 semantics", () => {
@@ -268,6 +319,12 @@ describe("SWARMSY local user storage contract", () => {
       expect(result.reason).toBe("Storage path must be a non-empty string.");
     });
 
+    it("rejects relative candidate paths to avoid cwd-dependent resolution", () => {
+      const result = validateLocalUserStoragePath("profile/data.json", { layout });
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe("Storage path must be an absolute path.");
+    });
+
     it("rejects empty layout roots before any cwd-based fallback", () => {
       const result = validateLocalUserStoragePath("/some/path", {
         layout: { root: "", platform: "linux" },
@@ -298,6 +355,14 @@ describe("SWARMSY local user storage contract", () => {
       });
       expect(result.valid).toBe(false);
       expect(result.reason).toBe("Storage layout root must be a non-empty string.");
+    });
+
+    it("rejects relative layout roots to avoid cwd-dependent resolution", () => {
+      const result = validateLocalUserStoragePath("/some/path", {
+        layout: { root: "relative/root", platform: "linux" },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe("Storage layout root must be an absolute path.");
     });
 
     it("sanitizes whitespace-only layout platform before picking path semantics", () => {

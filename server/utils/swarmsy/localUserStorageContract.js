@@ -86,8 +86,10 @@ function getLocalUserDataRoot({
 
   if (platform === "win32") {
     const appData = String(env?.APPDATA || "").trim();
-    const base = appData
-      ? normalizeRoot(appData, platform)
+    const appDataAbsolute =
+      appData && pathModule.isAbsolute(appData) ? appData : "";
+    const base = appDataAbsolute
+      ? normalizeRoot(appDataAbsolute, platform)
       : pathModule.join(normalizedHome, "AppData", "Roaming");
     return pathModule.join(base, LOCAL_USER_APP_NAME);
   }
@@ -103,8 +105,10 @@ function getLocalUserDataRoot({
 
   if (platform === "linux") {
     const xdgConfigHome = String(env?.XDG_CONFIG_HOME || "").trim();
-    const base = xdgConfigHome
-      ? normalizeRoot(xdgConfigHome, platform)
+    const xdgConfigHomeAbsolute =
+      xdgConfigHome && pathModule.isAbsolute(xdgConfigHome) ? xdgConfigHome : "";
+    const base = xdgConfigHomeAbsolute
+      ? normalizeRoot(xdgConfigHomeAbsolute, platform)
       : pathModule.join(normalizedHome, ".config");
     return pathModule.join(base, "swarmsy");
   }
@@ -152,6 +156,15 @@ function validateLocalUserStoragePath(
   }
   const platform = sanitizePlatform(resolvedLayout.platform);
   const pathModule = getPathModule(platform);
+  if (!pathModule.isAbsolute(trimmedCandidatePath)) {
+    return { valid: false, reason: "Storage path must be an absolute path." };
+  }
+  if (!pathModule.isAbsolute(trimmedRoot)) {
+    return {
+      valid: false,
+      reason: "Storage layout root must be an absolute path.",
+    };
+  }
   const resolvedCandidate = normalizeRoot(trimmedCandidatePath, platform);
   const resolvedRoot = normalizeRoot(trimmedRoot, platform);
 
