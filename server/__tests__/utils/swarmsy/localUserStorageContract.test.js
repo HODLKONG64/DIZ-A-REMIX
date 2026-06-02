@@ -512,6 +512,72 @@ describe("SWARMSY local user storage contract", () => {
       );
       expect(result.valid).toBe(true);
     });
+
+    it("rejects win32 drive-relative candidatePath (\\foo) as non-absolute", () => {
+      const result = validateLocalUserStoragePath("\\foo\\bar", {
+        layout: winLayout,
+      });
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe("Storage path must be an absolute path.");
+    });
+
+    it("rejects win32 root-relative candidatePath (/foo) as non-absolute", () => {
+      const result = validateLocalUserStoragePath("/foo/bar", {
+        layout: winLayout,
+      });
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe("Storage path must be an absolute path.");
+    });
+
+    it("rejects win32 drive-relative layout.root (\\foo) as non-absolute", () => {
+      const result = validateLocalUserStoragePath(
+        "C:\\Users\\Alice\\SWARMSY\\profile",
+        { layout: { root: "\\foo", platform: "win32" } }
+      );
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe("Storage layout root must be an absolute path.");
+    });
+
+    it("rejects win32 root-relative layout.root (/foo) as non-absolute", () => {
+      const result = validateLocalUserStoragePath(
+        "C:\\Users\\Alice\\SWARMSY\\profile",
+        { layout: { root: "/foo", platform: "win32" } }
+      );
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe("Storage layout root must be an absolute path.");
+    });
+
+    it("accepts win32 drive-letter candidatePath inside drive-letter root", () => {
+      const result = validateLocalUserStoragePath(
+        "C:\\Users\\Alice\\SWARMSY\\profile",
+        { layout: { root: "C:\\Users\\Alice\\SWARMSY", platform: "win32" } }
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("accepts win32 UNC candidatePath inside UNC root", () => {
+      const result = validateLocalUserStoragePath(
+        "\\\\server\\share\\SWARMSY\\profile",
+        { layout: { root: "\\\\server\\share\\SWARMSY", platform: "win32" } }
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("linux/darwin absolute POSIX paths still pass", () => {
+      const result = validateLocalUserStoragePath(
+        path.posix.join(darwinLayout.root, "hives"),
+        { layout: darwinLayout }
+      );
+      expect(result.valid).toBe(true);
+    });
+
+    it("linux/darwin relative paths still reject", () => {
+      const result = validateLocalUserStoragePath("hives/data", {
+        layout: darwinLayout,
+      });
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe("Storage path must be an absolute path.");
+    });
   });
 
   describe("manifest contract", () => {

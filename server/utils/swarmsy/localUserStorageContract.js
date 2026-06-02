@@ -170,10 +170,10 @@ function validateLocalUserStoragePath(
   }
   const platform = sanitizePlatform(resolvedLayout.platform);
   const pathModule = getPathModule(platform);
-  if (!pathModule.isAbsolute(trimmedCandidatePath)) {
+  if (!isStrictAbsolutePath(trimmedCandidatePath, platform)) {
     return { valid: false, reason: "Storage path must be an absolute path." };
   }
-  if (!pathModule.isAbsolute(trimmedRoot)) {
+  if (!isStrictAbsolutePath(trimmedRoot, platform)) {
     return {
       valid: false,
       reason: "Storage layout root must be an absolute path.",
