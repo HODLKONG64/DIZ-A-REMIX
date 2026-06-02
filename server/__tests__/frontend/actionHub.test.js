@@ -254,13 +254,7 @@ describe("SWARMSY HIVE action hub", () => {
 
     expect(source).toContain("ACTION_HUB_TITLE");
     expect(source).toContain("Choose the next command for SPARKY.");
-    expect(source).toContain("Local User Mode · Ollama");
-    expect(source).toContain("Model selection shell");
-    expect(source).toContain("Check again");
-    expect(source).toContain("Ollama was not detected.");
-    expect(source).toContain(
-      "Model selection is stored in Local User Mode browser storage"
-    );
+    expect(source).toContain("SwarmsyLocalUserSettingsHub");
   });
 
   it("wires abort-safe local-user Ollama sync in onboarding mount effect", () => {
@@ -461,7 +455,9 @@ describe("SWARMSY HIVE action hub", () => {
       "utf8"
     );
 
-    expect(source).toMatch(/isLocalUserMode && \([\s\S]*Backup &amp; Restore/);
+    expect(source).toMatch(
+      /isLocalUserMode && \([\s\S]*SwarmsyLocalUserSettingsHub/
+    );
   });
 
   it("adds runtime handoff contract payload for local-user ollama selection", () => {
@@ -514,7 +510,7 @@ describe("SWARMSY HIVE action hub", () => {
     const source = fs.readFileSync(
       path.resolve(
         __dirname,
-        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+        "../../../frontend/src/components/SwarmsyLocalUserSettingsHub/index.jsx"
       ),
       "utf8"
     );
@@ -526,5 +522,45 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).not.toMatch(
       /\(localOllamaStatus\.status === "unreachable" \|\|\s*localOllamaStatus\.status === "error"\)/
     );
+  });
+
+  it("exposes Local User Settings Hub in chat settings menu", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/WorkspaceChat/ChatContainer/ChatSettingsMenu/index.jsx"
+      ),
+      "utf8"
+    );
+    expect(source).toContain("LocalUserSettingsHubRow");
+  });
+
+  it("shows hosted/admin boundary copy in Local User Settings Hub", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyLocalUserSettingsHub/index.jsx"
+      ),
+      "utf8"
+    );
+    expect(source).toContain(
+      "Local User Mode is not active in this hosted/admin environment."
+    );
+    expect(source).toMatch(
+      /browser-side SWARMSY Local User settings[\s\S]*only/
+    );
+  });
+
+  it("avoids Local User status fetches in hosted/admin mode", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyLocalUserSettingsHub/useLocalUserSettingsHub.js"
+      ),
+      "utf8"
+    );
+    expect(source).toContain('const isHostedAdminMode = loginMode === "multi"');
+    expect(source).toContain("if (isHostedAdminMode) {");
+    expect(source).toContain("if (isHostedAdminMode) return;");
   });
 });
