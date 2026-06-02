@@ -28,7 +28,7 @@ describe("SWARMSY runtime chat flow wiring", () => {
     expect(source).toContain("const timeoutId = setTimeout");
     expect(source).toContain("return () => clearTimeout(timeoutId)");
     expect(source).toContain("const { pending: latestPending } = getPendingHomeMessageForDestination");
-    expect(source).toContain("const { pending: currentPending } = getPendingHomeMessageForDestination");
+    expect(source).toContain("const { pending: pendingHomeMessage } = getPendingHomeMessageForDestination");
     expect(source).toContain("if (shouldClearLegacy)");
     expect(source).toContain("sessionStorage.removeItem(PENDING_HOME_MESSAGE)");
   });
