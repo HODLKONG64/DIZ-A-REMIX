@@ -48,9 +48,7 @@ function isNonEmptyString(value) {
 function isStrictAbsolutePath(input, platform) {
   if (!isNonEmptyString(input)) return false;
   if (sanitizePlatform(platform) === "win32") {
-    return (
-      /^[a-zA-Z]:[\\/]/.test(input) || /^\\\\[^\\]+\\[^\\]+/.test(input)
-    );
+    return /^[a-zA-Z]:[\\/]/.test(input) || /^\\\\[^\\]+\\[^\\]+/.test(input);
   }
   return path.posix.isAbsolute(input);
 }
@@ -92,16 +90,16 @@ function getLocalUserDataRoot({
   platform = sanitizePlatform(platform);
   const pathModule = getPathModule(platform);
   const trimmedHomeDir = typeof homeDir === "string" ? homeDir.trim() : "";
-  const safeHomeDir =
-    isStrictAbsolutePath(trimmedHomeDir, platform)
-      ? trimmedHomeDir
-      : os.homedir();
+  const safeHomeDir = isStrictAbsolutePath(trimmedHomeDir, platform)
+    ? trimmedHomeDir
+    : os.homedir();
   const normalizedHome = normalizeRoot(safeHomeDir, platform);
 
   if (platform === "win32") {
     const appData = String(env?.APPDATA || "").trim();
-    const appDataAbsolute =
-      isStrictAbsolutePath(appData, platform) ? appData : "";
+    const appDataAbsolute = isStrictAbsolutePath(appData, platform)
+      ? appData
+      : "";
     const base = appDataAbsolute
       ? normalizeRoot(appDataAbsolute, platform)
       : pathModule.join(normalizedHome, "AppData", "Roaming");
@@ -120,7 +118,9 @@ function getLocalUserDataRoot({
   if (platform === "linux") {
     const xdgConfigHome = String(env?.XDG_CONFIG_HOME || "").trim();
     const xdgConfigHomeAbsolute =
-      xdgConfigHome && pathModule.isAbsolute(xdgConfigHome) ? xdgConfigHome : "";
+      xdgConfigHome && pathModule.isAbsolute(xdgConfigHome)
+        ? xdgConfigHome
+        : "";
     const base = xdgConfigHomeAbsolute
       ? normalizeRoot(xdgConfigHomeAbsolute, platform)
       : pathModule.join(normalizedHome, ".config");
@@ -197,7 +197,8 @@ function validateLocalUserStoragePath(
 }
 
 function isUsableLocalUserStorageLayout(layout) {
-  if (!layout || typeof layout !== "object" || Array.isArray(layout)) return false;
+  if (!layout || typeof layout !== "object" || Array.isArray(layout))
+    return false;
   const platform = sanitizePlatform(layout.platform);
   const root = typeof layout.root === "string" ? layout.root.trim() : "";
   if (!root) return false;
@@ -217,7 +218,8 @@ function isUsableLocalUserStorageLayout(layout) {
       if (!isNonEmptyString(value)) return false;
       if (!isStrictAbsolutePath(value, platform)) return false;
       const resolvedValue = normalizeRoot(value, platform);
-      if (!isPathInsideRoot(resolvedValue, resolvedRoot, pathModule)) return false;
+      if (!isPathInsideRoot(resolvedValue, resolvedRoot, pathModule))
+        return false;
     }
   }
 
@@ -313,7 +315,9 @@ function validateLocalUserStorageManifest(manifest, { layout } = {}) {
   } else {
     const contractLayout = layout || getLocalUserStorageLayout();
     const trimmedRoot =
-      typeof contractLayout?.root === "string" ? contractLayout.root.trim() : "";
+      typeof contractLayout?.root === "string"
+        ? contractLayout.root.trim()
+        : "";
     if (!trimmedRoot) {
       errors.push("Storage layout root must be a non-empty string.");
       return { valid: false, errors };
