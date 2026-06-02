@@ -83,7 +83,7 @@ the set is skipped even if somehow present in the backup object).
 3. Returns a versioned backup object with `schema`, `version`, `exportedAt`,
    and `state`.
 
-The UI handler `exportBackupToFile()` (used by the Local User Settings Hub in onboarding and chat settings) :
+The UI handler `exportBackupToFile()` (used by the Local User Settings Hub in onboarding and chat settings):
 
 1. Calls `exportLocalUserBackup()`.
 2. Serialises the result with `JSON.stringify(backup, null, 2)`.

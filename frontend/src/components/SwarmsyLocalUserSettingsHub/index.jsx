@@ -28,6 +28,7 @@ export default function SwarmsyLocalUserSettingsHub({
   if (!controller) return null;
 
   const {
+    isLoginModePending,
     isHostedAdminMode,
     isLocalUserMode,
     isCheckingLocalOllama,
@@ -44,6 +45,12 @@ export default function SwarmsyLocalUserSettingsHub({
     exportBackupToFile,
     importBackupFromText,
   } = controller;
+
+  const isHostedBoundary = isHostedAdminMode && !isLocalUserMode;
+  const showNeutralPendingState = isLoginModePending && !isHostedBoundary;
+  const title = showNeutralPendingState
+    ? "Checking environment..."
+    : localOllamaStatusTitle;
 
   function handleImportBackupFile(event) {
     const file = event.target.files?.[0];
@@ -69,7 +76,7 @@ export default function SwarmsyLocalUserSettingsHub({
         <p className="text-sm font-semibold uppercase tracking-[0.2em]">
           Local User Settings Hub
         </p>
-        <h2 className="text-lg font-semibold">{localOllamaStatusTitle}</h2>
+        <h2 className="text-lg font-semibold">{title}</h2>
         <p className="text-sm leading-6">
           Manage Local User Mode status, Ollama model selection, and
           browser-side backup/import in one place.
@@ -80,9 +87,13 @@ export default function SwarmsyLocalUserSettingsHub({
         </p>
       </div>
 
-      {isHostedAdminMode && !isLocalUserMode ? (
+      {isHostedBoundary ? (
         <div className="mt-4 rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary p-3 text-sm">
           Local User Mode is not active in this hosted/admin environment.
+        </div>
+      ) : showNeutralPendingState ? (
+        <div className="mt-4 rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary p-3 text-sm">
+          Checking environment before Local User actions are available.
         </div>
       ) : (
         <>

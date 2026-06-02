@@ -88,6 +88,7 @@ function dispatchLocalUserSettingsSync(detail = {}) {
 
 export function useLocalUserSettingsHub() {
   const loginMode = useLoginMode();
+  const isLoginModePending = loginMode === null;
   const isHostedAdminMode = loginMode === "multi";
   const [isLocalUserMode, setIsLocalUserMode] = useState(false);
   const [isCheckingLocalOllama, setIsCheckingLocalOllama] = useState(false);
@@ -191,7 +192,7 @@ export function useLocalUserSettingsHub() {
   );
 
   const checkLocalUserOllama = useCallback(async () => {
-    if (isHostedAdminMode) return;
+    if (isLoginModePending || isHostedAdminMode) return;
     const controller = beginLocalUserOllamaRequest();
     try {
       await syncLocalUserOllamaStatus({ signal: controller.signal });
@@ -200,12 +201,25 @@ export function useLocalUserSettingsHub() {
     }
   }, [
     beginLocalUserOllamaRequest,
+    isLoginModePending,
     isHostedAdminMode,
     releaseLocalUserOllamaRequest,
     syncLocalUserOllamaStatus,
   ]);
 
   useEffect(() => {
+    if (isLoginModePending) {
+      setIsLocalUserMode(false);
+      setIsCheckingLocalOllama(false);
+      setLocalOllamaStatus({
+        status: "checking",
+        models: [],
+        endpoint: null,
+        message: null,
+      });
+      return;
+    }
+
     if (isHostedAdminMode) {
       setIsLocalUserMode(false);
       setIsCheckingLocalOllama(false);
@@ -224,6 +238,7 @@ export function useLocalUserSettingsHub() {
     });
   }, [
     beginLocalUserOllamaRequest,
+    isLoginModePending,
     isHostedAdminMode,
     releaseLocalUserOllamaRequest,
     syncLocalUserOllamaStatus,
@@ -423,6 +438,7 @@ export function useLocalUserSettingsHub() {
   );
 
   return {
+    isLoginModePending,
     isHostedAdminMode,
     isLocalUserMode,
     isCheckingLocalOllama,

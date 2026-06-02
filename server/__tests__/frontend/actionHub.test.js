@@ -533,6 +533,37 @@ describe("SWARMSY HIVE action hub", () => {
       "utf8"
     );
     expect(source).toContain("LocalUserSettingsHubRow");
+    expect(source).toContain("const [showLocalUserSettingsHub, setShowLocalUserSettingsHub]");
+    expect(source).toContain("setShowMenu(false);");
+    expect(source).toContain("setShowLocalUserSettingsHub(true);");
+    expect(source).toContain("<ModalWrapper isOpen={showLocalUserSettingsHub}>");
+    expect(source).toContain("SwarmsyLocalUserSettingsHub controller={localUserSettingsHubController}");
+  });
+
+  it("keeps Local User Settings Hub row as an entrypoint only (no row-local modal state)", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/WorkspaceChat/ChatContainer/ChatSettingsMenu/LocalUserSettingsHubRow.jsx"
+      ),
+      "utf8"
+    );
+    expect(source).toContain("onOpen?.()");
+    expect(source).not.toContain("useState(");
+    expect(source).not.toContain("ModalWrapper");
+  });
+
+  it("resets chat-settings menu and Local User modal state on route navigation", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/WorkspaceChat/ChatContainer/ChatSettingsMenu/index.jsx"
+      ),
+      "utf8"
+    );
+    expect(source).toContain("useLocation");
+    expect(source).toContain("setShowLocalUserSettingsHub(false);");
+    expect(source).toContain("}, [location.pathname]);");
   });
 
   it("shows hosted/admin boundary copy in Local User Settings Hub", () => {
@@ -559,8 +590,25 @@ describe("SWARMSY HIVE action hub", () => {
       ),
       "utf8"
     );
+    expect(source).toContain("const isLoginModePending = loginMode === null");
     expect(source).toContain('const isHostedAdminMode = loginMode === "multi"');
+    expect(source).toContain("if (isLoginModePending || isHostedAdminMode) return;");
+    expect(source).toContain("if (isLoginModePending) {");
     expect(source).toContain("if (isHostedAdminMode) {");
-    expect(source).toContain("if (isHostedAdminMode) return;");
+  });
+
+  it("keeps onboarding and settings hub synchronized via shared local-user settings sync event", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyLocalUserSettingsHub/useLocalUserSettingsHub.js"
+      ),
+      "utf8"
+    );
+    expect(source).toContain("dispatchLocalUserSettingsSync({");
+    expect(source).toContain('reason: "model_selection"');
+    expect(source).toContain('reason: "backup_import"');
+    expect(source).toContain("window.addEventListener(LOCAL_USER_SETTINGS_SYNC_EVENT");
+    expect(source).toContain("window.removeEventListener(");
   });
 });
