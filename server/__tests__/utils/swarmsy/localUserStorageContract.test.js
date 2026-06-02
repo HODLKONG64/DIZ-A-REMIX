@@ -1,3 +1,4 @@
+const os = require("os");
 const path = require("path");
 const {
   LOCAL_USER_STORAGE_SCHEMA,
@@ -58,6 +59,44 @@ describe("SWARMSY local user storage contract", () => {
       });
 
       expect(root).toBe(path.posix.join("/home/alice", ".config", "swarmsy"));
+    });
+
+    it("falls back to os.homedir for blank or non-string homeDir overrides", () => {
+      const homedirSpy = jest.spyOn(os, "homedir").mockReturnValue("/home/fallback");
+      try {
+        const expectedRoot = path.posix.join("/home/fallback", ".config", "swarmsy");
+
+        const blankRoot = getLocalUserDataRoot({
+          platform: "linux",
+          env: {},
+          homeDir: "",
+        });
+        const whitespaceRoot = getLocalUserDataRoot({
+          platform: "linux",
+          env: {},
+          homeDir: "   ",
+        });
+        const nullRoot = getLocalUserDataRoot({
+          platform: "linux",
+          env: {},
+          homeDir: null,
+        });
+
+        expect(blankRoot).toBe(expectedRoot);
+        expect(whitespaceRoot).toBe(expectedRoot);
+        expect(nullRoot).toBe(expectedRoot);
+
+        const cwdRoot = path.posix.join(
+          path.posix.resolve(process.cwd()),
+          ".config",
+          "swarmsy"
+        );
+        expect(blankRoot).not.toBe(cwdRoot);
+        expect(whitespaceRoot).not.toBe(cwdRoot);
+        expect(nullRoot).not.toBe(cwdRoot);
+      } finally {
+        homedirSpy.mockRestore();
+      }
     });
   });
 
@@ -166,6 +205,12 @@ describe("SWARMSY local user storage contract", () => {
       expect(result.valid).toBe(false);
     });
 
+    it("rejects whitespace-only storage paths before any cwd-based fallback", () => {
+      const result = validateLocalUserStoragePath("   ", { layout });
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe("Storage path must be a non-empty string.");
+    });
+
     it("rejects empty layout roots before any cwd-based fallback", () => {
       const result = validateLocalUserStoragePath("/some/path", {
         layout: { root: "", platform: "linux" },
@@ -185,6 +230,14 @@ describe("SWARMSY local user storage contract", () => {
     it("rejects null layout roots before any cwd-based fallback", () => {
       const result = validateLocalUserStoragePath("/some/path", {
         layout: { root: null, platform: "linux" },
+      });
+      expect(result.valid).toBe(false);
+      expect(result.reason).toBe("Storage layout root must be a non-empty string.");
+    });
+
+    it("rejects whitespace-only layout roots before any cwd-based fallback", () => {
+      const result = validateLocalUserStoragePath("/some/path", {
+        layout: { root: "   ", platform: "linux" },
       });
       expect(result.valid).toBe(false);
       expect(result.reason).toBe("Storage layout root must be a non-empty string.");
@@ -328,6 +381,17 @@ describe("SWARMSY local user storage contract", () => {
       const manifest = createLocalUserStorageManifest({ layout });
       const validation = validateLocalUserStorageManifest(manifest, {
         layout: { root: "", platform: "linux" },
+      });
+      expect(validation.valid).toBe(false);
+      expect(validation.errors).toContain(
+        "Storage layout root must be a non-empty string."
+      );
+    });
+
+    it("rejects manifest validation when storage layout root is whitespace-only", () => {
+      const manifest = createLocalUserStorageManifest({ layout });
+      const validation = validateLocalUserStorageManifest(manifest, {
+        layout: { root: "   ", platform: "linux" },
       });
       expect(validation.valid).toBe(false);
       expect(validation.errors).toContain(

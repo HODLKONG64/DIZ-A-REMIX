@@ -14,7 +14,7 @@ Define the filesystem contract for future downloadable SWARMSY Local User mode s
 
 Target root path for Local User app data:
 
-- **Windows:** `%APPDATA%/SWARMSY`
+- **Windows:** `%APPDATA%\SWARMSY`
 - **macOS:** `~/Library/Application Support/SWARMSY`
 - **Linux:** `${XDG_CONFIG_HOME:-~/.config}/swarmsy`
 - **Unknown platform fallback:** `~/.config/swarmsy`

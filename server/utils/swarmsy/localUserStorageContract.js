@@ -59,7 +59,9 @@ function getLocalUserDataRoot({
   homeDir = os.homedir(),
 } = {}) {
   const pathModule = getPathModule(platform);
-  const normalizedHome = normalizeRoot(homeDir, platform);
+  const safeHomeDir =
+    typeof homeDir === "string" && homeDir.trim() ? homeDir : os.homedir();
+  const normalizedHome = normalizeRoot(safeHomeDir, platform);
 
   if (platform === "win32") {
     const appData = String(env?.APPDATA || "").trim();
@@ -111,12 +113,16 @@ function validateLocalUserStoragePath(
   candidatePath,
   { layout, allowRoot = false } = {}
 ) {
-  if (!candidatePath || typeof candidatePath !== "string") {
+  const trimmedCandidatePath =
+    typeof candidatePath === "string" ? candidatePath.trim() : "";
+  if (!trimmedCandidatePath) {
     return { valid: false, reason: "Storage path must be a non-empty string." };
   }
 
   const resolvedLayout = layout || getLocalUserStorageLayout();
-  if (!resolvedLayout?.root || typeof resolvedLayout.root !== "string") {
+  const trimmedRoot =
+    typeof resolvedLayout?.root === "string" ? resolvedLayout.root.trim() : "";
+  if (!trimmedRoot) {
     return {
       valid: false,
       reason: "Storage layout root must be a non-empty string.",
@@ -124,8 +130,8 @@ function validateLocalUserStoragePath(
   }
   const platform = resolvedLayout.platform || process.platform;
   const pathModule = getPathModule(platform);
-  const resolvedCandidate = normalizeRoot(candidatePath, platform);
-  const resolvedRoot = normalizeRoot(resolvedLayout.root, platform);
+  const resolvedCandidate = normalizeRoot(trimmedCandidatePath, platform);
+  const resolvedRoot = normalizeRoot(trimmedRoot, platform);
 
   if (resolvedCandidate === resolvedRoot && allowRoot) {
     return { valid: true, reason: null };
@@ -228,7 +234,9 @@ function validateLocalUserStorageManifest(manifest, { layout } = {}) {
     errors.push("paths must be a plain object.");
   } else {
     const contractLayout = layout || getLocalUserStorageLayout();
-    if (!contractLayout?.root || typeof contractLayout.root !== "string") {
+    const trimmedRoot =
+      typeof contractLayout?.root === "string" ? contractLayout.root.trim() : "";
+    if (!trimmedRoot) {
       errors.push("Storage layout root must be a non-empty string.");
       return { valid: false, errors };
     }
