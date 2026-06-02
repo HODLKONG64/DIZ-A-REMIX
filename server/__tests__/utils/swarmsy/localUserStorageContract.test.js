@@ -174,6 +174,65 @@ describe("SWARMSY local user storage contract", () => {
       expect(root.length).toBeGreaterThan(0);
     });
 
+    it("falls back to os.homedir for relative homeDir overrides", () => {
+      const homedirSpy = jest.spyOn(os, "homedir").mockReturnValue("/home/fallback");
+      try {
+        const expectedRoot = path.posix.join("/home/fallback", ".config", "swarmsy");
+
+        const relativeRoot = getLocalUserDataRoot({
+          platform: "linux",
+          env: {},
+          homeDir: "tmp",
+        });
+        const dotRelativeRoot = getLocalUserDataRoot({
+          platform: "linux",
+          env: {},
+          homeDir: "./tmp",
+        });
+
+        expect(relativeRoot).toBe(expectedRoot);
+        expect(dotRelativeRoot).toBe(expectedRoot);
+
+        const cwdRoot = path.posix.join(
+          path.posix.resolve(process.cwd()),
+          ".config",
+          "swarmsy"
+        );
+        expect(relativeRoot).not.toBe(cwdRoot);
+        expect(dotRelativeRoot).not.toBe(cwdRoot);
+      } finally {
+        homedirSpy.mockRestore();
+      }
+    });
+
+    it("accepts absolute POSIX homeDir on linux/darwin platform", () => {
+      const linuxRoot = getLocalUserDataRoot({
+        platform: "linux",
+        env: {},
+        homeDir: "/home/alice",
+      });
+      expect(linuxRoot).toBe(path.posix.join("/home/alice", ".config", "swarmsy"));
+
+      const darwinRoot = getLocalUserDataRoot({
+        platform: "darwin",
+        homeDir: "/Users/alice",
+      });
+      expect(darwinRoot).toBe(
+        path.posix.join("/Users/alice", "Library", "Application Support", "SWARMSY")
+      );
+    });
+
+    it("accepts absolute win32 homeDir on win32 platform", () => {
+      const root = getLocalUserDataRoot({
+        platform: "win32",
+        env: {},
+        homeDir: "C:\\Users\\alice",
+      });
+      expect(root).toBe(
+        path.win32.join("C:\\Users\\alice", "AppData", "Roaming", "SWARMSY")
+      );
+    });
+
     it("trims platform string before branching", () => {
       const rootLinux = getLocalUserDataRoot({
         platform: "linux",

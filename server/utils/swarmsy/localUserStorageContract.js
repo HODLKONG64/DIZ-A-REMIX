@@ -42,7 +42,7 @@ function sanitizePlatform(platform) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim();
+  return typeof value === "string" && value.trim().length > 0;
 }
 
 function isStrictIsoTimestamp(value) {
@@ -81,7 +81,11 @@ function getLocalUserDataRoot({
 } = {}) {
   platform = sanitizePlatform(platform);
   const pathModule = getPathModule(platform);
-  const safeHomeDir = isNonEmptyString(homeDir) ? homeDir : os.homedir();
+  const trimmedHomeDir = typeof homeDir === "string" ? homeDir.trim() : "";
+  const safeHomeDir =
+    trimmedHomeDir && pathModule.isAbsolute(trimmedHomeDir)
+      ? trimmedHomeDir
+      : os.homedir();
   const normalizedHome = normalizeRoot(safeHomeDir, platform);
 
   if (platform === "win32") {
