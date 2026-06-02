@@ -299,6 +299,19 @@ describe("SWARMSY local user storage contract", () => {
       expect(result.valid).toBe(false);
       expect(result.reason).toBe("Storage layout root must be a non-empty string.");
     });
+
+    it("sanitizes whitespace-only layout platform before picking path semantics", () => {
+      const result = validateLocalUserStoragePath(
+        path.posix.join(layout.root, "profile"),
+        {
+          layout: {
+            ...layout,
+            platform: "   ",
+          },
+        }
+      );
+      expect(result.valid).toBe(true);
+    });
   });
 
   describe("manifest contract", () => {
@@ -335,6 +348,45 @@ describe("SWARMSY local user storage contract", () => {
       expect(Object.keys(manifest.paths).sort()).toEqual([...REQUIRED_PATH_KEYS].sort());
     });
 
+    it("does not throw when layout is an array, uses default layout", () => {
+      expect(() => createLocalUserStorageManifest({ layout: [] })).not.toThrow();
+      const manifest = createLocalUserStorageManifest({ layout: [] });
+      expect(manifest.schema).toBe(LOCAL_USER_STORAGE_SCHEMA);
+      expect(Object.keys(manifest.paths).sort()).toEqual([...REQUIRED_PATH_KEYS].sort());
+    });
+
+    it("does not throw when layout is an empty object, uses default layout", () => {
+      expect(() => createLocalUserStorageManifest({ layout: {} })).not.toThrow();
+      const manifest = createLocalUserStorageManifest({ layout: {} });
+      expect(manifest.schema).toBe(LOCAL_USER_STORAGE_SCHEMA);
+      expect(Object.keys(manifest.paths).sort()).toEqual([...REQUIRED_PATH_KEYS].sort());
+    });
+
+    it("creates a valid manifest when an invalid layout falls back to the default layout", () => {
+      const manifest = createLocalUserStorageManifest({ layout: {} });
+      const validation = validateLocalUserStorageManifest(manifest);
+      expect(validation.valid).toBe(true);
+      expect(validation.errors).toHaveLength(0);
+    });
+
+    it("does not throw when layout.root is empty, uses default layout", () => {
+      expect(() =>
+        createLocalUserStorageManifest({ layout: { root: "" } })
+      ).not.toThrow();
+      const manifest = createLocalUserStorageManifest({ layout: { root: "" } });
+      expect(manifest.schema).toBe(LOCAL_USER_STORAGE_SCHEMA);
+      expect(Object.keys(manifest.paths).sort()).toEqual([...REQUIRED_PATH_KEYS].sort());
+    });
+
+    it("does not throw when layout.root is whitespace-only, uses default layout", () => {
+      expect(() =>
+        createLocalUserStorageManifest({ layout: { root: "   " } })
+      ).not.toThrow();
+      const manifest = createLocalUserStorageManifest({ layout: { root: "   " } });
+      expect(manifest.schema).toBe(LOCAL_USER_STORAGE_SCHEMA);
+      expect(Object.keys(manifest.paths).sort()).toEqual([...REQUIRED_PATH_KEYS].sort());
+    });
+
     it("rejects wrong schema", () => {
       const manifest = createLocalUserStorageManifest({ layout });
       manifest.schema = "wrong_schema";
@@ -351,6 +403,17 @@ describe("SWARMSY local user storage contract", () => {
       const validation = validateLocalUserStorageManifest(manifest, { layout });
       expect(validation.valid).toBe(false);
       expect(validation.errors.some((error) => error.includes("Unsupported manifest version"))).toBe(true);
+    });
+
+    it("rejects loose non-ISO timestamp strings", () => {
+      const manifest = createLocalUserStorageManifest({ layout });
+      manifest.createdAt = "01/01/2026";
+      manifest.updatedAt = "2026-01-01 00:00:00";
+
+      const validation = validateLocalUserStorageManifest(manifest, { layout });
+      expect(validation.valid).toBe(false);
+      expect(validation.errors).toContain("createdAt must be a valid ISO date string.");
+      expect(validation.errors).toContain("updatedAt must be a valid ISO date string.");
     });
 
     it("rejects missing required paths", () => {

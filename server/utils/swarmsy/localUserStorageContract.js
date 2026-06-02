@@ -32,6 +32,27 @@ const MANIFEST_ALLOWED_TOP_LEVEL_KEYS = new Set([
   "paths",
 ]);
 
+const ISO_TIMESTAMP_PATTERN =
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?(?:Z|[+-]\d{2}:\d{2})$/;
+
+function sanitizePlatform(platform) {
+  return typeof platform === "string" && platform.trim()
+    ? platform.trim()
+    : process.platform;
+}
+
+function isNonEmptyString(value) {
+  return typeof value === "string" && value.trim();
+}
+
+function isStrictIsoTimestamp(value) {
+  return (
+    typeof value === "string" &&
+    ISO_TIMESTAMP_PATTERN.test(value) &&
+    !Number.isNaN(Date.parse(value))
+  );
+}
+
 function getPathModule(platform = process.platform) {
   return platform === "win32" ? path.win32 : path.posix;
 }
@@ -58,13 +79,9 @@ function getLocalUserDataRoot({
   env = process.env,
   homeDir = os.homedir(),
 } = {}) {
-  platform =
-    typeof platform === "string" && platform.trim()
-      ? platform.trim()
-      : process.platform;
+  platform = sanitizePlatform(platform);
   const pathModule = getPathModule(platform);
-  const safeHomeDir =
-    typeof homeDir === "string" && homeDir.trim() ? homeDir : os.homedir();
+  const safeHomeDir = isNonEmptyString(homeDir) ? homeDir : os.homedir();
   const normalizedHome = normalizeRoot(safeHomeDir, platform);
 
   if (platform === "win32") {
@@ -96,10 +113,7 @@ function getLocalUserDataRoot({
 }
 
 function getLocalUserStorageLayout(options = {}) {
-  const platform =
-    typeof options.platform === "string" && options.platform.trim()
-      ? options.platform.trim()
-      : process.platform;
+  const platform = sanitizePlatform(options.platform);
   const root = getLocalUserDataRoot({ ...options, platform });
   const pathModule = getPathModule(platform);
   const paths = {};
@@ -136,7 +150,7 @@ function validateLocalUserStoragePath(
       reason: "Storage layout root must be a non-empty string.",
     };
   }
-  const platform = resolvedLayout.platform || process.platform;
+  const platform = sanitizePlatform(resolvedLayout.platform);
   const pathModule = getPathModule(platform);
   const resolvedCandidate = normalizeRoot(trimmedCandidatePath, platform);
   const resolvedRoot = normalizeRoot(trimmedRoot, platform);
@@ -161,8 +175,15 @@ function createLocalUserStorageManifest({
   updatedAt = createdAt,
 } = {}) {
   const resolvedLayout =
-    layout !== null && layout !== undefined && typeof layout === "object"
-      ? layout
+    layout &&
+    typeof layout === "object" &&
+    !Array.isArray(layout) &&
+    isNonEmptyString(layout.root)
+      ? {
+          ...layout,
+          root: layout.root.trim(),
+          platform: sanitizePlatform(layout.platform),
+        }
       : getLocalUserStorageLayout();
   const pathModule = getPathModule(resolvedLayout.platform);
   const manifestPaths = {};
@@ -224,17 +245,11 @@ function validateLocalUserStorageManifest(manifest, { layout } = {}) {
     );
   }
 
-  if (
-    typeof manifest.createdAt !== "string" ||
-    Number.isNaN(Date.parse(manifest.createdAt))
-  ) {
+  if (!isStrictIsoTimestamp(manifest.createdAt)) {
     errors.push("createdAt must be a valid ISO date string.");
   }
 
-  if (
-    typeof manifest.updatedAt !== "string" ||
-    Number.isNaN(Date.parse(manifest.updatedAt))
-  ) {
+  if (!isStrictIsoTimestamp(manifest.updatedAt)) {
     errors.push("updatedAt must be a valid ISO date string.");
   }
 
