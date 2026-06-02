@@ -2,14 +2,14 @@ const fs = require("fs");
 const path = require("path");
 const {
   validateLocalUserStorageManifest,
-} = require("../../../utils/swarmsy/localUserStorageContract");
+} = require("../../utils/swarmsy/localUserStorageContract");
 
 describe("SWARMSY desktop wrapper foundation", () => {
   const repoRoot = path.resolve(__dirname, "../../..");
 
   it("registers desktop foundation scripts at repo root", () => {
     const packageJson = JSON.parse(
-      fs.readFileSync(path.resolve(repoRoot, "../package.json"), "utf8")
+      fs.readFileSync(path.resolve(repoRoot, "package.json"), "utf8")
     );
 
     expect(packageJson.scripts["desktop:dev"]).toBe(
@@ -22,7 +22,7 @@ describe("SWARMSY desktop wrapper foundation", () => {
 
   it("keeps desktop entrypoint sandboxed with secure BrowserWindow defaults", () => {
     const source = fs.readFileSync(
-      path.resolve(repoRoot, "../desktop/electron/main.cjs"),
+      path.resolve(repoRoot, "desktop/electron/main.cjs"),
       "utf8"
     );
 
@@ -37,12 +37,13 @@ describe("SWARMSY desktop wrapper foundation", () => {
       getDesktopStorageContract,
     } = require(path.resolve(
       repoRoot,
-      "../desktop/foundation/storageContractBridge.cjs"
+      "desktop/foundation/storageContractBridge.cjs"
     ));
 
     const contract = getDesktopStorageContract({
       platform: "linux",
       homeDir: "/tmp/swarmsy-home",
+      env: {},
     });
 
     expect(contract.layout.mode).toBe("local_user");
