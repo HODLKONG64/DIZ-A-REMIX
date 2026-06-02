@@ -83,6 +83,20 @@ describe("SWARMSY local user storage contract", () => {
       expect(result.valid).toBe(true);
     });
 
+    it("rejects using the local data root as a storage path by default", () => {
+      const result = validateLocalUserStoragePath(layout.root, { layout });
+      expect(result.valid).toBe(false);
+      expect(result.reason).toContain("inside the SWARMSY Local User data root");
+    });
+
+    it("can explicitly allow the local data root when opted in", () => {
+      const result = validateLocalUserStoragePath(layout.root, {
+        layout,
+        allowRoot: true,
+      });
+      expect(result.valid).toBe(true);
+    });
+
     it("rejects traversal outside root", () => {
       const outside = path.resolve(layout.root, "..", "..", "server", "storage");
       const result = validateLocalUserStoragePath(outside, { layout });
@@ -170,6 +184,15 @@ describe("SWARMSY local user storage contract", () => {
       const validation = validateLocalUserStorageManifest(manifest, { layout });
       expect(validation.valid).toBe(false);
       expect(validation.errors.some((error) => error.includes("Invalid paths.hives"))).toBe(true);
+    });
+
+    it("rejects required manifest paths set to the local data root", () => {
+      const manifest = createLocalUserStorageManifest({ layout });
+      manifest.paths.profile = layout.root;
+
+      const validation = validateLocalUserStorageManifest(manifest, { layout });
+      expect(validation.valid).toBe(false);
+      expect(validation.errors.some((error) => error.includes("Invalid paths.profile"))).toBe(true);
     });
 
     it("rejects auth/session/api key fields", () => {

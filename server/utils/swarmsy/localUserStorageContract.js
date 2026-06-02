@@ -32,9 +32,6 @@ const MANIFEST_ALLOWED_TOP_LEVEL_KEYS = new Set([
   "paths",
 ]);
 
-const FORBIDDEN_MANIFEST_FIELD_PATTERN =
-  /(token|secret|api[_-]?key|auth|session|credential)/i;
-
 function isLikelyWindowsPath(input = "") {
   return /^[a-zA-Z]:\\/.test(input) || input.includes("\\");
 }
@@ -115,7 +112,10 @@ function getLocalUserStorageLayout(options = {}) {
   };
 }
 
-function validateLocalUserStoragePath(candidatePath, { layout } = {}) {
+function validateLocalUserStoragePath(
+  candidatePath,
+  { layout, allowRoot = false } = {}
+) {
   if (!candidatePath || typeof candidatePath !== "string") {
     return { valid: false, reason: "Storage path must be a non-empty string." };
   }
@@ -129,7 +129,7 @@ function validateLocalUserStoragePath(candidatePath, { layout } = {}) {
   const resolvedCandidate = normalizeRoot(candidatePath, platform);
   const resolvedRoot = normalizeRoot(resolvedLayout.root, platform);
 
-  if (resolvedCandidate === resolvedRoot) {
+  if (resolvedCandidate === resolvedRoot && allowRoot) {
     return { valid: true, reason: null };
   }
 
@@ -265,7 +265,6 @@ module.exports = {
   REQUIRED_PATH_KEYS,
   REQUIRED_PATH_KEYS_SET,
   MANIFEST_ALLOWED_TOP_LEVEL_KEYS,
-  FORBIDDEN_MANIFEST_FIELD_PATTERN,
   getLocalUserDataRoot,
   getLocalUserStorageLayout,
   validateLocalUserStoragePath,
