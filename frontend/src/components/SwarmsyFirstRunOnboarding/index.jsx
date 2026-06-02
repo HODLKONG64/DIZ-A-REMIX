@@ -48,6 +48,10 @@ import {
   readLocalUserOllamaModelSelection,
   resolveLocalUserOllamaModelSelection,
 } from "./localUserOllamaSelection";
+import {
+  exportLocalUserBackup,
+  importLocalUserBackup,
+} from "@/utils/localUserBackup";
 
 const IDENTITY_MODES = [
   {
@@ -282,6 +286,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     useState(null);
   const localOllamaRefreshControllerRef = useRef(null);
   const hasConfirmedLocalUserModeRef = useRef(false);
+  const backupImportInputRef = useRef(null);
   const activeStatus = status || createFallbackStatus();
   const canLoadMemoryLock = canContinueFromMemoryLock(activeStatus);
   const canUseProofTracker = canReviewProof(activeStatus);
@@ -561,8 +566,51 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     }
   }
 
+  function exportBackupToFile() {
+    const backup = exportLocalUserBackup();
+    const json = JSON.stringify(backup, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `swarmsy-local-user-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast("Local User backup exported.", "success");
+  }
+
+  function handleImportBackupFile(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+        const result = importLocalUserBackup(data);
+        if (!result.success) {
+          showToast(
+            `Import failed: ${result.errors.join(" ")}`,
+            "error"
+          );
+          return;
+        }
+        showToast(
+          `Backup imported. ${result.restored.length} setting(s) restored.`,
+          "success"
+        );
+      } catch {
+        showToast(
+          "Could not read backup file. The file must be valid JSON.",
+          "error"
+        );
+      }
+    };
+    reader.readAsText(file);
+    event.target.value = "";
+  }
+
   async function createHive() {
-    setBusyAction("create-hive");
     setLastActionResult(null);
     const result = await SwarmsyOnboarding.createHive();
     setLastActionResult({ kind: "create-hive", ...result });
@@ -1033,6 +1081,49 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {isLocalUserMode && (
+          <div className="rounded-2xl border border-theme-sidebar-border bg-theme-bg-secondary p-5">
+            <div className="space-y-2">
+              <p className="text-sm font-semibold uppercase tracking-[0.2em] text-theme-text-secondary">
+                Local User Data
+              </p>
+              <h2 className="text-lg font-semibold text-theme-text-primary">
+                Backup &amp; Restore
+              </h2>
+              <p className="text-sm text-theme-text-secondary">
+                Export a backup of your Local User Mode settings and restore
+                them on any device running SWARMSY.
+              </p>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                disabled={Boolean(busyAction)}
+                onClick={exportBackupToFile}
+                className="rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary px-4 py-2 text-sm font-medium text-theme-text-primary transition hover:bg-theme-bg-menu disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Export Backup
+              </button>
+              <button
+                type="button"
+                disabled={Boolean(busyAction)}
+                onClick={() => backupImportInputRef.current?.click()}
+                className="rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary px-4 py-2 text-sm font-medium text-theme-text-primary transition hover:bg-theme-bg-menu disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Import Backup
+              </button>
+              <input
+                ref={backupImportInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="hidden"
+                onChange={handleImportBackupFile}
+                aria-hidden="true"
+              />
+            </div>
           </div>
         )}
 
