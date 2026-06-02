@@ -43,7 +43,6 @@ import {
   PROOF_TRACKER_UNDERLOADED_MESSAGE,
 } from "./proofTracker";
 import {
-  clearLocalUserOllamaModelSelection,
   persistLocalUserOllamaModelSelection,
   readLocalUserOllamaModelSelection,
   resolveLocalUserOllamaModelSelection,
@@ -78,6 +77,10 @@ const IDENTITY_MODES = [
 const MEMORY_LOCK_ERROR_ID = "swarmsy-memory-lock-error";
 const PROOF_TRACKER_ERROR_ID = "swarmsy-proof-tracker-error";
 const CAMPAIGN_DATE_EMPTY_ERROR = "Pick a date to create a campaign day.";
+const IMPORTED_LOCAL_OLLAMA_MODEL_PENDING_MESSAGE =
+  "Imported Ollama model saved. SWARMSY will restore it after Ollama status is verified.";
+const IMPORTED_LOCAL_OLLAMA_MODEL_MISSING_MESSAGE =
+  "Imported Ollama model is not currently installed. Select a model to continue.";
 
 function getDefaultCampaignDate() {
   const now = new Date();
@@ -451,10 +454,6 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
       storedModelId: readLocalUserOllamaModelSelection(),
     });
 
-    if (resolved.staleStoredModelId) {
-      clearLocalUserOllamaModelSelection();
-    }
-
     if (resolved.modelId) {
       persistLocalUserOllamaModelSelection(resolved.modelId);
     }
@@ -465,17 +464,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
 
     if (resolved.source === "stale_missing") {
       setLocalOllamaSelectionMessage(
-        "Your saved Ollama model is no longer installed. Select a model to continue."
-      );
-      return;
-    }
-
-    if (resolved.source === "single_available_after_stale") {
-      const selectedName =
-        localOllamaStatus.models.find((model) => model.id === resolved.modelId)
-          ?.name || resolved.modelId;
-      setLocalOllamaSelectionMessage(
-        `Your saved Ollama model is no longer installed, so SWARMSY selected the only available model: ${selectedName}.`
+        "Your saved Ollama model is not currently installed. Select a model to continue."
       );
       return;
     }
@@ -584,17 +573,52 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = JSON.parse(e.target.result);
         const result = importLocalUserBackup(data);
         if (!result.success) {
-          showToast(
-            `Import failed: ${result.errors.join(" ")}`,
-            "error"
-          );
+          showToast(`Import failed: ${result.errors.join(" ")}`, "error");
           return;
         }
+
+        const restoredModelId = readLocalUserOllamaModelSelection();
+        if (!restoredModelId) {
+          setSelectedLocalOllamaModel("");
+          setLocalOllamaSelectionMessage(null);
+        } else if (hasVerifiedLocalOllamaModels) {
+          const importedModelIsInstalled = localOllamaStatus.models.some(
+            (model) => model.id === restoredModelId
+          );
+
+          if (importedModelIsInstalled) {
+            setSelectedLocalOllamaModel(restoredModelId);
+            setLocalOllamaSelectionMessage(null);
+          } else {
+            setSelectedLocalOllamaModel("");
+            setLocalOllamaSelectionMessage(
+              IMPORTED_LOCAL_OLLAMA_MODEL_MISSING_MESSAGE
+            );
+          }
+        } else {
+          setSelectedLocalOllamaModel("");
+          setLocalOllamaSelectionMessage(
+            IMPORTED_LOCAL_OLLAMA_MODEL_PENDING_MESSAGE
+          );
+
+          const controller = beginLocalUserOllamaRequest();
+          try {
+            await syncLocalUserOllamaStatus({ signal: controller.signal });
+          } catch {
+            showToast(
+              "Backup imported, but SWARMSY could not refresh Local User Mode Ollama status.",
+              "warning"
+            );
+          } finally {
+            releaseLocalUserOllamaRequest(controller);
+          }
+        }
+
         showToast(
           `Backup imported. ${result.restored.length} setting(s) restored.`,
           "success"
@@ -611,6 +635,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   }
 
   async function createHive() {
+    setBusyAction("create-hive");
     setLastActionResult(null);
     const result = await SwarmsyOnboarding.createHive();
     setLastActionResult({ kind: "create-hive", ...result });
