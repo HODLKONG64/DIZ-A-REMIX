@@ -180,6 +180,25 @@ describe("SWARMSY desktop wrapper foundation", () => {
     expect(shellApi.openExternal).toHaveBeenCalledWith(
       "https://example.com/docs"
     );
+    expect(windowOpenHandler({ url: "http://example.com/docs" })).toEqual({
+      action: "deny",
+    });
+    expect(shellApi.openExternal).toHaveBeenCalledWith(
+      "http://example.com/docs"
+    );
+
+    shellApi.openExternal.mockClear();
+    for (const blockedUrl of [
+      "file:///tmp/swarmsy.txt",
+      "javascript:alert(1)",
+      "data:text/html,hello",
+      "custom-protocol://open-me",
+    ]) {
+      expect(windowOpenHandler({ url: blockedUrl })).toEqual({
+        action: "deny",
+      });
+    }
+    expect(shellApi.openExternal).not.toHaveBeenCalled();
 
     const willNavigateHandler = webContents.on.mock.calls.find(
       ([eventName]) => eventName === "will-navigate"
@@ -188,6 +207,24 @@ describe("SWARMSY desktop wrapper foundation", () => {
     willNavigateHandler(externalEvent, "https://example.com");
     expect(externalEvent.preventDefault).toHaveBeenCalled();
     expect(shellApi.openExternal).toHaveBeenCalledWith("https://example.com");
+
+    const externalHttpEvent = { preventDefault: jest.fn() };
+    willNavigateHandler(externalHttpEvent, "http://example.com");
+    expect(externalHttpEvent.preventDefault).toHaveBeenCalled();
+    expect(shellApi.openExternal).toHaveBeenCalledWith("http://example.com");
+
+    shellApi.openExternal.mockClear();
+    for (const blockedUrl of [
+      "file:///tmp/swarmsy.txt",
+      "javascript:alert(1)",
+      "data:text/html,hello",
+      "custom-protocol://open-me",
+    ]) {
+      const blockedEvent = { preventDefault: jest.fn() };
+      willNavigateHandler(blockedEvent, blockedUrl);
+      expect(blockedEvent.preventDefault).toHaveBeenCalled();
+    }
+    expect(shellApi.openExternal).not.toHaveBeenCalled();
 
     const internalEvent = { preventDefault: jest.fn() };
     willNavigateHandler(internalEvent, "http://127.0.0.1:3000/settings");
@@ -268,5 +305,28 @@ describe("SWARMSY desktop wrapper foundation", () => {
       false
     );
     expect(preload.isTrustedDesktopOrigin("http://localhost:3000")).toBe(true);
+  });
+
+  it("only treats http and https URLs as safe external browser targets", () => {
+    jest.resetModules();
+    jest.doMock(
+      "electron",
+      () => ({
+        app: {},
+        BrowserWindow: jest.fn(),
+        ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+        shell: { openExternal: jest.fn() },
+      }),
+      { virtual: true }
+    );
+
+    const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
+
+    expect(main.isExternalWebUrl("https://example.com")).toBe(true);
+    expect(main.isExternalWebUrl("http://example.com")).toBe(true);
+    expect(main.isExternalWebUrl("file:///tmp/test.txt")).toBe(false);
+    expect(main.isExternalWebUrl("javascript:alert(1)")).toBe(false);
+    expect(main.isExternalWebUrl("data:text/plain,hi")).toBe(false);
+    expect(main.isExternalWebUrl("custom-protocol://launch")).toBe(false);
   });
 });

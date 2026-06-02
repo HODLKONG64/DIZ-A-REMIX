@@ -82,11 +82,23 @@ function shouldOpenExternally(targetUrl, allowedOrigin) {
   }
 }
 
+function isExternalWebUrl(targetUrl) {
+  try {
+    const parsed = new URL(String(targetUrl || "").trim());
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 function configureWindowSecurity(window, startUrl, { shellApi = shell } = {}) {
   const allowedOrigin = getOrigin(startUrl);
 
   window.webContents.setWindowOpenHandler(({ url }) => {
-    if (shouldOpenExternally(url, allowedOrigin)) {
+    if (
+      shouldOpenExternally(url, allowedOrigin) &&
+      isExternalWebUrl(url)
+    ) {
       shellApi.openExternal(url);
     }
     return { action: "deny" };
@@ -95,7 +107,9 @@ function configureWindowSecurity(window, startUrl, { shellApi = shell } = {}) {
   window.webContents.on("will-navigate", (event, url) => {
     if (shouldOpenExternally(url, allowedOrigin)) {
       event.preventDefault();
-      shellApi.openExternal(url);
+      if (isExternalWebUrl(url)) {
+        shellApi.openExternal(url);
+      }
     }
   });
 }
@@ -176,6 +190,7 @@ module.exports = {
   renderFailurePage,
   isTrustedDesktopOrigin,
   shouldOpenExternally,
+  isExternalWebUrl,
   configureWindowSecurity,
   registerDesktopIpc,
   createWindow,
