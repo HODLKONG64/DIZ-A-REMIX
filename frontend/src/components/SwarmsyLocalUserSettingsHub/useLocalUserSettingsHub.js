@@ -32,6 +32,8 @@ const IMPORTED_LOCAL_OLLAMA_MODEL_MISSING_MESSAGE =
   "Imported Ollama model is not currently installed. Select a model to continue.";
 const SAVED_MODEL_UNVERIFIED_MESSAGE =
   "Saved model is pending verification while Ollama is unavailable. Retry when Ollama is reachable.";
+const SAVED_MODEL_MISSING_MESSAGE =
+  "Your saved Ollama model is not currently installed. Select a model to continue.";
 
 function normalizeLocalUserModel(model = null, index = 0) {
   const name = String(model?.name || model?.id || "").trim();
@@ -133,9 +135,26 @@ export function useLocalUserSettingsHub() {
     if (!desktopSettings.ok || !desktopSettings.modelId) return false;
 
     persistLocalUserOllamaModelSelection(desktopSettings.modelId);
-    setSavedLocalOllamaModel(readLocalUserOllamaModelSelection());
+    const storedModelId = readLocalUserOllamaModelSelection();
+    setSavedLocalOllamaModel(storedModelId);
+
+    const hasVerifiedDesktopRestoreModels =
+      localOllamaStatus.status === "reachable" ||
+      localOllamaStatus.status === "no_models";
+    if (!hasVerifiedDesktopRestoreModels) return true;
+
+    const restoredModelIsInstalled = localOllamaStatus.models.some(
+      (model) => model.id === storedModelId
+    );
+    if (restoredModelIsInstalled) {
+      setSelectedLocalOllamaModel(storedModelId);
+      setLocalOllamaSelectionMessage(null);
+    } else {
+      setSelectedLocalOllamaModel("");
+      setLocalOllamaSelectionMessage(SAVED_MODEL_MISSING_MESSAGE);
+    }
     return true;
-  }, []);
+  }, [localOllamaStatus.models, localOllamaStatus.status]);
 
   const mirrorModelSelectionToDesktopSettings = useCallback(
     async (nextModelId) => {
@@ -327,9 +346,7 @@ export function useLocalUserSettingsHub() {
     }
 
     if (resolved.source === "stale_missing") {
-      setLocalOllamaSelectionMessage(
-        "Your saved Ollama model is not currently installed. Select a model to continue."
-      );
+      setLocalOllamaSelectionMessage(SAVED_MODEL_MISSING_MESSAGE);
       return;
     }
 
@@ -404,7 +421,7 @@ export function useLocalUserSettingsHub() {
     const a = document.createElement("a");
     a.href = url;
     a.download = `swarmsy-local-user-backup-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
+    a.click?.();
     URL.revokeObjectURL(url);
     showToast("Local User backup exported.", "success");
   }, []);
@@ -504,6 +521,7 @@ export function useLocalUserSettingsHub() {
     savedLocalOllamaModel,
     currentModelLabel,
     localOllamaSelectionMessage,
+    mirrorsDesktopLocalSettings: true,
     checkLocalUserOllama,
     onSelectLocalOllamaModel,
     exportBackupToFile,
