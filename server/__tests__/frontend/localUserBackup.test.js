@@ -254,6 +254,15 @@ describe("validateLocalUserBackup", () => {
     expect(errors).toHaveLength(0);
   });
 
+  it("accepts v2 backups without desktop payload", () => {
+    const { validateLocalUserBackup } = loadBackupModule();
+    const backup = validBackup();
+    delete backup.desktop;
+    const { valid, errors } = validateLocalUserBackup(backup);
+    expect(valid).toBe(true);
+    expect(errors).toHaveLength(0);
+  });
+
   it("rejects null", () => {
     const { validateLocalUserBackup } = loadBackupModule();
     const { valid } = validateLocalUserBackup(null);
@@ -578,6 +587,32 @@ describe("desktop-aware v2 helpers", () => {
       ollamaModel: "llama3.1:8b",
       provider: "ollama",
     });
+  });
+
+  it("importLocalUserBackupV2 does not report desktop state when callback returns ok false", async () => {
+    const { importLocalUserBackupV2 } = loadBackupModule();
+    const applyDesktopLocalSettings = jest.fn().mockResolvedValue({ ok: false });
+    const result = await importLocalUserBackupV2(validBackup(), {
+      storage: createStorage(),
+      applyDesktopLocalSettings,
+    });
+    expect(result.success).toBe(true);
+    expect(applyDesktopLocalSettings).toHaveBeenCalled();
+    expect(result.restoredDesktopState).toBeNull();
+  });
+
+  it("importLocalUserBackupV2 does not report desktop state when callback throws", async () => {
+    const { importLocalUserBackupV2 } = loadBackupModule();
+    const applyDesktopLocalSettings = jest
+      .fn()
+      .mockRejectedValue(new Error("write failed"));
+    const result = await importLocalUserBackupV2(validBackup(), {
+      storage: createStorage(),
+      applyDesktopLocalSettings,
+    });
+    expect(result.success).toBe(true);
+    expect(applyDesktopLocalSettings).toHaveBeenCalled();
+    expect(result.restoredDesktopState).toBeNull();
   });
 
   it("importLocalUserBackupV2 trims desktop values and converts empties to null", async () => {

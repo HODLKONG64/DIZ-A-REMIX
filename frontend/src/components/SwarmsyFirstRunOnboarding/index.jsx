@@ -631,7 +631,13 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
         return false;
       }
 
-      const restoredModelId = readLocalUserOllamaModelSelection();
+      const browserRestoredModelId = result?.restored?.includes("ollamaModel")
+        ? readLocalUserOllamaModelSelection()
+        : "";
+      const desktopRestoredModelId = String(
+        result?.restoredDesktopState?.ollamaModel || ""
+      ).trim();
+      const restoredModelId = browserRestoredModelId || desktopRestoredModelId;
       if (!restoredModelId) {
         setSelectedLocalOllamaModel("");
         setLocalOllamaSelectionMessage(null);

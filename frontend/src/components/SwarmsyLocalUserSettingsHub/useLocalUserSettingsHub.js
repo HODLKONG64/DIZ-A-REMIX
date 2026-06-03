@@ -475,7 +475,9 @@ export function useLocalUserSettingsHub() {
           return false;
         }
 
-        const browserRestoredModelId = readLocalUserOllamaModelSelection();
+        const browserRestoredModelId = result?.restored?.includes("ollamaModel")
+          ? readLocalUserOllamaModelSelection()
+          : "";
         const desktopRestoredModelId = String(
           result?.restoredDesktopState?.ollamaModel || ""
         ).trim();

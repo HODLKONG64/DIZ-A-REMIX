@@ -247,7 +247,11 @@ export function validateLocalUserBackup(data) {
     }
   }
 
-  if (data.version >= 2) {
+  if (
+    data.version >= 2 &&
+    data.desktop !== undefined &&
+    data.desktop !== null
+  ) {
     if (!isPlainObject(data.desktop)) {
       errors.push("desktop must be a plain object.");
     } else {
@@ -408,10 +412,16 @@ export async function importLocalUserBackupV2(
     isPlainObject(data.desktop.localSettings.state)
   ) {
     try {
-      restoredDesktopState = normalizeDesktopLocalSettingsStateForRestore(
-        data.desktop.localSettings.state
+      const normalizedDesktopState =
+        normalizeDesktopLocalSettingsStateForRestore(
+          data.desktop.localSettings.state
+        );
+      const desktopResult = await applyDesktopLocalSettings(
+        normalizedDesktopState
       );
-      await applyDesktopLocalSettings(restoredDesktopState);
+      if (desktopResult?.ok) {
+        restoredDesktopState = normalizedDesktopState;
+      }
     } catch {
       restoredDesktopState = null;
       // Browser fallback import remains successful.
