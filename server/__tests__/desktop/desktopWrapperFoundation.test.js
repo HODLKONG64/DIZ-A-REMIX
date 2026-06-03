@@ -926,8 +926,231 @@ describe("SWARMSY desktop wrapper foundation", () => {
     eventHandlers["before-quit"]();
     await Promise.resolve();
     eventHandlers["window-all-closed"]();
-    await Promise.resolve();
+    await new Promise((r) => setImmediate(r));
     expect(runtimeStopper).toHaveBeenCalledWith({ child });
+    expect(appInstance.quit).toHaveBeenCalled();
+  });
+
+  it("stopManagedRuntime called concurrently does not call runtimeStopper twice", async () => {
+    jest.resetModules();
+    jest.doMock(
+      "electron",
+      () => ({
+        app: {},
+        BrowserWindow: jest.fn(),
+        ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+        shell: { openExternal: jest.fn() },
+      }),
+      { virtual: true }
+    );
+
+    const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
+    const child = { pid: 1111, exitCode: null, signalCode: null };
+
+    await main.ensureDesktopRuntimeReady({
+      startUrl: "http://127.0.0.1:3000",
+      env: { SWARMSY_DESKTOP_AUTO_START_RUNTIME: "true" },
+      runtimeHealthcheck: jest.fn().mockResolvedValue({
+        ok: false,
+        reason: "runtime_unreachable",
+      }),
+      runtimeLauncher: jest.fn().mockResolvedValue({
+        ok: true,
+        pid: 1111,
+        child,
+      }),
+      runtimeHealthWaiter: jest.fn().mockResolvedValue({
+        ok: true,
+        startUrl: "http://127.0.0.1:3000",
+        origin: "http://127.0.0.1:3000",
+      }),
+    });
+
+    let resolveStop;
+    const stopDelay = new Promise((r) => {
+      resolveStop = r;
+    });
+    const runtimeStopper = jest.fn().mockReturnValue(stopDelay);
+
+    const p1 = main.stopManagedRuntime({ runtimeStopper });
+    const p2 = main.stopManagedRuntime({ runtimeStopper });
+
+    // runtimeStopper called only once while stop is in flight
+    expect(runtimeStopper).toHaveBeenCalledTimes(1);
+
+    resolveStop({ ok: true });
+    await p1;
+    await p2;
+  });
+
+  it("stopManagedRuntime does not clear managedRuntimeChild until runtimeStopper settles", async () => {
+    jest.resetModules();
+    jest.doMock(
+      "electron",
+      () => ({
+        app: {},
+        BrowserWindow: jest.fn(),
+        ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+        shell: { openExternal: jest.fn() },
+      }),
+      { virtual: true }
+    );
+
+    const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
+    const child = { pid: 2222, exitCode: null, signalCode: null };
+
+    await main.ensureDesktopRuntimeReady({
+      startUrl: "http://127.0.0.1:3000",
+      env: { SWARMSY_DESKTOP_AUTO_START_RUNTIME: "true" },
+      runtimeHealthcheck: jest.fn().mockResolvedValue({
+        ok: false,
+        reason: "runtime_unreachable",
+      }),
+      runtimeLauncher: jest.fn().mockResolvedValue({
+        ok: true,
+        pid: 2222,
+        child,
+      }),
+      runtimeHealthWaiter: jest.fn().mockResolvedValue({
+        ok: true,
+        startUrl: "http://127.0.0.1:3000",
+        origin: "http://127.0.0.1:3000",
+      }),
+    });
+
+    let resolveStop;
+    const stopDelay = new Promise((r) => {
+      resolveStop = r;
+    });
+    const runtimeStopper = jest.fn().mockReturnValue(stopDelay);
+
+    const p1 = main.stopManagedRuntime({ runtimeStopper });
+    // Second concurrent call should see in-flight promise — not a cleared child
+    const p2 = main.stopManagedRuntime({ runtimeStopper });
+    expect(runtimeStopper).toHaveBeenCalledTimes(1);
+
+    resolveStop({ ok: true });
+    await p1;
+    await p2;
+  });
+
+  it("stopManagedRuntime resets state after completion and does not call runtimeStopper again", async () => {
+    jest.resetModules();
+    jest.doMock(
+      "electron",
+      () => ({
+        app: {},
+        BrowserWindow: jest.fn(),
+        ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+        shell: { openExternal: jest.fn() },
+      }),
+      { virtual: true }
+    );
+
+    const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
+    const child = { pid: 4444, exitCode: null, signalCode: null };
+
+    await main.ensureDesktopRuntimeReady({
+      startUrl: "http://127.0.0.1:3000",
+      env: { SWARMSY_DESKTOP_AUTO_START_RUNTIME: "true" },
+      runtimeHealthcheck: jest.fn().mockResolvedValue({
+        ok: false,
+        reason: "runtime_unreachable",
+      }),
+      runtimeLauncher: jest.fn().mockResolvedValue({
+        ok: true,
+        pid: 4444,
+        child,
+      }),
+      runtimeHealthWaiter: jest.fn().mockResolvedValue({
+        ok: true,
+        startUrl: "http://127.0.0.1:3000",
+        origin: "http://127.0.0.1:3000",
+      }),
+    });
+
+    const runtimeStopper = jest.fn().mockResolvedValue({ ok: true });
+
+    await main.stopManagedRuntime({ runtimeStopper });
+    expect(runtimeStopper).toHaveBeenCalledTimes(1);
+
+    // After settling: no child, no in-flight promise → ok:true without calling stopper again
+    const result = await main.stopManagedRuntime({ runtimeStopper });
+    expect(result).toEqual({ ok: true });
+    expect(runtimeStopper).toHaveBeenCalledTimes(1);
+  });
+
+  it("before-quit and window-all-closed both await the same stop operation", async () => {
+    jest.resetModules();
+    jest.doMock(
+      "electron",
+      () => ({
+        app: {},
+        BrowserWindow: jest.fn(),
+        ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+        shell: { openExternal: jest.fn() },
+      }),
+      { virtual: true }
+    );
+
+    const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
+    const child = { pid: 5555, exitCode: null, signalCode: null };
+
+    await main.ensureDesktopRuntimeReady({
+      startUrl: "http://127.0.0.1:3000",
+      env: { SWARMSY_DESKTOP_AUTO_START_RUNTIME: "true" },
+      runtimeHealthcheck: jest.fn().mockResolvedValue({
+        ok: false,
+        reason: "runtime_unreachable",
+      }),
+      runtimeLauncher: jest.fn().mockResolvedValue({
+        ok: true,
+        pid: 5555,
+        child,
+      }),
+      runtimeHealthWaiter: jest.fn().mockResolvedValue({
+        ok: true,
+        startUrl: "http://127.0.0.1:3000",
+        origin: "http://127.0.0.1:3000",
+      }),
+    });
+
+    let resolveStop;
+    const stopDelay = new Promise((r) => {
+      resolveStop = r;
+    });
+    const runtimeStopper = jest.fn().mockReturnValue(stopDelay);
+
+    const eventHandlers = {};
+    const appInstance = {
+      whenReady: jest.fn(() => Promise.resolve()),
+      on: jest.fn((event, handler) => {
+        eventHandlers[event] = handler;
+      }),
+      quit: jest.fn(),
+    };
+    const BrowserWindowCtor = jest.fn(() => ({
+      webContents: { setWindowOpenHandler: jest.fn(), on: jest.fn() },
+      loadURL: jest.fn().mockResolvedValue(undefined),
+    }));
+    BrowserWindowCtor.getAllWindows = jest.fn(() => [1]);
+
+    main.bootstrapDesktopApp({
+      appInstance,
+      BrowserWindowCtor,
+      runtimeStopper,
+    });
+
+    // Fire both event handlers concurrently before stop resolves
+    eventHandlers["before-quit"]();
+    eventHandlers["window-all-closed"]();
+
+    // runtimeStopper called only once for both concurrent callers
+    expect(runtimeStopper).toHaveBeenCalledTimes(1);
+
+    resolveStop({ ok: true });
+    await new Promise((r) => setImmediate(r));
+
     expect(appInstance.quit).toHaveBeenCalled();
   });
 });

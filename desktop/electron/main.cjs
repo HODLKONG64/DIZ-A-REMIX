@@ -20,6 +20,7 @@ const {
 const STORAGE_CONTRACT_CHANNEL = "swarmsy:get-storage-contract";
 const repoRoot = path.resolve(__dirname, "../..");
 let managedRuntimeChild = null;
+let managedRuntimeStopPromise = null;
 
 function resolveStartUrl() {
   const configured = String(process.env.SWARMSY_DESKTOP_START_URL || "").trim();
@@ -227,12 +228,26 @@ async function ensureDesktopRuntimeReady({
 }
 
 async function stopManagedRuntime({ runtimeStopper = stopDesktopLaunchedRuntime } = {}) {
+  if (managedRuntimeStopPromise) return managedRuntimeStopPromise;
+
   if (!managedRuntimeChild) {
     return { ok: true };
   }
+
   const child = managedRuntimeChild;
-  managedRuntimeChild = null;
-  return runtimeStopper({ child });
+
+  managedRuntimeStopPromise = runtimeStopper({ child })
+    .catch((error) => ({
+      ok: false,
+      reason: "runtime_stop_failed",
+      message: error?.message || "Failed to stop SWARMSY local runtime.",
+    }))
+    .finally(() => {
+      if (managedRuntimeChild === child) managedRuntimeChild = null;
+      managedRuntimeStopPromise = null;
+    });
+
+  return managedRuntimeStopPromise;
 }
 
 async function createWindow({

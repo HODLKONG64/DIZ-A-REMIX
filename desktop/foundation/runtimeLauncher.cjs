@@ -299,8 +299,9 @@ async function stopDesktopLaunchedRuntime({
   }
 
   if (platform === "win32") {
-    await new Promise((resolve) => {
-      const killer = spawnImpl(
+    let killer;
+    try {
+      killer = spawnImpl(
         "taskkill",
         ["/pid", String(child.pid), "/t", "/f"],
         {
@@ -309,6 +310,15 @@ async function stopDesktopLaunchedRuntime({
           stdio: "ignore",
         }
       );
+    } catch (error) {
+      child.kill?.();
+      return {
+        ok: false,
+        reason: "runtime_stop_failed",
+        message: error?.message || "Failed to invoke taskkill.",
+      };
+    }
+    await new Promise((resolve) => {
       let settled = false;
       let timeout = null;
       const done = () => {

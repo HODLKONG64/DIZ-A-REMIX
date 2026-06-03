@@ -468,4 +468,46 @@ describe("desktop runtime launcher foundation", () => {
     clearTimeoutSpy.mockRestore();
     jest.useRealTimers();
   });
+
+  it("win32 taskkill spawn throw is caught and child.kill is called as fallback", async () => {
+    const { stopDesktopLaunchedRuntime } = require(launcherPath);
+    const child = createMockChild({ pid: 6868 });
+    const spawnImpl = jest.fn(() => {
+      throw new Error("taskkill not found");
+    });
+    const result = await stopDesktopLaunchedRuntime({
+      child,
+      platform: "win32",
+      spawnImpl,
+    });
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: false,
+        reason: "runtime_stop_failed",
+      })
+    );
+    expect(child.kill).toHaveBeenCalled();
+  });
+
+  it("win32 taskkill failure does not crash shutdown", async () => {
+    const { stopDesktopLaunchedRuntime } = require(launcherPath);
+    const child = createMockChild({ pid: 6969 });
+    const spawnImpl = jest.fn(() => {
+      throw new Error("spawn failed");
+    });
+    let threw = false;
+    let result;
+    try {
+      result = await stopDesktopLaunchedRuntime({
+        child,
+        platform: "win32",
+        spawnImpl,
+      });
+    } catch {
+      threw = true;
+    }
+    expect(threw).toBe(false);
+    expect(result).toBeDefined();
+    expect(result.ok).toBe(false);
+  });
 });
