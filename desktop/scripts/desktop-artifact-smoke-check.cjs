@@ -50,9 +50,9 @@ const secretFilePatterns = [
 ];
 
 const secretValuePatterns = [
-  /(?:api[_-]?key|auth[_-]?token|session[_-]?token|access[_-]?token|refresh[_-]?token|secret|credential)\s*[:=]\s*["'][A-Za-z0-9_./+=-]{16,}["']/i,
-  /(?:OPENAI|ANTHROPIC|GEMINI|GROQ|AZURE|PINECONE|QDRANT|MILVUS|WEAVIATE|POSTHOG)[A-Z0-9_]*\s*[:=]\s*["'][^"']{8,}["']/,
-  /sk-[A-Za-z0-9]{20,}/,
+  /(?:api[_-]?key|auth[_-]?token|session[_-]?token|access[_-]?token|refresh[_-]?token|secret|credential)\s*[:=]\s*["'][A-Za-z0-9_./+=-]{24,}["']/i,
+  /(?:OPENAI|ANTHROPIC|GEMINI|GROQ|AZURE|PINECONE|QDRANT|MILVUS|WEAVIATE|POSTHOG)[A-Z0-9_]*\s*[:=]\s*["'][^"']{24,}["']/,
+  /\bsk-(?!my|123|example|xxxx|cp-\.\.\.)(?:proj-)?[A-Za-z0-9_-]{24,}\b/i,
 ];
 
 function fail(message) {
