@@ -94,26 +94,18 @@ function dispatchLocalUserSettingsSync(detail = {}) {
 }
 
 export function resolveLocalUserBackupImportModelState({
-  backupData,
+  browserModelWasRestored = false,
   browserRestoredModelId = "",
   desktopRestoredModelId = "",
 } = {}) {
   const normalizedBrowserModelId = String(browserRestoredModelId || "").trim();
   const normalizedDesktopModelId = String(desktopRestoredModelId || "").trim();
-  const backupState =
-    backupData?.state && typeof backupData.state === "object"
-      ? backupData.state
-      : {};
-  const browserBackupDefinesModel = Object.prototype.hasOwnProperty.call(
-    backupState,
-    "ollamaModel"
-  );
 
   return {
     restoredModelId: normalizedBrowserModelId || normalizedDesktopModelId,
     shouldMirrorBrowserModel:
-      !!normalizedBrowserModelId ||
-      (browserBackupDefinesModel && !normalizedDesktopModelId),
+      browserModelWasRestored &&
+      (!!normalizedBrowserModelId || !normalizedDesktopModelId),
     mirrorModelId: normalizedBrowserModelId,
   };
 }
@@ -475,14 +467,16 @@ export function useLocalUserSettingsHub() {
           return false;
         }
 
-        const browserRestoredModelId = result?.restored?.includes("ollamaModel")
+        const browserModelWasRestored =
+          result?.restored?.includes("ollamaModel");
+        const browserRestoredModelId = browserModelWasRestored
           ? readLocalUserOllamaModelSelection()
           : "";
         const desktopRestoredModelId = String(
           result?.restoredDesktopState?.ollamaModel || ""
         ).trim();
         const importModelState = resolveLocalUserBackupImportModelState({
-          backupData: data,
+          browserModelWasRestored,
           browserRestoredModelId,
           desktopRestoredModelId,
         });

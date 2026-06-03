@@ -32,7 +32,7 @@ describe("resolveLocalUserBackupImportModelState", () => {
   it("keeps desktop-restored model when browser backup has no model", () => {
     const module = loadSettingsHubModule();
     const result = module.resolveLocalUserBackupImportModelState({
-      backupData: { state: {} },
+      browserModelWasRestored: false,
       browserRestoredModelId: "",
       desktopRestoredModelId: "llama3.1:8b",
     });
@@ -47,7 +47,7 @@ describe("resolveLocalUserBackupImportModelState", () => {
   it("mirrors browser model when browser backup includes a model value", () => {
     const module = loadSettingsHubModule();
     const result = module.resolveLocalUserBackupImportModelState({
-      backupData: { state: { ollamaModel: "phi3:mini" } },
+      browserModelWasRestored: true,
       browserRestoredModelId: "phi3:mini",
       desktopRestoredModelId: "",
     });
@@ -62,7 +62,7 @@ describe("resolveLocalUserBackupImportModelState", () => {
   it("does not mirror empty browser fallback over desktop-restored model", () => {
     const module = loadSettingsHubModule();
     const result = module.resolveLocalUserBackupImportModelState({
-      backupData: { state: { ollamaModel: null } },
+      browserModelWasRestored: true,
       browserRestoredModelId: "",
       desktopRestoredModelId: "llama3.1:8b",
     });
@@ -77,7 +77,7 @@ describe("resolveLocalUserBackupImportModelState", () => {
   it("mirrors explicit browser clear when no desktop model was restored", () => {
     const module = loadSettingsHubModule();
     const result = module.resolveLocalUserBackupImportModelState({
-      backupData: { state: { ollamaModel: null } },
+      browserModelWasRestored: true,
       browserRestoredModelId: "",
       desktopRestoredModelId: "",
     });
@@ -85,6 +85,21 @@ describe("resolveLocalUserBackupImportModelState", () => {
     expect(result).toEqual({
       restoredModelId: "",
       shouldMirrorBrowserModel: true,
+      mirrorModelId: "",
+    });
+  });
+
+  it("does not mirror browser model unless browser model was restored in this import", () => {
+    const module = loadSettingsHubModule();
+    const result = module.resolveLocalUserBackupImportModelState({
+      browserModelWasRestored: false,
+      browserRestoredModelId: "",
+      desktopRestoredModelId: "desktop:model",
+    });
+
+    expect(result).toEqual({
+      restoredModelId: "desktop:model",
+      shouldMirrorBrowserModel: false,
       mirrorModelId: "",
     });
   });

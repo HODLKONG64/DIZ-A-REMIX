@@ -88,6 +88,23 @@ const IMPORTED_LOCAL_OLLAMA_MODEL_PENDING_MESSAGE =
 const IMPORTED_LOCAL_OLLAMA_MODEL_MISSING_MESSAGE =
   "Imported Ollama model is not currently installed. Select a model to continue.";
 
+function resolveLocalUserBackupImportModelState({
+  browserModelWasRestored = false,
+  browserRestoredModelId = "",
+  desktopRestoredModelId = "",
+} = {}) {
+  const normalizedBrowserModelId = String(browserRestoredModelId || "").trim();
+  const normalizedDesktopModelId = String(desktopRestoredModelId || "").trim();
+
+  return {
+    restoredModelId: normalizedBrowserModelId || normalizedDesktopModelId,
+    shouldMirrorBrowserModel:
+      browserModelWasRestored &&
+      (!!normalizedBrowserModelId || !normalizedDesktopModelId),
+    mirrorModelId: normalizedBrowserModelId,
+  };
+}
+
 function getDefaultCampaignDate() {
   const now = new Date();
   const timezoneOffsetMs = now.getTimezoneOffset() * 60 * 1000;
@@ -631,13 +648,30 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
         return false;
       }
 
-      const browserRestoredModelId = result?.restored?.includes("ollamaModel")
+      const browserModelWasRestored = result?.restored?.includes("ollamaModel");
+      const browserRestoredModelId = browserModelWasRestored
         ? readLocalUserOllamaModelSelection()
         : "";
       const desktopRestoredModelId = String(
         result?.restoredDesktopState?.ollamaModel || ""
       ).trim();
-      const restoredModelId = browserRestoredModelId || desktopRestoredModelId;
+      const importModelState = resolveLocalUserBackupImportModelState({
+        browserModelWasRestored,
+        browserRestoredModelId,
+        desktopRestoredModelId,
+      });
+      const restoredModelId = importModelState.restoredModelId;
+      if (importModelState.shouldMirrorBrowserModel) {
+        if (
+          typeof window !== "undefined" &&
+          hasDesktopLocalSettingsBridge({ targetWindow: window })
+        ) {
+          void mirrorDesktopLocalUserOllamaModelSelection(
+            importModelState.mirrorModelId,
+            { targetWindow: window }
+          );
+        }
+      }
       if (!restoredModelId) {
         setSelectedLocalOllamaModel("");
         setLocalOllamaSelectionMessage(null);

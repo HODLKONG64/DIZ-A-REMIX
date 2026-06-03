@@ -419,13 +419,19 @@ describe("SWARMSY HIVE action hub", () => {
     );
 
     expect(source).toContain(
-      'const browserRestoredModelId = result?.restored?.includes("ollamaModel")'
+      'const browserModelWasRestored = result?.restored?.includes("ollamaModel")'
     );
     expect(source).toContain(
-      "const desktopRestoredModelId = String("
+      "const browserRestoredModelId = browserModelWasRestored"
     );
     expect(source).toContain(
-      "const restoredModelId = browserRestoredModelId || desktopRestoredModelId;"
+      "const importModelState = resolveLocalUserBackupImportModelState({"
+    );
+    expect(source).toContain(
+      "const restoredModelId = importModelState.restoredModelId;"
+    );
+    expect(source).toContain(
+      "if (importModelState.shouldMirrorBrowserModel) {"
     );
     expect(source).toContain("} else if (hasVerifiedLocalOllamaModels) {");
     expect(source).toContain("const importedModelIsInstalled = localOllamaStatus.models.some(");
