@@ -191,8 +191,9 @@ export default function SwarmsyLocalUserSettingsHub({
                   ))}
                 </select>
                 <p className="text-xs opacity-80">
-                  Model selection is stored in Local User browser storage and
-                  restored only when the model is still installed.
+                  Model selection stays in Local User browser storage (fallback)
+                  and, in trusted desktop mode, is mirrored to a local desktop
+                  settings file.
                 </p>
                 {localOllamaSelectionMessage && (
                   <p className="text-xs font-medium text-amber-200 light:text-amber-800">
