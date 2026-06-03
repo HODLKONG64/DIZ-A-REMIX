@@ -1045,12 +1045,109 @@ describe("SWARMSY desktop wrapper foundation", () => {
     const p1 = main.stopManagedRuntime({ runtimeStopper });
     const p2 = main.stopManagedRuntime({ runtimeStopper });
 
+    await Promise.resolve();
     // runtimeStopper called only once while stop is in flight
     expect(runtimeStopper).toHaveBeenCalledTimes(1);
 
     resolveStop({ ok: true });
     await p1;
     await p2;
+  });
+
+  it("stopManagedRuntime returns runtime_stop_failed when runtimeStopper throws synchronously", async () => {
+    jest.resetModules();
+    jest.doMock(
+      "electron",
+      () => ({
+        app: {},
+        BrowserWindow: jest.fn(),
+        ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+        shell: { openExternal: jest.fn() },
+      }),
+      { virtual: true }
+    );
+
+    const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
+    const child = { pid: 6661, exitCode: null, signalCode: null };
+
+    await main.ensureDesktopRuntimeReady({
+      startUrl: "http://127.0.0.1:3000",
+      env: { SWARMSY_DESKTOP_AUTO_START_RUNTIME: "true" },
+      runtimeHealthcheck: jest.fn().mockResolvedValue({
+        ok: false,
+        reason: "runtime_unreachable",
+      }),
+      runtimeLauncher: jest.fn().mockResolvedValue({
+        ok: true,
+        pid: 6661,
+        child,
+      }),
+      runtimeHealthWaiter: jest.fn().mockResolvedValue({
+        ok: true,
+        startUrl: "http://127.0.0.1:3000",
+        origin: "http://127.0.0.1:3000",
+      }),
+    });
+
+    const runtimeStopper = jest.fn(() => {
+      throw new Error("sync stopper failure");
+    });
+
+    const result = await main.stopManagedRuntime({ runtimeStopper });
+    expect(result).toEqual({
+      ok: false,
+      reason: "runtime_stop_failed",
+      message: "sync stopper failure",
+    });
+
+    const second = await main.stopManagedRuntime({ runtimeStopper });
+    expect(second).toEqual({ ok: true });
+    expect(runtimeStopper).toHaveBeenCalledTimes(1);
+  });
+
+  it("stopManagedRuntime accepts non-Promise runtimeStopper return values", async () => {
+    jest.resetModules();
+    jest.doMock(
+      "electron",
+      () => ({
+        app: {},
+        BrowserWindow: jest.fn(),
+        ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+        shell: { openExternal: jest.fn() },
+      }),
+      { virtual: true }
+    );
+
+    const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
+    const child = { pid: 6662, exitCode: null, signalCode: null };
+
+    await main.ensureDesktopRuntimeReady({
+      startUrl: "http://127.0.0.1:3000",
+      env: { SWARMSY_DESKTOP_AUTO_START_RUNTIME: "true" },
+      runtimeHealthcheck: jest.fn().mockResolvedValue({
+        ok: false,
+        reason: "runtime_unreachable",
+      }),
+      runtimeLauncher: jest.fn().mockResolvedValue({
+        ok: true,
+        pid: 6662,
+        child,
+      }),
+      runtimeHealthWaiter: jest.fn().mockResolvedValue({
+        ok: true,
+        startUrl: "http://127.0.0.1:3000",
+        origin: "http://127.0.0.1:3000",
+      }),
+    });
+
+    const runtimeStopper = jest.fn(() => ({ ok: true }));
+
+    const result = await main.stopManagedRuntime({ runtimeStopper });
+    expect(result).toEqual({ ok: true });
+
+    const second = await main.stopManagedRuntime({ runtimeStopper });
+    expect(second).toEqual({ ok: true });
+    expect(runtimeStopper).toHaveBeenCalledTimes(1);
   });
 
   it("stopManagedRuntime does not clear managedRuntimeChild until runtimeStopper settles", async () => {
@@ -1097,6 +1194,7 @@ describe("SWARMSY desktop wrapper foundation", () => {
     const p1 = main.stopManagedRuntime({ runtimeStopper });
     // Second concurrent call should see in-flight promise — not a cleared child
     const p2 = main.stopManagedRuntime({ runtimeStopper });
+    await Promise.resolve();
     expect(runtimeStopper).toHaveBeenCalledTimes(1);
 
     resolveStop({ ok: true });
@@ -1215,6 +1313,7 @@ describe("SWARMSY desktop wrapper foundation", () => {
     eventHandlers["before-quit"]();
     eventHandlers["window-all-closed"]();
 
+    await Promise.resolve();
     // runtimeStopper called only once for both concurrent callers
     expect(runtimeStopper).toHaveBeenCalledTimes(1);
 

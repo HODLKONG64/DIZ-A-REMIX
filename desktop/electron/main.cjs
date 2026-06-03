@@ -237,7 +237,8 @@ async function stopManagedRuntime({ runtimeStopper = stopDesktopLaunchedRuntime 
 
   const child = managedRuntimeChild;
 
-  managedRuntimeStopPromise = runtimeStopper({ child })
+  managedRuntimeStopPromise = Promise.resolve()
+    .then(() => runtimeStopper({ child }))
     .catch((error) => ({
       ok: false,
       reason: "runtime_stop_failed",
