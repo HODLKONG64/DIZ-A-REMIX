@@ -1,3 +1,4 @@
+const nodeFs = require("fs");
 const fs = require("fs/promises");
 const path = require("path");
 const { getDesktopStorageContract } = require("./storageContractBridge.cjs");
@@ -192,6 +193,34 @@ function createBackupDocument({
   };
 }
 
+function getExclusiveNoFollowWriteFlags() {
+  const flags =
+    nodeFs.constants.O_WRONLY |
+    nodeFs.constants.O_CREAT |
+    nodeFs.constants.O_EXCL;
+  return nodeFs.constants.O_NOFOLLOW
+    ? flags | nodeFs.constants.O_NOFOLLOW
+    : flags;
+}
+
+async function writeBackupFileExclusiveNoFollow(
+  backupFilePath,
+  contents,
+  { fsApi = fs } = {}
+) {
+  let handle = null;
+  try {
+    handle = await fsApi.open(
+      backupFilePath,
+      getExclusiveNoFollowWriteFlags(),
+      0o600
+    );
+    await handle.writeFile(contents, "utf8");
+  } finally {
+    if (handle) await handle.close();
+  }
+}
+
 async function exportLocalUserBackup(options = {}) {
   const exportedAt = (options.now || new Date()).toISOString();
   let context;
@@ -224,10 +253,10 @@ async function exportLocalUserBackup(options = {}) {
 
   const fsApi = options.fsApi || fs;
   try {
-    await fsApi.writeFile(
+    await writeBackupFileExclusiveNoFollow(
       context.backupFilePath,
       `${JSON.stringify(backup, null, 2)}\n`,
-      "utf8"
+      { fsApi }
     );
     const writtenStats = await fsApi.lstat(context.backupFilePath);
     if (writtenStats.isSymbolicLink()) {
@@ -243,7 +272,10 @@ async function exportLocalUserBackup(options = {}) {
   } catch (error) {
     return {
       ok: false,
-      reason: "backup_write_failed",
+      reason:
+        error?.code === "EEXIST" || error?.code === "ELOOP"
+          ? "backup_file_unsafe"
+          : "backup_write_failed",
       message: String(error?.message || error || "Failed to write backup."),
     };
   }
@@ -403,6 +435,8 @@ module.exports = {
   ALLOWED_SETTINGS_KEYS,
   FORBIDDEN_FIELD_KEYS,
   createBackupFileName,
+  getExclusiveNoFollowWriteFlags,
+  writeBackupFileExclusiveNoFollow,
   resolveBackupFileContext,
   createBackupDocument,
   validateLocalUserBackup,

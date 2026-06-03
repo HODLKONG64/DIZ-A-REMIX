@@ -249,6 +249,37 @@ describe("desktop filesystem Local User backup store", () => {
     expect(current.settings.state).toEqual({});
   });
 
+  it("does not follow a symlink raced into place before backup file creation", async () => {
+    const context = await resolveBackupFileContext({
+      contractOptions: createContractOptions(tmpRoot),
+      exportedAt: "2026-06-03T00:00:00.000Z",
+    });
+    const escapeTarget = path.join(tmpRoot, "race-escape-backup.json");
+    await fs.writeFile(escapeTarget, "do-not-overwrite", "utf8");
+
+    let didRaceSymlink = false;
+    const fsApi = {
+      ...fs,
+      open: async (filePath, flags, mode) => {
+        if (!didRaceSymlink) {
+          didRaceSymlink = true;
+          await fs.symlink(escapeTarget, filePath);
+        }
+        return fs.open(filePath, flags, mode);
+      },
+    };
+
+    const result = await exportLocalUserBackup({
+      contractOptions: createContractOptions(tmpRoot),
+      fsApi,
+      now: new Date("2026-06-03T00:00:00.000Z"),
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe("backup_file_unsafe");
+    expect(await fs.readFile(escapeTarget, "utf8")).toBe("do-not-overwrite");
+  });
+
   it("rejects backup directory symlinks and backup file symlinks", async () => {
     const context = await resolveBackupFileContext({
       contractOptions: createContractOptions(tmpRoot),
