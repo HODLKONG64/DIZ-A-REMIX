@@ -142,8 +142,19 @@ function normalizeDesktopLocalSettingsStateForRestore(state) {
  * Read all allowed backup fields from storage and return a versioned
  * Local User backup object ready to serialize.
  *
- * @param {{ storage?: Storage }} [options]
- * @returns {{ schema: string, version: number, exportedAt: string, state: Record<string,string|null> }}
+ * @param {{ storage?: Storage, desktopLocalSettings?: unknown }} [options]
+ * @returns {{
+ *   schema: string,
+ *   version: number,
+ *   exportedAt: string,
+ *   state: Record<string,string|null>,
+ *   desktop: { localSettings: {
+ *     schema: string,
+ *     version: number,
+ *     updatedAt: string,
+ *     state: Record<string, string|null>
+ *   } | null }
+ * }}
  */
 export function exportLocalUserBackup({ storage, desktopLocalSettings } = {}) {
   const store = resolveStorage(storage);
@@ -408,7 +419,8 @@ export async function importLocalUserBackupV2(
   if (
     typeof applyDesktopLocalSettings === "function" &&
     data?.version >= 2 &&
-    data?.desktop?.localSettings?.state &&
+    isPlainObject(data?.desktop) &&
+    isPlainObject(data?.desktop?.localSettings) &&
     isPlainObject(data.desktop.localSettings.state)
   ) {
     try {
