@@ -7,6 +7,12 @@ const artifactsRoot = path.join(repoRoot, "desktop", "artifacts");
 const appName = "swarmsy-desktop-win32-x64";
 const packageRoot = path.join(artifactsRoot, appName);
 const appResourcesRoot = path.join(packageRoot, "resources", "app");
+const frontendBuildEntry = path.join(
+  repoRoot,
+  "frontend",
+  "dist",
+  "_index.html"
+);
 const electronDistPath = process.env.ELECTRON_DIST_PATH
   ? path.resolve(process.env.ELECTRON_DIST_PATH)
   : "";
@@ -123,10 +129,7 @@ function createZipArchive() {
 }
 
 function main() {
-  ensureExists(
-    path.join(repoRoot, "frontend", "dist", "index.html"),
-    "Frontend build"
-  );
+  ensureExists(frontendBuildEntry, "Frontend build entry");
   removeIfExists(artifactsRoot);
   fs.mkdirSync(artifactsRoot, { recursive: true });
 

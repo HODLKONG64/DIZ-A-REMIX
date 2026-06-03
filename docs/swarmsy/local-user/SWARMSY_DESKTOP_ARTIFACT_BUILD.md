@@ -45,7 +45,7 @@ Expected contents include:
   - `desktop/foundation/localBackupStore.cjs`
 - The safe server storage contract helper required by the desktop bridge:
   - `server/utils/swarmsy/localUserStorageContract.js`
-- Frontend production build output from `frontend/dist/`.
+- Frontend production build output from `frontend/dist/`, including the repo postbuild entry file `frontend/dist/_index.html`.
 
 ## Not included
 

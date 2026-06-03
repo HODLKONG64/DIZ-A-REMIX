@@ -20,7 +20,7 @@ const requiredPaths = [
   "resources/app/server/utils/swarmsy/localUserStorageContract.js",
   "resources/app/desktop/foundation/localBackupStore.cjs",
   "resources/app/desktop/foundation/localSettingsStore.cjs",
-  "resources/app/frontend/dist/index.html",
+  "resources/app/frontend/dist/_index.html",
 ];
 
 const forbiddenPathSegments = new Set([
