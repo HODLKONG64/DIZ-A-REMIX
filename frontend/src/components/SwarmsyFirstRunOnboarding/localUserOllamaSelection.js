@@ -94,7 +94,9 @@ export async function readDesktopLocalUserOllamaModelSelection({
     return {
       ok: false,
       reason: "bridge_read_failed",
-      message: String(error?.message || error || "Failed to read desktop settings."),
+      message: String(
+        error?.message || error || "Failed to read desktop settings."
+      ),
       modelId: "",
     };
   }
@@ -126,7 +128,9 @@ export async function mirrorDesktopLocalUserOllamaModelSelection(
     return {
       ok: false,
       reason: "bridge_write_failed",
-      message: String(error?.message || error || "Failed to write desktop settings."),
+      message: String(
+        error?.message || error || "Failed to write desktop settings."
+      ),
     };
   }
 }

@@ -380,18 +380,21 @@ export function useLocalUserSettingsHub() {
       (model) => model.id === selectedLocalOllamaModel
     );
 
-  const onSelectLocalOllamaModel = useCallback((nextModelId) => {
-    const normalizedModelId = String(nextModelId || "").trim();
-    setSelectedLocalOllamaModel(normalizedModelId);
-    persistLocalUserOllamaModelSelection(normalizedModelId);
-    setSavedLocalOllamaModel(readLocalUserOllamaModelSelection());
-    setLocalOllamaSelectionMessage(null);
-    void mirrorModelSelectionToDesktopSettings(normalizedModelId);
-    dispatchLocalUserSettingsSync({
-      reason: "model_selection",
-      model: normalizedModelId,
-    });
-  }, [mirrorModelSelectionToDesktopSettings]);
+  const onSelectLocalOllamaModel = useCallback(
+    (nextModelId) => {
+      const normalizedModelId = String(nextModelId || "").trim();
+      setSelectedLocalOllamaModel(normalizedModelId);
+      persistLocalUserOllamaModelSelection(normalizedModelId);
+      setSavedLocalOllamaModel(readLocalUserOllamaModelSelection());
+      setLocalOllamaSelectionMessage(null);
+      void mirrorModelSelectionToDesktopSettings(normalizedModelId);
+      dispatchLocalUserSettingsSync({
+        reason: "model_selection",
+        model: normalizedModelId,
+      });
+    },
+    [mirrorModelSelectionToDesktopSettings]
+  );
 
   const exportBackupToFile = useCallback(() => {
     const backup = exportLocalUserBackup();
