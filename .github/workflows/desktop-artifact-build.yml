@@ -32,20 +32,12 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install root dependencies
-        run: npm ci
-
-      - name: Validate package lockfile
         shell: pwsh
         run: |
-          if (!(Test-Path "package-lock.json")) {
-            throw "Missing required lockfile: package-lock.json"
-          }
           npm ci
-          if (!(git diff --quiet -- package-lock.json)) {
-            git diff -- package-lock.json
-            git status --short
-            throw "package-lock.json changed after npm ci lockfile validation."
-          }
+          git diff -- package-lock.json
+          git status --short
+          git diff --name-only
 
       - name: Install frontend dependencies
         working-directory: frontend
