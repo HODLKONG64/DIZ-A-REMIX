@@ -7,7 +7,7 @@ function loadSettingsHubModule() {
     .readFileSync(
       path.resolve(
         __dirname,
-        "../../../frontend/src/components/SwarmsyLocalUserSettingsHub/useLocalUserSettingsHub.js"
+        "../../../frontend/src/utils/localUserBackup.js"
       ),
       "utf8"
     )
@@ -101,6 +101,21 @@ describe("resolveLocalUserBackupImportModelState", () => {
       restoredModelId: "desktop:model",
       shouldMirrorBrowserModel: false,
       mirrorModelId: "",
+    });
+  });
+
+  it("prefers browser model when browser and desktop restored values differ", () => {
+    const module = loadSettingsHubModule();
+    const result = module.resolveLocalUserBackupImportModelState({
+      browserModelWasRestored: true,
+      browserRestoredModelId: "browser:model",
+      desktopRestoredModelId: "desktop:model",
+    });
+
+    expect(result).toEqual({
+      restoredModelId: "browser:model",
+      shouldMirrorBrowserModel: true,
+      mirrorModelId: "browser:model",
     });
   });
 });

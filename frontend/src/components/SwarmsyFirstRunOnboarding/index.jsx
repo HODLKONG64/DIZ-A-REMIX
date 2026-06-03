@@ -54,6 +54,7 @@ import {
 import {
   exportLocalUserBackupV2,
   importLocalUserBackupV2,
+  resolveLocalUserBackupImportModelState,
 } from "@/utils/localUserBackup";
 import SwarmsyLocalUserSettingsHub from "@/components/SwarmsyLocalUserSettingsHub";
 import { LOCAL_USER_SETTINGS_SYNC_EVENT } from "@/components/SwarmsyLocalUserSettingsHub/useLocalUserSettingsHub";
@@ -87,23 +88,6 @@ const IMPORTED_LOCAL_OLLAMA_MODEL_PENDING_MESSAGE =
   "Imported Ollama model saved. SWARMSY will restore it after Ollama status is verified.";
 const IMPORTED_LOCAL_OLLAMA_MODEL_MISSING_MESSAGE =
   "Imported Ollama model is not currently installed. Select a model to continue.";
-
-function resolveLocalUserBackupImportModelState({
-  browserModelWasRestored = false,
-  browserRestoredModelId = "",
-  desktopRestoredModelId = "",
-} = {}) {
-  const normalizedBrowserModelId = String(browserRestoredModelId || "").trim();
-  const normalizedDesktopModelId = String(desktopRestoredModelId || "").trim();
-
-  return {
-    restoredModelId: normalizedBrowserModelId || normalizedDesktopModelId,
-    shouldMirrorBrowserModel:
-      browserModelWasRestored &&
-      (!!normalizedBrowserModelId || !normalizedDesktopModelId),
-    mirrorModelId: normalizedBrowserModelId,
-  };
-}
 
 function getDefaultCampaignDate() {
   const now = new Date();

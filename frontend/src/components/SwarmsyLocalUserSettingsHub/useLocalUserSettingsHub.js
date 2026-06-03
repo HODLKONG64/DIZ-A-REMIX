@@ -15,6 +15,7 @@ import {
 import {
   exportLocalUserBackupV2,
   importLocalUserBackupV2,
+  resolveLocalUserBackupImportModelState,
 } from "@/utils/localUserBackup";
 
 export const LOCAL_USER_SETTINGS_SYNC_EVENT =
@@ -91,23 +92,6 @@ function dispatchLocalUserSettingsSync(detail = {}) {
   window.dispatchEvent(
     new CustomEvent(LOCAL_USER_SETTINGS_SYNC_EVENT, { detail })
   );
-}
-
-export function resolveLocalUserBackupImportModelState({
-  browserModelWasRestored = false,
-  browserRestoredModelId = "",
-  desktopRestoredModelId = "",
-} = {}) {
-  const normalizedBrowserModelId = String(browserRestoredModelId || "").trim();
-  const normalizedDesktopModelId = String(desktopRestoredModelId || "").trim();
-
-  return {
-    restoredModelId: normalizedBrowserModelId || normalizedDesktopModelId,
-    shouldMirrorBrowserModel:
-      browserModelWasRestored &&
-      (!!normalizedBrowserModelId || !normalizedDesktopModelId),
-    mirrorModelId: normalizedBrowserModelId,
-  };
 }
 
 export function useLocalUserSettingsHub() {

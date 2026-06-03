@@ -138,6 +138,23 @@ function normalizeDesktopLocalSettingsStateForRestore(state) {
   return normalizedState;
 }
 
+export function resolveLocalUserBackupImportModelState({
+  browserModelWasRestored = false,
+  browserRestoredModelId = "",
+  desktopRestoredModelId = "",
+} = {}) {
+  const normalizedBrowserModelId = String(browserRestoredModelId || "").trim();
+  const normalizedDesktopModelId = String(desktopRestoredModelId || "").trim();
+
+  return {
+    restoredModelId: normalizedBrowserModelId || normalizedDesktopModelId,
+    shouldMirrorBrowserModel:
+      browserModelWasRestored &&
+      (!!normalizedBrowserModelId || !normalizedDesktopModelId),
+    mirrorModelId: normalizedBrowserModelId,
+  };
+}
+
 /**
  * Read all allowed backup fields from storage and return a versioned
  * Local User backup object ready to serialize.
@@ -415,14 +432,24 @@ export async function importLocalUserBackupV2(
   if (!result.success) return result;
 
   let restoredDesktopState = null;
+  const desktopRestore = {
+    attempted: false,
+    success: false,
+    reason: "desktop_restore_not_attempted",
+  };
 
-  if (
-    typeof applyDesktopLocalSettings === "function" &&
-    data?.version >= 2 &&
-    isPlainObject(data?.desktop) &&
-    isPlainObject(data?.desktop?.localSettings) &&
-    isPlainObject(data.desktop.localSettings.state)
+  if (data?.version < 2) {
+    desktopRestore.reason = "desktop_restore_skipped_backup_version";
+  } else if (typeof applyDesktopLocalSettings !== "function") {
+    desktopRestore.reason = "desktop_restore_skipped_no_callback";
+  } else if (
+    !isPlainObject(data?.desktop) ||
+    !isPlainObject(data?.desktop?.localSettings) ||
+    !isPlainObject(data.desktop.localSettings.state)
   ) {
+    desktopRestore.reason = "desktop_restore_skipped_no_desktop_state";
+  } else {
+    desktopRestore.attempted = true;
     try {
       const normalizedDesktopState =
         normalizeDesktopLocalSettingsStateForRestore(
@@ -433,9 +460,15 @@ export async function importLocalUserBackupV2(
       );
       if (desktopResult?.ok) {
         restoredDesktopState = normalizedDesktopState;
+        desktopRestore.success = true;
+        desktopRestore.reason = null;
+      } else {
+        desktopRestore.reason =
+          desktopResult?.reason || "desktop_restore_failed";
       }
     } catch {
       restoredDesktopState = null;
+      desktopRestore.reason = "desktop_restore_threw";
       // Browser fallback import remains successful.
     }
   }
@@ -443,5 +476,6 @@ export async function importLocalUserBackupV2(
   return {
     ...result,
     restoredDesktopState,
+    desktopRestore,
   };
 }

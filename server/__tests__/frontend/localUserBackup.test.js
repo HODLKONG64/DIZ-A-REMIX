@@ -571,6 +571,18 @@ describe("desktop-aware v2 helpers", () => {
     expect(backup.desktop.localSettings.state.ollamaModel).toBe("llama3.1:8b");
   });
 
+  it("exportLocalUserBackupV2 falls back to browser-only payload when desktop callback is unavailable", async () => {
+    const { exportLocalUserBackupV2 } = loadBackupModule();
+    const backup = await exportLocalUserBackupV2({
+      storage: createStorage(),
+      readDesktopLocalSettings: async () => ({
+        ok: false,
+        reason: "bridge_unavailable",
+      }),
+    });
+    expect(backup.desktop).toEqual({ localSettings: null });
+  });
+
   it("importLocalUserBackupV2 restores desktop settings through callback", async () => {
     const { importLocalUserBackupV2 } = loadBackupModule();
     const applyDesktopLocalSettings = jest.fn().mockResolvedValue({ ok: true });
@@ -587,6 +599,11 @@ describe("desktop-aware v2 helpers", () => {
       ollamaModel: "llama3.1:8b",
       provider: "ollama",
     });
+    expect(result.desktopRestore).toEqual({
+      attempted: true,
+      success: true,
+      reason: null,
+    });
   });
 
   it("importLocalUserBackupV2 does not report desktop state when callback returns ok false", async () => {
@@ -599,6 +616,11 @@ describe("desktop-aware v2 helpers", () => {
     expect(result.success).toBe(true);
     expect(applyDesktopLocalSettings).toHaveBeenCalled();
     expect(result.restoredDesktopState).toBeNull();
+    expect(result.desktopRestore).toEqual({
+      attempted: true,
+      success: false,
+      reason: "desktop_restore_failed",
+    });
   });
 
   it("importLocalUserBackupV2 does not report desktop state when callback throws", async () => {
@@ -613,6 +635,11 @@ describe("desktop-aware v2 helpers", () => {
     expect(result.success).toBe(true);
     expect(applyDesktopLocalSettings).toHaveBeenCalled();
     expect(result.restoredDesktopState).toBeNull();
+    expect(result.desktopRestore).toEqual({
+      attempted: true,
+      success: false,
+      reason: "desktop_restore_threw",
+    });
   });
 
   it("importLocalUserBackupV2 trims desktop values and converts empties to null", async () => {
@@ -641,6 +668,11 @@ describe("desktop-aware v2 helpers", () => {
     expect(result.restoredDesktopState).toEqual({
       ollamaModel: null,
       provider: "ollama",
+    });
+    expect(result.desktopRestore).toEqual({
+      attempted: true,
+      success: true,
+      reason: null,
     });
   });
 
@@ -687,6 +719,27 @@ describe("desktop-aware v2 helpers", () => {
     );
     expect(result.success).toBe(false);
     expect(applyDesktopLocalSettings).not.toHaveBeenCalled();
+  });
+
+  it("importLocalUserBackupV2 reports desktop restore skipped when v2 backup has no desktop payload", async () => {
+    const { importLocalUserBackupV2 } = loadBackupModule();
+    const applyDesktopLocalSettings = jest.fn().mockResolvedValue({ ok: true });
+    const backup = validBackup();
+    delete backup.desktop;
+
+    const result = await importLocalUserBackupV2(backup, {
+      storage: createStorage(),
+      applyDesktopLocalSettings,
+    });
+
+    expect(result.success).toBe(true);
+    expect(applyDesktopLocalSettings).not.toHaveBeenCalled();
+    expect(result.restoredDesktopState).toBeNull();
+    expect(result.desktopRestore).toEqual({
+      attempted: false,
+      success: false,
+      reason: "desktop_restore_skipped_no_desktop_state",
+    });
   });
 });
 
