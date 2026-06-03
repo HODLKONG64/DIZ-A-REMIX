@@ -1070,10 +1070,23 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                 setSelectedLocalOllamaModel(normalizedModelId);
                 persistLocalUserOllamaModelSelection(normalizedModelId);
                 setLocalOllamaSelectionMessage(null);
-                if (hasDesktopLocalSettingsBridge()) {
+                if (
+                  typeof window !== "undefined" &&
+                  hasDesktopLocalSettingsBridge({ targetWindow: window })
+                ) {
                   void mirrorDesktopLocalUserOllamaModelSelection(
-                    normalizedModelId
-                  );
+                    normalizedModelId,
+                    {
+                      targetWindow: window,
+                    }
+                  ).then((mirrored) => {
+                    if (!mirrored.ok) {
+                      showToast(
+                        "Desktop local settings sync failed. Browser Local User storage remains active.",
+                        "warning"
+                      );
+                    }
+                  });
                 }
                 window.dispatchEvent(
                   new CustomEvent(LOCAL_USER_SETTINGS_SYNC_EVENT, {
