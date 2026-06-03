@@ -15,7 +15,7 @@ function createContractOptions(homeDir) {
     platform: "linux",
     homeDir,
     env: {
-      XDG_CONFIG_HOME: path.join(homeDir, ".xdg"),
+      XDG_CONFIG_HOME: path.posix.join(homeDir, ".xdg"),
     },
   };
 }
@@ -37,7 +37,7 @@ describe("desktop local settings store", () => {
     });
 
     expect(context.settingsFilePath).toBe(
-      path.join(context.layout.paths.settings, LOCAL_SETTINGS_FILENAME)
+      path.posix.join(context.layout.paths.settings, LOCAL_SETTINGS_FILENAME)
     );
 
     const writeResult = await setLocalUserSettings(
@@ -138,5 +138,62 @@ describe("desktop local settings store", () => {
     );
     expect(result.ok).toBe(false);
     expect(result.reason).toBe("settings_path_invalid");
+  });
+
+  it("rejects reads when the settings file itself is a symlink", async () => {
+    const context = await resolveSettingsFileContext({
+      contractOptions: createContractOptions(tmpRoot),
+    });
+    const escapeTarget = path.join(tmpRoot, "escape-target.json");
+    await fs.writeFile(escapeTarget, "{}", "utf8");
+    await fs.symlink(escapeTarget, context.settingsFilePath);
+
+    const result = await getLocalUserSettings({
+      contractOptions: createContractOptions(tmpRoot),
+    });
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe("settings_path_invalid");
+  });
+
+  it("rejects writes when the settings file itself is a symlink", async () => {
+    const context = await resolveSettingsFileContext({
+      contractOptions: createContractOptions(tmpRoot),
+    });
+    const escapeTarget = path.join(tmpRoot, "escape-target.json");
+    await fs.writeFile(escapeTarget, "{}", "utf8");
+    await fs.symlink(escapeTarget, context.settingsFilePath);
+
+    const result = await setLocalUserSettings(
+      { ollamaModel: "llama3.1:8b" },
+      { contractOptions: createContractOptions(tmpRoot) }
+    );
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe("settings_path_invalid");
+  });
+
+  it("rejects payload with extra top-level keys alongside state", async () => {
+    const result = await setLocalUserSettings(
+      { state: { ollamaModel: "llama3.1:8b" }, path: "/tmp/evil" },
+      { contractOptions: createContractOptions(tmpRoot) }
+    );
+    expect(result.ok).toBe(false);
+    expect(result.reason).toBe("settings_validation_error");
+    expect(result.errors).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining('Unknown settings payload field "path"'),
+      ])
+    );
+  });
+
+  it("accepts payload with only state and no extra top-level keys", async () => {
+    const result = await setLocalUserSettings(
+      { state: { ollamaModel: "llama3.1:8b", provider: "ollama" } },
+      { contractOptions: createContractOptions(tmpRoot) }
+    );
+    expect(result.ok).toBe(true);
+    expect(result.settings.state).toEqual({
+      ollamaModel: "llama3.1:8b",
+      provider: "ollama",
+    });
   });
 });

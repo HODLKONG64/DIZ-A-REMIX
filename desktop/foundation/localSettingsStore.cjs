@@ -134,8 +134,19 @@ function resolveSettingsPayload(payload = {}) {
   if (!isPlainObject(payload)) {
     return { valid: false, errors: ["settings payload must be a plain object."] };
   }
-  const sourceState = isPlainObject(payload.state) ? payload.state : payload;
-  return sanitizeSettingsStateInput(sourceState);
+  if (isPlainObject(payload.state)) {
+    const extraKeys = Object.keys(payload).filter((k) => k !== "state");
+    if (extraKeys.length > 0) {
+      return {
+        valid: false,
+        errors: extraKeys.map(
+          (k) => `Unknown settings payload field "${k}" is not allowed.`
+        ),
+      };
+    }
+    return sanitizeSettingsStateInput(payload.state);
+  }
+  return sanitizeSettingsStateInput(payload);
 }
 
 function assertPathWithinLocalUserRoot(targetPath, layout, { allowRoot = false } = {}) {
@@ -171,6 +182,14 @@ async function resolveSettingsFileContext({
 
   const realRoot = await fsApi.realpath(layout.root).catch(() => layout.root);
   assertPathWithinLocalUserRoot(realRoot, layout, { allowRoot: true });
+
+  const settingsFileStats = await fsApi.lstat(settingsFilePath).catch((error) => {
+    if (error?.code === "ENOENT") return null;
+    throw error;
+  });
+  if (settingsFileStats?.isSymbolicLink()) {
+    throw new Error("Settings file cannot be a symlink.");
+  }
 
   return {
     layout,
