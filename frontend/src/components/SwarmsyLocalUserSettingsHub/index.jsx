@@ -1,5 +1,10 @@
 import { useRef } from "react";
 import { ArrowClockwise, SpinnerGap } from "@phosphor-icons/react";
+import {
+  hasDesktopLocalSettingsBridge,
+  mirrorDesktopLocalUserOllamaModelSelection,
+} from "@/components/SwarmsyFirstRunOnboarding/localUserOllamaSelection";
+import showToast from "@/utils/toast";
 
 const LOCAL_OLLAMA_SETUP_GUIDANCE = [
   "Ollama was not detected.",
@@ -44,6 +49,7 @@ export default function SwarmsyLocalUserSettingsHub({
     onSelectLocalOllamaModel,
     exportBackupToFile,
     importBackupFromText,
+    mirrorsDesktopLocalSettings = false,
   } = controller;
 
   const isHostedBoundary = isHostedAdminMode && !isLocalUserMode;
@@ -51,6 +57,32 @@ export default function SwarmsyLocalUserSettingsHub({
   const title = showNeutralPendingState
     ? "Checking environment..."
     : localOllamaStatusTitle;
+
+  function handleSelectLocalOllamaModel(nextModelId) {
+    const normalizedModelId = String(nextModelId || "").trim();
+    onSelectLocalOllamaModel(normalizedModelId);
+
+    const shouldMirrorDesktopSelection =
+      !mirrorsDesktopLocalSettings && typeof isLoginModePending === "undefined";
+    if (
+      !shouldMirrorDesktopSelection ||
+      typeof window === "undefined" ||
+      !hasDesktopLocalSettingsBridge({ targetWindow: window })
+    ) {
+      return;
+    }
+
+    void mirrorDesktopLocalUserOllamaModelSelection(normalizedModelId, {
+      targetWindow: window,
+    }).then((mirrored) => {
+      if (!mirrored.ok) {
+        showToast(
+          "Desktop local settings sync failed. Browser Local User storage remains active.",
+          "warning"
+        );
+      }
+    });
+  }
 
   function handleImportBackupFile(event) {
     const file = event.target.files?.[0];
@@ -176,7 +208,7 @@ export default function SwarmsyLocalUserSettingsHub({
                   id="local-user-ollama-model"
                   value={selectedLocalOllamaModel}
                   onChange={(event) =>
-                    onSelectLocalOllamaModel(event.target.value)
+                    handleSelectLocalOllamaModel(event.target.value)
                   }
                   className="w-full rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary px-3 py-2 text-sm text-theme-text-primary outline-none focus:border-teal"
                 >
