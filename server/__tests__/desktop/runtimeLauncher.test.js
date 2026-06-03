@@ -469,6 +469,41 @@ describe("desktop runtime launcher foundation", () => {
     jest.useRealTimers();
   });
 
+  it("win32 taskkill timeout returns structured timeout failure", async () => {
+    const setTimeoutSpy = jest
+      .spyOn(global, "setTimeout")
+      .mockImplementation((fn) => {
+        fn();
+        return 1;
+      });
+    const clearTimeoutSpy = jest
+      .spyOn(global, "clearTimeout")
+      .mockImplementation(() => {});
+    const { stopDesktopLaunchedRuntime } = require(launcherPath);
+    const child = createMockChild({ pid: 5858 });
+    const killer = new EventEmitter();
+    const spawnImpl = jest.fn(() => killer);
+    try {
+      await expect(
+        stopDesktopLaunchedRuntime({
+          child,
+          platform: "win32",
+          spawnImpl,
+        })
+      ).resolves.toEqual(
+        expect.objectContaining({
+          ok: false,
+          reason: "runtime_stop_timeout",
+          message:
+            "Timed out waiting for Windows taskkill to stop SWARMSY local runtime.",
+        })
+      );
+    } finally {
+      setTimeoutSpy.mockRestore();
+      clearTimeoutSpy.mockRestore();
+    }
+  });
+
   it("win32 taskkill spawn throw is caught and child.kill is called as fallback", async () => {
     const { stopDesktopLaunchedRuntime } = require(launcherPath);
     const child = createMockChild({ pid: 6868 });
@@ -509,5 +544,42 @@ describe("desktop runtime launcher foundation", () => {
     expect(threw).toBe(false);
     expect(result).toBeDefined();
     expect(result.ok).toBe(false);
+  });
+
+  it("returns structured timeout failure when child survives SIGKILL", async () => {
+    const setTimeoutSpy = jest
+      .spyOn(global, "setTimeout")
+      .mockImplementation((fn) => {
+        fn();
+        return 1;
+      });
+    const clearTimeoutSpy = jest
+      .spyOn(global, "clearTimeout")
+      .mockImplementation(() => {});
+    const { stopDesktopLaunchedRuntime } = require(launcherPath);
+    const child = new EventEmitter();
+    child.pid = 7979;
+    child.exitCode = null;
+    child.signalCode = null;
+    child.kill = jest.fn(() => true);
+    const processKillSpy = jest.spyOn(process, "kill").mockImplementation(() => true);
+    try {
+      await expect(
+        stopDesktopLaunchedRuntime({
+          child,
+          platform: "linux",
+        })
+      ).resolves.toEqual(
+        expect.objectContaining({
+          ok: false,
+          reason: "runtime_stop_timeout",
+          message: "Timed out waiting for SWARMSY local runtime to exit.",
+        })
+      );
+    } finally {
+      processKillSpy.mockRestore();
+      setTimeoutSpy.mockRestore();
+      clearTimeoutSpy.mockRestore();
+    }
   });
 });

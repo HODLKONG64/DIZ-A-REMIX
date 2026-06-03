@@ -318,10 +318,10 @@ async function stopDesktopLaunchedRuntime({
         message: error?.message || "Failed to invoke taskkill.",
       };
     }
-    await new Promise((resolve) => {
+    const taskkillFinished = await new Promise((resolve) => {
       let settled = false;
       let timeout = null;
-      const done = () => {
+      const done = (result) => {
         if (settled) return;
         settled = true;
         if (timeout) {
@@ -330,13 +330,22 @@ async function stopDesktopLaunchedRuntime({
         }
         killer.removeListener?.("error", onDone);
         killer.removeListener?.("exit", onDone);
-        resolve();
+        resolve(result);
       };
-      const onDone = () => done();
+      const onDone = () => done(true);
       killer.once?.("error", onDone);
       killer.once?.("exit", onDone);
-      timeout = setTimeout(done, DEFAULT_STOP_TIMEOUT_MS);
+      timeout = setTimeout(() => done(false), DEFAULT_STOP_TIMEOUT_MS);
     });
+    if (!taskkillFinished && child.exitCode === null && child.signalCode === null) {
+      return {
+        ok: false,
+        reason: "runtime_stop_timeout",
+        message:
+          "Timed out waiting for Windows taskkill to stop SWARMSY local runtime.",
+        mode: DESKTOP_RUNTIME_LAUNCH_MODE,
+      };
+    }
     return { ok: true, mode: DESKTOP_RUNTIME_LAUNCH_MODE };
   }
 
@@ -356,7 +365,15 @@ async function stopDesktopLaunchedRuntime({
         child.kill("SIGKILL");
       } catch {}
     }
-    await waitForChildExit(child, 1000);
+    const killed = await waitForChildExit(child, 1000);
+    if (!killed) {
+      return {
+        ok: false,
+        reason: "runtime_stop_timeout",
+        message: "Timed out waiting for SWARMSY local runtime to exit.",
+        mode: DESKTOP_RUNTIME_LAUNCH_MODE,
+      };
+    }
   }
 
   return { ok: true, mode: DESKTOP_RUNTIME_LAUNCH_MODE };

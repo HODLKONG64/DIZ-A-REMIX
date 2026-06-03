@@ -21,6 +21,7 @@ const STORAGE_CONTRACT_CHANNEL = "swarmsy:get-storage-contract";
 const repoRoot = path.resolve(__dirname, "../..");
 let managedRuntimeChild = null;
 let managedRuntimeStopPromise = null;
+let isQuittingAfterManagedRuntimeStop = false;
 
 function resolveStartUrl() {
   const configured = String(process.env.SWARMSY_DESKTOP_START_URL || "").trim();
@@ -324,8 +325,13 @@ function bootstrapDesktopApp({
     });
   });
 
-  appInstance.on("before-quit", () => {
-    void stopManagedRuntime({ runtimeStopper });
+  appInstance.on("before-quit", (event) => {
+    if (isQuittingAfterManagedRuntimeStop) return;
+    event?.preventDefault?.();
+    void stopManagedRuntime({ runtimeStopper }).finally(() => {
+      isQuittingAfterManagedRuntimeStop = true;
+      appInstance.quit();
+    });
   });
 
   appInstance.on("window-all-closed", () => {

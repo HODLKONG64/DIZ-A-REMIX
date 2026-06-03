@@ -931,6 +931,76 @@ describe("SWARMSY desktop wrapper foundation", () => {
     expect(appInstance.quit).toHaveBeenCalled();
   });
 
+  it("before-quit waits for managed runtime stop before quitting", async () => {
+    jest.resetModules();
+    jest.doMock(
+      "electron",
+      () => ({
+        app: {},
+        BrowserWindow: jest.fn(),
+        ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+        shell: { openExternal: jest.fn() },
+      }),
+      { virtual: true }
+    );
+
+    const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
+    const child = { pid: 3366, exitCode: null, signalCode: null };
+    await main.ensureDesktopRuntimeReady({
+      startUrl: "http://127.0.0.1:3000",
+      env: { SWARMSY_DESKTOP_AUTO_START_RUNTIME: "true" },
+      runtimeHealthcheck: jest.fn().mockResolvedValue({
+        ok: false,
+        reason: "runtime_unreachable",
+      }),
+      runtimeLauncher: jest.fn().mockResolvedValue({
+        ok: true,
+        pid: 3366,
+        child,
+      }),
+      runtimeHealthWaiter: jest.fn().mockResolvedValue({
+        ok: true,
+        startUrl: "http://127.0.0.1:3000",
+        origin: "http://127.0.0.1:3000",
+      }),
+    });
+
+    let resolveStop;
+    const stopDelay = new Promise((resolve) => {
+      resolveStop = resolve;
+    });
+    const runtimeStopper = jest.fn().mockReturnValue(stopDelay);
+
+    const eventHandlers = {};
+    const appInstance = {
+      whenReady: jest.fn(() => Promise.resolve()),
+      on: jest.fn((event, handler) => {
+        eventHandlers[event] = handler;
+      }),
+      quit: jest.fn(),
+    };
+    const BrowserWindowCtor = jest.fn(() => ({
+      webContents: { setWindowOpenHandler: jest.fn(), on: jest.fn() },
+      loadURL: jest.fn().mockResolvedValue(undefined),
+    }));
+    BrowserWindowCtor.getAllWindows = jest.fn(() => [1]);
+    main.bootstrapDesktopApp({
+      appInstance,
+      BrowserWindowCtor,
+      runtimeStopper,
+    });
+    await Promise.resolve();
+
+    const event = { preventDefault: jest.fn() };
+    eventHandlers["before-quit"](event);
+    expect(event.preventDefault).toHaveBeenCalledTimes(1);
+    expect(appInstance.quit).not.toHaveBeenCalled();
+
+    resolveStop({ ok: true });
+    await new Promise((r) => setImmediate(r));
+    expect(appInstance.quit).toHaveBeenCalledTimes(1);
+  });
+
   it("stopManagedRuntime called concurrently does not call runtimeStopper twice", async () => {
     jest.resetModules();
     jest.doMock(
