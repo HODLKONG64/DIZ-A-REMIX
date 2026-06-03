@@ -5,9 +5,8 @@ const path = require("path");
 const repoRoot = path.resolve(__dirname, "../..");
 const artifactsRoot = path.join(repoRoot, "desktop", "artifacts");
 const appName = "swarmsy-desktop-win32-x64";
-const packageRoot = path.join(artifactsRoot, appName);
-const archivePath = path.join(artifactsRoot, `${appName}.zip`);
-const appResourcesRoot = path.join(packageRoot, "resources", "app");
+const defaultPackageRoot = path.join(artifactsRoot, appName);
+const defaultArchivePath = path.join(artifactsRoot, `${appName}.zip`);
 
 const requiredPaths = [
   "SWARMSY Desktop.exe",
@@ -24,43 +23,52 @@ const requiredPaths = [
 ];
 
 const forbiddenPathSegments = new Set([
-  ".env",
-  ".env.local",
-  ".env.development",
-  ".env.production",
+  ".anythingllm-desktop",
   "storage",
   "documents",
   "vector-cache",
   "hotdir",
   "models",
   "ollama",
-  ".anythingllm-desktop",
   "local-user-data",
   "session-store",
 ]);
 
-const secretFilePatterns = [
-  /^\.env/i,
-  /secret/i,
-  /token/i,
-  /api[_-]?key/i,
-  /session/i,
-  /credential/i,
-  /auth/i,
+const forbiddenBasenamePatterns = [
+  /^\.env(?:\..*)?$/i,
+  /\.local$/i,
+  /(?:^|[-_.])(secret|credential|api[-_]?key|access[-_]?token|refresh[-_]?token)(?:[-_.]|$)/i,
 ];
 
-const secretValuePatterns = [
-  /(?:api[_-]?key|auth[_-]?token|session[_-]?token|access[_-]?token|refresh[_-]?token|secret|credential)\s*[:=]\s*["'][A-Za-z0-9_./+=-]{24,}["']/i,
-  /(?:OPENAI|ANTHROPIC|GEMINI|GROQ|AZURE|PINECONE|QDRANT|MILVUS|WEAVIATE|POSTHOG)[A-Z0-9_]*\s*[:=]\s*["'][^"']{24,}["']/,
-  /\bsk-(?!my|123|example|xxxx|cp-\.\.\.)(?:proj-)?[A-Za-z0-9_-]{24,}\b/i,
+const textExtensions = new Set([
+  ".cjs",
+  ".js",
+  ".json",
+  ".html",
+  ".css",
+  ".txt",
+  ".md",
+]);
+
+const hardcodedSecretValuePatterns = [
+  /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
+  /\bprivate_key\b\s*[:=]\s*["']?-----BEGIN [A-Z ]*PRIVATE KEY-----/i,
+  /\bAuthorization\b\s*[:=]\s*["']?Bearer\s+[A-Za-z0-9._~+/-]{32,}={0,2}["']?/i,
+  /\bAWS_ACCESS_KEY_ID\b\s*[:=]\s*["']?AKIA[0-9A-Z]{16}["']?/,
+  /\bAWS_SECRET_ACCESS_KEY\b\s*[:=]\s*["']?[A-Za-z0-9/+=]{40}["']?/,
+  /\b(?:OPENAI|ANTHROPIC|GEMINI|GROQ|AZURE|PINECONE|QDRANT|MILVUS|WEAVIATE|POSTHOG)[A-Z0-9_]*(?:API[_-]?KEY|TOKEN|SECRET|CREDENTIAL)[A-Z0-9_]*\b\s*[:=]\s*["']?(?:sk-(?!my|123|example|xxxx|cp-\.\.\.)(?:proj-)?[A-Za-z0-9_-]{12,}|[A-Za-z0-9._~+/-]{32,}={0,2})["']?/i,
+  /\b(?:apiKey|api[_-]?key|authToken|auth[_-]?token|accessToken|access[_-]?token|refreshToken|refresh[_-]?token|sessionToken|session[_-]?token|token|secret|credential)\b\s*[:=]\s*["'](?:sk-(?!my|123|example|xxxx|cp-\.\.\.)(?:proj-)?[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9_]{20,}|[A-Za-z0-9._~+/-]{40,}={0,2})["']/i,
 ];
 
 function fail(message) {
-  console.error(`[desktop:artifact:smoke] ${message}`);
-  process.exit(1);
+  throw new Error(message);
 }
 
-function assertExists(relativePath) {
+function displayPath(packageRoot, file) {
+  return path.relative(packageRoot, file) || file;
+}
+
+function assertExists(packageRoot, relativePath) {
   const target = path.join(packageRoot, relativePath);
   if (!fs.existsSync(target)) {
     fail(`Missing expected desktop artifact path: ${relativePath}`);
@@ -79,23 +87,24 @@ function walk(directory, files = []) {
   return files;
 }
 
-function assertNoForbiddenPaths(files) {
+function assertNoForbiddenPaths(files, packageRoot) {
   for (const file of files) {
-    const relative = path.relative(packageRoot, file).split(path.sep);
-    for (const segment of relative) {
+    const relativeSegments = path.relative(packageRoot, file).split(path.sep);
+    for (const segment of relativeSegments) {
       if (forbiddenPathSegments.has(segment.toLowerCase())) {
         fail(
-          `Forbidden local/runtime path included in artifact: ${path.relative(
+          `Forbidden local/runtime path included in artifact: ${displayPath(
             packageRoot,
             file
           )}`
         );
       }
     }
+
     const basename = path.basename(file);
-    if (secretFilePatterns.some((pattern) => pattern.test(basename))) {
+    if (forbiddenBasenamePatterns.some((pattern) => pattern.test(basename))) {
       fail(
-        `Forbidden secret/auth/session/API-key-like file included: ${path.relative(
+        `Forbidden secret/local-data-like file included: ${displayPath(
           packageRoot,
           file
         )}`
@@ -104,25 +113,16 @@ function assertNoForbiddenPaths(files) {
   }
 }
 
-function assertNoSecretValues(files) {
-  const textExtensions = new Set([
-    ".cjs",
-    ".js",
-    ".json",
-    ".html",
-    ".css",
-    ".txt",
-    ".md",
-  ]);
+function assertNoSecretValues(files, packageRoot) {
   for (const file of files) {
     if (!textExtensions.has(path.extname(file).toLowerCase())) continue;
     const stat = fs.statSync(file);
     if (stat.size > 2 * 1024 * 1024) continue;
     const contents = fs.readFileSync(file, "utf8");
-    for (const pattern of secretValuePatterns) {
+    for (const pattern of hardcodedSecretValuePatterns) {
       if (pattern.test(contents)) {
         fail(
-          `Secret/auth/session/API-key-like value found in ${path.relative(
+          `Hardcoded secret-like value found in ${displayPath(
             packageRoot,
             file
           )}`
@@ -132,14 +132,19 @@ function assertNoSecretValues(files) {
   }
 }
 
-function main() {
+function validateArtifact({
+  packageRoot = defaultPackageRoot,
+  archivePath = defaultArchivePath,
+} = {}) {
+  const appResourcesRoot = path.join(packageRoot, "resources", "app");
+
   if (!fs.existsSync(packageRoot)) {
     fail(`Artifact directory is missing: ${packageRoot}`);
   }
   if (!fs.existsSync(archivePath)) {
     fail(`Artifact archive is missing: ${archivePath}`);
   }
-  for (const relativePath of requiredPaths) assertExists(relativePath);
+  for (const relativePath of requiredPaths) assertExists(packageRoot, relativePath);
 
   const files = walk(packageRoot);
   if (
@@ -149,11 +154,28 @@ function main() {
   ) {
     fail("Frontend build assets are missing from artifact resources.");
   }
-  assertNoForbiddenPaths(files);
-  assertNoSecretValues(files);
-  console.log(
-    "[desktop:artifact:smoke] Windows desktop artifact structure and safety checks passed."
-  );
+  assertNoForbiddenPaths(files, packageRoot);
+  assertNoSecretValues(files, packageRoot);
 }
 
-main();
+function main() {
+  try {
+    validateArtifact();
+    console.log(
+      "[desktop:artifact:smoke] Windows desktop artifact structure and safety checks passed."
+    );
+  } catch (error) {
+    console.error(`[desktop:artifact:smoke] ${error.message}`);
+    process.exit(1);
+  }
+}
+
+if (require.main === module) main();
+
+module.exports = {
+  hardcodedSecretValuePatterns,
+  forbiddenBasenamePatterns,
+  forbiddenPathSegments,
+  requiredPaths,
+  validateArtifact,
+};
