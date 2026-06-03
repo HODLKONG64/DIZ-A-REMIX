@@ -43,6 +43,8 @@ Expected contents include:
   - `desktop/foundation/storageContractBridge.cjs`
   - `desktop/foundation/localSettingsStore.cjs`
   - `desktop/foundation/localBackupStore.cjs`
+- The safe server storage contract helper required by the desktop bridge:
+  - `server/utils/swarmsy/localUserStorageContract.js`
 - Frontend production build output from `frontend/dist/`.
 
 ## Not included
@@ -75,7 +77,7 @@ The artifact is unsigned, so Windows may show an unsigned-app warning. This is e
 
 ### CI validation
 
-The workflow validates that the artifact exists, contains the expected desktop and frontend files, and does not include known local-data or secret-bearing paths. It also scans text assets for high-risk secret, auth token, session token, and API key value patterns.
+The workflow validates that the artifact exists, contains the expected desktop, safe server-helper, and frontend files, and does not include known local-data or secret-bearing paths. It also scans text assets for high-risk secret, auth token, session token, and API key value patterns.
 
 ### Local validation
 

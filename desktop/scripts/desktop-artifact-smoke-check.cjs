@@ -17,6 +17,7 @@ const requiredPaths = [
   "resources/app/desktop/foundation/runtimeHealthcheck.cjs",
   "resources/app/desktop/foundation/runtimeLauncher.cjs",
   "resources/app/desktop/foundation/storageContractBridge.cjs",
+  "resources/app/server/utils/swarmsy/localUserStorageContract.js",
   "resources/app/desktop/foundation/localBackupStore.cjs",
   "resources/app/desktop/foundation/localSettingsStore.cjs",
   "resources/app/frontend/dist/index.html",
@@ -39,10 +40,13 @@ const forbiddenPathSegments = new Set([
 ]);
 
 const secretFilePatterns = [
-  /\.env/i,
+  /^\.env/i,
   /secret/i,
+  /token/i,
   /api[_-]?key/i,
+  /session/i,
   /credential/i,
+  /auth/i,
 ];
 
 const secretValuePatterns = [

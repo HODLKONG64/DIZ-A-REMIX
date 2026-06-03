@@ -15,6 +15,10 @@ const copyEntries = [
   { from: "desktop/electron", to: "desktop/electron" },
   { from: "desktop/foundation", to: "desktop/foundation" },
   { from: "frontend/dist", to: "frontend/dist" },
+  {
+    from: "server/utils/swarmsy/localUserStorageContract.js",
+    to: "server/utils/swarmsy/localUserStorageContract.js",
+  },
 ];
 
 function ensureExists(targetPath, label = targetPath) {
@@ -37,7 +41,9 @@ function copyDirectory(from, to) {
     filter: (source) => {
       const base = path.basename(source).toLowerCase();
       return (
-        base !== ".env" && !base.endsWith(".local") && base !== "node_modules"
+        !base.startsWith(".env") &&
+        !base.endsWith(".local") &&
+        base !== "node_modules"
       );
     },
   });
@@ -62,6 +68,14 @@ function writeDesktopPackageJson() {
   );
 }
 
+function copyDirectoryContents(from, to) {
+  ensureExists(from);
+  fs.mkdirSync(to, { recursive: true });
+  for (const entry of fs.readdirSync(from)) {
+    copyDirectory(path.join(from, entry), path.join(to, entry));
+  }
+}
+
 function copyElectronRuntime() {
   if (!electronDistPath) {
     throw new Error(
@@ -69,7 +83,7 @@ function copyElectronRuntime() {
     );
   }
   ensureExists(electronDistPath, "Electron runtime distribution");
-  copyDirectory(electronDistPath, packageRoot);
+  copyDirectoryContents(electronDistPath, packageRoot);
   const electronExe = path.join(packageRoot, "electron.exe");
   ensureExists(electronExe, "Electron executable");
   fs.renameSync(electronExe, path.join(packageRoot, "SWARMSY Desktop.exe"));
@@ -114,9 +128,10 @@ function main() {
     "Frontend build"
   );
   removeIfExists(artifactsRoot);
-  fs.mkdirSync(appResourcesRoot, { recursive: true });
+  fs.mkdirSync(artifactsRoot, { recursive: true });
 
   copyElectronRuntime();
+  fs.mkdirSync(appResourcesRoot, { recursive: true });
   packageAppResources();
   createZipArchive();
 
