@@ -207,6 +207,18 @@ function createSettingsDocument(state = {}) {
   };
 }
 
+function createAtomicWriteTempPath(context, { pathApi = path } = {}) {
+  const entropy = `${process.pid}-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2)}`;
+  const tempFilePath = pathApi.resolve(
+    context.settingsDir,
+    `${LOCAL_SETTINGS_FILENAME}.${entropy}.tmp`
+  );
+  assertPathWithinLocalUserRoot(tempFilePath, context.layout);
+  return tempFilePath;
+}
+
 async function getLocalUserSettings(options = {}) {
   let context;
   try {
@@ -300,18 +312,42 @@ async function setLocalUserSettings(payload = {}, options = {}) {
     };
   }
 
+  const fsApi = options.fsApi || fs;
+  let tempFilePath = null;
   try {
-    await (options.fsApi || fs).writeFile(
-      context.settingsFilePath,
+    tempFilePath = createAtomicWriteTempPath(context, {
+      pathApi: options.pathApi || path,
+    });
+    const existingTempStats = await fsApi.lstat(tempFilePath).catch((error) => {
+      if (error?.code === "ENOENT") return null;
+      throw error;
+    });
+    if (existingTempStats) {
+      throw new Error("Temporary settings file already exists.");
+    }
+
+    await fsApi.writeFile(
+      tempFilePath,
       `${JSON.stringify(documentValidation.settings, null, 2)}\n`,
       "utf8"
     );
+
+    const tempFileStats = await fsApi.lstat(tempFilePath);
+    if (tempFileStats.isSymbolicLink()) {
+      throw new Error("Temporary settings file cannot be a symlink.");
+    }
+
+    await fsApi.rename(tempFilePath, context.settingsFilePath);
+    tempFilePath = null;
     return {
       ok: true,
       settings: documentValidation.settings,
       path: context.settingsFilePath,
     };
   } catch (error) {
+    if (tempFilePath) {
+      await fsApi.unlink(tempFilePath).catch(() => {});
+    }
     return {
       ok: false,
       reason: "settings_write_failed",
