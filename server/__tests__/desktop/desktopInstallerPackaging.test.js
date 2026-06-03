@@ -1,0 +1,172 @@
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
+const { spawnSync } = require("child_process");
+
+const repoRoot = path.resolve(__dirname, "../../..");
+const installerBuilderPath = path.join(
+  repoRoot,
+  "desktop/scripts/build-windows-installer.cjs"
+);
+const installerSmokePath = path.join(
+  repoRoot,
+  "desktop/scripts/desktop-installer-smoke-check.cjs"
+);
+const artifactSmokePath = path.join(
+  repoRoot,
+  "desktop/scripts/desktop-artifact-smoke-check.cjs"
+);
+
+describe("desktop Windows installer packaging foundation", () => {
+  it("documents required installer contents and explicit exclusions", () => {
+    const builder = require(installerBuilderPath);
+    const smoke = require(installerSmokePath);
+
+    expect(builder.installerOutput.endsWith("SWARMSY-Desktop-Setup.exe")).toBe(
+      true
+    );
+    expect(smoke.requiredInstallerContents).toEqual(
+      expect.arrayContaining([
+        "desktop executable",
+        "desktop/electron",
+        "desktop/foundation",
+        "frontend/dist",
+        "server/utils/swarmsy/localUserStorageContract.js",
+      ])
+    );
+    expect(smoke.prohibitedInstallerContents).toEqual(
+      expect.arrayContaining([
+        "code signing",
+        "auto-update",
+        "Ollama runtime",
+        "AI models",
+        "user data",
+        ".env files",
+        "secrets",
+        "credentials",
+      ])
+    );
+  });
+
+  it("generates an unsigned per-user installer from the existing artifact output", () => {
+    const tmpRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-installer-")
+    );
+    const makensisPath = path.join(
+      tmpRoot,
+      process.platform === "win32" ? "makensis.cmd" : "makensis"
+    );
+    const artifactsRoot = path.join(repoRoot, "desktop", "artifacts");
+    const packageRoot = path.join(artifactsRoot, "swarmsy-desktop-win32-x64");
+
+    fs.rmSync(artifactsRoot, { recursive: true, force: true });
+    fs.mkdirSync(path.join(packageRoot, "resources/app/desktop/electron"), {
+      recursive: true,
+    });
+    fs.mkdirSync(path.join(packageRoot, "resources/app/desktop/foundation"), {
+      recursive: true,
+    });
+    fs.mkdirSync(
+      path.join(packageRoot, "resources/app/server/utils/swarmsy"),
+      { recursive: true }
+    );
+    fs.mkdirSync(path.join(packageRoot, "resources/app/frontend/dist"), {
+      recursive: true,
+    });
+
+    fs.writeFileSync(path.join(packageRoot, "SWARMSY Desktop.exe"), "exe");
+    fs.writeFileSync(
+      path.join(packageRoot, "resources/app/package.json"),
+      JSON.stringify({ main: "desktop/electron/main.cjs" })
+    );
+    fs.writeFileSync(
+      path.join(packageRoot, "resources/app/desktop/electron/main.cjs"),
+      "module.exports = {};"
+    );
+    fs.writeFileSync(
+      path.join(packageRoot, "resources/app/desktop/electron/preload.cjs"),
+      "module.exports = {};"
+    );
+    for (const foundationFile of [
+      "runtimeHealthcheck.cjs",
+      "runtimeLauncher.cjs",
+      "storageContractBridge.cjs",
+      "localBackupStore.cjs",
+      "localSettingsStore.cjs",
+    ]) {
+      fs.writeFileSync(
+        path.join(
+          packageRoot,
+          "resources/app/desktop/foundation",
+          foundationFile
+        ),
+        "module.exports = {};"
+      );
+    }
+    fs.writeFileSync(
+      path.join(
+        packageRoot,
+        "resources/app/server/utils/swarmsy/localUserStorageContract.js"
+      ),
+      "module.exports = {};"
+    );
+    fs.writeFileSync(
+      path.join(packageRoot, "resources/app/frontend/dist/_index.html"),
+      "<html></html>"
+    );
+    fs.writeFileSync(
+      path.join(artifactsRoot, "swarmsy-desktop-win32-x64.zip"),
+      "zip"
+    );
+
+    const mockMakensis = process.platform === "win32"
+      ? "@echo off\r\nnode -e \"const fs=require('fs'); const arg=process.argv.find(a=>a.startsWith('/DINSTALLER_OUTPUT=')); fs.writeFileSync(arg.slice('/DINSTALLER_OUTPUT='.length).replace(/\\\\/g,'\\\\'), 'installer');\" %*\r\n"
+      : "#!/bin/sh\nnode - \"$@\" <<'NODE'\nconst fs = require('fs');\nconst arg = process.argv.find((value) => value.startsWith('/DINSTALLER_OUTPUT='));\nfs.writeFileSync(arg.slice('/DINSTALLER_OUTPUT='.length).replace(/\\\\/g, '\\\\'), 'installer');\nNODE\n";
+    fs.writeFileSync(makensisPath, mockMakensis, { mode: 0o755 });
+
+    try {
+      const buildResult = spawnSync(
+        process.execPath,
+        [installerBuilderPath],
+        {
+          cwd: repoRoot,
+          env: { ...process.env, MAKENSIS_PATH: makensisPath },
+          encoding: "utf8",
+        }
+      );
+      expect(buildResult.stderr).toBe("");
+      expect(buildResult.status).toBe(0);
+      expect(
+        fs.existsSync(path.join(artifactsRoot, "SWARMSY-Desktop-Setup.exe"))
+      ).toBe(true);
+
+      const smokeResult = spawnSync(process.execPath, [installerSmokePath], {
+        cwd: repoRoot,
+        encoding: "utf8",
+      });
+      expect(smokeResult.stderr).toBe("");
+      expect(smokeResult.status).toBe(0);
+    } finally {
+      fs.rmSync(artifactsRoot, { recursive: true, force: true });
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps installer smoke validation aligned with artifact safety checks", () => {
+    const artifactSmoke = require(artifactSmokePath);
+
+    expect(Array.from(artifactSmoke.forbiddenPathSegments)).toEqual(
+      expect.arrayContaining(["models", "ollama", "local-user-data"])
+    );
+    expect(
+      artifactSmoke.forbiddenBasenamePatterns.some((pattern) =>
+        pattern.test(".env")
+      )
+    ).toBe(true);
+    expect(
+      artifactSmoke.hardcodedSecretValuePatterns.some((pattern) =>
+        pattern.test("OPENAI_API_KEY=sk-realSecretValue123456789012345")
+      )
+    ).toBe(true);
+  });
+});
