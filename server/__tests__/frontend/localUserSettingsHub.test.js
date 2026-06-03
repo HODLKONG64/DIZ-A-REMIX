@@ -13,7 +13,10 @@ function loadSettingsHubModule() {
     )
     .replace(/^import[\s\S]*?;\n/gm, "")
     .replace(/export const /g, "const ")
-    .replace(/export function /g, "function ");
+    .replace(/export async function /g, "async function ")
+    .replace(/export function /g, "function ")
+    .replace(/export default /g, "")
+    .replace(/export\s*\{[^}]+\};?/g, "");
 
   const script = new vm.Script(
     `${source}
@@ -22,7 +25,13 @@ module.exports = {
 };`
   );
 
-  const sandbox = { module: { exports: {} }, exports: {} };
+  const sandbox = {
+    module: { exports: {} },
+    exports: {},
+    require,
+    console,
+    process,
+  };
   vm.createContext(sandbox);
   script.runInContext(sandbox);
   return sandbox.module.exports;
