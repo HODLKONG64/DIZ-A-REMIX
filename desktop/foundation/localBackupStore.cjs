@@ -51,7 +51,12 @@ function isPlainObject(value) {
 }
 
 function isIsoDateString(value) {
-  return typeof value === "string" && !Number.isNaN(Date.parse(value));
+  if (typeof value !== "string") return false;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) {
+    return false;
+  }
+  const parsed = new Date(value);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString() === value;
 }
 
 function hasForbiddenFieldKey(key) {
@@ -86,10 +91,19 @@ function collectForbiddenFields(value, pathParts = [], found = []) {
   return found;
 }
 
-function assertPathWithinLocalUserRoot(targetPath, layout, { allowRoot = false } = {}) {
-  const validation = validateLocalUserStoragePath(targetPath, { layout, allowRoot });
+function assertPathWithinLocalUserRoot(
+  targetPath,
+  layout,
+  { allowRoot = false } = {}
+) {
+  const validation = validateLocalUserStoragePath(targetPath, {
+    layout,
+    allowRoot,
+  });
   if (!validation.valid) {
-    throw new Error(validation.reason || "Path is outside SWARMSY Local User root.");
+    throw new Error(
+      validation.reason || "Path is outside SWARMSY Local User root."
+    );
   }
 }
 
@@ -109,7 +123,10 @@ async function resolveBackupFileContext({
   const contract = getDesktopStorageContract(contractOptions);
   const layout = contract.layout;
   const backupsDir = layout?.paths?.backups;
-  const backupFilePath = pathApi.resolve(backupsDir, createBackupFileName(exportedAt));
+  const backupFilePath = pathApi.resolve(
+    backupsDir,
+    createBackupFileName(exportedAt)
+  );
 
   assertPathWithinLocalUserRoot(layout.root, layout, { allowRoot: true });
   assertPathWithinLocalUserRoot(backupsDir, layout);
@@ -159,7 +176,10 @@ function normalizeSettingsStateForBackup(settings = {}) {
   return normalized;
 }
 
-function createBackupDocument({ settings = {}, exportedAt = new Date().toISOString() } = {}) {
+function createBackupDocument({
+  settings = {},
+  exportedAt = new Date().toISOString(),
+} = {}) {
   return {
     schema: DESKTOP_LOCAL_USER_BACKUP_SCHEMA,
     version: DESKTOP_LOCAL_USER_BACKUP_VERSION,
@@ -257,7 +277,11 @@ function validateImportSettings(settings) {
 
   const normalized = {};
   for (const key of ALLOWED_SETTINGS_KEYS) {
-    if (!Object.prototype.hasOwnProperty.call(settings, key)) continue;
+    if (!Object.prototype.hasOwnProperty.call(settings, key)) {
+      normalized[key] = null;
+      continue;
+    }
+
     const value = settings[key];
     if (value === null || value === undefined) {
       normalized[key] = null;
@@ -265,6 +289,7 @@ function validateImportSettings(settings) {
     }
     if (typeof value !== "string") {
       errors.push(`Settings field "${key}" must be a string or null.`);
+      normalized[key] = null;
       continue;
     }
     const trimmed = value.trim();
@@ -276,7 +301,11 @@ function validateImportSettings(settings) {
 function validateLocalUserBackup(payload) {
   const errors = [];
   if (!isPlainObject(payload)) {
-    return { valid: false, reason: "backup_invalid", errors: ["Backup must be a plain object."] };
+    return {
+      valid: false,
+      reason: "backup_invalid",
+      errors: ["Backup must be a plain object."],
+    };
   }
 
   const forbiddenFields = collectForbiddenFields(payload);
@@ -331,7 +360,8 @@ function validateLocalUserBackup(payload) {
 
 async function importLocalUserBackup(payload, options = {}) {
   const parsed = parseBackupPayload(payload);
-  if (!parsed.ok) return { ok: false, reason: parsed.reason, errors: parsed.errors };
+  if (!parsed.ok)
+    return { ok: false, reason: parsed.reason, errors: parsed.errors };
 
   const validation = validateLocalUserBackup(parsed.data);
   if (!validation.valid) {

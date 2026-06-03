@@ -94,7 +94,12 @@ function isPlainObject(value) {
 }
 
 function isIsoDateString(value) {
-  return typeof value === "string" && !Number.isNaN(Date.parse(value));
+  if (typeof value !== "string") return false;
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/.test(value)) {
+    return false;
+  }
+  const parsed = new Date(value);
+  return !Number.isNaN(parsed.getTime()) && parsed.toISOString() === value;
 }
 
 function normalizeDesktopLocalSettingsForBackup(input) {
@@ -491,6 +496,9 @@ export function isDesktopLocalUserBackup(data) {
     data.schema === DESKTOP_LOCAL_USER_BACKUP_SCHEMA &&
     data.version === DESKTOP_LOCAL_USER_BACKUP_VERSION &&
     data.app === DESKTOP_LOCAL_USER_BACKUP_APP &&
-    data.mode === DESKTOP_LOCAL_USER_BACKUP_MODE
+    data.mode === DESKTOP_LOCAL_USER_BACKUP_MODE &&
+    isIsoDateString(data.exportedAt) &&
+    isPlainObject(data.state) &&
+    isPlainObject(data.state.settings)
   );
 }

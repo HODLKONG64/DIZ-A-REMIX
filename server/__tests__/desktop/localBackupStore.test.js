@@ -47,7 +47,9 @@ describe("desktop filesystem Local User backup store", () => {
   let tmpRoot;
 
   beforeEach(async () => {
-    tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "swarmsy-desktop-backup-"));
+    tmpRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "swarmsy-desktop-backup-")
+    );
   });
 
   afterEach(async () => {
@@ -138,15 +140,52 @@ describe("desktop filesystem Local User backup store", () => {
 
   it.each([
     ["malformed JSON", "{bad-json", "backup_parse_failed"],
-    ["wrong schema", validBackup({ schema: "bad" }), "backup_validation_failed"],
+    [
+      "wrong schema",
+      validBackup({ schema: "bad" }),
+      "backup_validation_failed",
+    ],
     ["wrong version", validBackup({ version: 2 }), "backup_validation_failed"],
-    ["wrong app", validBackup({ app: "AnythingLLM" }), "backup_validation_failed"],
-    ["wrong mode", validBackup({ mode: "hosted_admin" }), "backup_validation_failed"],
-    ["unknown top-level field", validBackup({ path: "/tmp/evil" }), "backup_validation_failed"],
-    ["unknown state field", validBackup({ state: { settings: {}, runtime: {} } }), "backup_validation_failed"],
-    ["unknown settings field", validBackup({ state: { settings: { extra: "x" } } }), "backup_validation_failed"],
-    ["forbidden auth field", validBackup({ state: { settings: { authToken: "secret" } } }), "backup_validation_failed"],
-    ["hosted/server path field", validBackup({ state: { settings: {}, serverDbPath: "/tmp/db" } }), "backup_validation_failed"],
+    [
+      "wrong app",
+      validBackup({ app: "AnythingLLM" }),
+      "backup_validation_failed",
+    ],
+    [
+      "wrong mode",
+      validBackup({ mode: "hosted_admin" }),
+      "backup_validation_failed",
+    ],
+    [
+      "invalid exportedAt",
+      validBackup({ exportedAt: "2026-02-30T00:00:00.000Z" }),
+      "backup_validation_failed",
+    ],
+    [
+      "unknown top-level field",
+      validBackup({ path: "/tmp/evil" }),
+      "backup_validation_failed",
+    ],
+    [
+      "unknown state field",
+      validBackup({ state: { settings: {}, runtime: {} } }),
+      "backup_validation_failed",
+    ],
+    [
+      "unknown settings field",
+      validBackup({ state: { settings: { extra: "x" } } }),
+      "backup_validation_failed",
+    ],
+    [
+      "forbidden auth field",
+      validBackup({ state: { settings: { authToken: "secret" } } }),
+      "backup_validation_failed",
+    ],
+    [
+      "hosted/server path field",
+      validBackup({ state: { settings: {}, serverDbPath: "/tmp/db" } }),
+      "backup_validation_failed",
+    ],
   ])("rejects %s", async (_label, payload, reason) => {
     await setLocalUserSettings(
       { ollamaModel: "original", provider: "ollama" },
@@ -165,7 +204,9 @@ describe("desktop filesystem Local User backup store", () => {
 
   it("validates parsed backup objects without writing partial settings", () => {
     const validation = validateLocalUserBackup(
-      validBackup({ state: { settings: { ollamaModel: "ok", apiKey: "secret" } } })
+      validBackup({
+        state: { settings: { ollamaModel: "ok", apiKey: "secret" } },
+      })
     );
     expect(validation.valid).toBe(false);
     expect(validation.errors.join(" ")).toContain("Forbidden");
@@ -184,6 +225,28 @@ describe("desktop filesystem Local User backup store", () => {
       ollamaModel: "llama3.1:8b",
       provider: "ollama",
     });
+  });
+
+  it("clears existing desktop settings when imported backup omits settings keys", async () => {
+    await setLocalUserSettings(
+      { ollamaModel: "stale:model", provider: "ollama" },
+      { contractOptions: createContractOptions(tmpRoot) }
+    );
+
+    const result = await importLocalUserBackup(
+      validBackup({ state: { settings: {} } }),
+      { contractOptions: createContractOptions(tmpRoot) }
+    );
+    expect(result.ok).toBe(true);
+    expect(result.restoredState).toEqual({
+      ollamaModel: null,
+      provider: null,
+    });
+
+    const current = await getLocalUserSettings({
+      contractOptions: createContractOptions(tmpRoot),
+    });
+    expect(current.settings.state).toEqual({});
   });
 
   it("rejects backup directory symlinks and backup file symlinks", async () => {

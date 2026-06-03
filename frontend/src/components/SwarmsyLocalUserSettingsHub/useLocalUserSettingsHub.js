@@ -473,7 +473,8 @@ export function useLocalUserSettingsHub() {
             targetWindow: window,
           });
           if (!desktopImport?.ok) {
-            const errors = desktopImport?.errors?.join(" ") || desktopImport?.reason;
+            const errors =
+              desktopImport?.errors?.join(" ") || desktopImport?.reason;
             showToast(`Import failed: ${errors}`, "error");
             return false;
           }

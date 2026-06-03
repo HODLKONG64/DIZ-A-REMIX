@@ -135,7 +135,6 @@ export async function mirrorDesktopLocalUserOllamaModelSelection(
   }
 }
 
-
 export function hasDesktopLocalBackupBridge({ targetWindow } = {}) {
   const bridge = resolveDesktopBridge(targetWindow);
   return (
@@ -161,7 +160,10 @@ export async function exportDesktopLocalUserBackup({ targetWindow } = {}) {
   }
 }
 
-export async function importDesktopLocalUserBackup(payload, { targetWindow } = {}) {
+export async function importDesktopLocalUserBackup(
+  payload,
+  { targetWindow } = {}
+) {
   const bridge = resolveDesktopBridge(targetWindow);
   if (!bridge || typeof bridge.importLocalUserBackup !== "function") {
     return { ok: false, reason: "bridge_unavailable" };
