@@ -40,10 +40,11 @@ jobs:
           if (!(Test-Path "package-lock.json")) {
             throw "Missing required lockfile: package-lock.json"
           }
-          npm install --package-lock-only --ignore-scripts
+          npm ci
           if (!(git diff --quiet -- package-lock.json)) {
             git diff -- package-lock.json
-            throw "package-lock.json changed after npm lockfile validation."
+            git status --short
+            throw "package-lock.json changed after npm ci lockfile validation."
           }
 
       - name: Install frontend dependencies
