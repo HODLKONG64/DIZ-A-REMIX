@@ -136,9 +136,7 @@ export function useLocalUserSettingsHub() {
 
   const removeDiagnosticsByCode = useCallback((codes) => {
     const codeSet = new Set(Array.isArray(codes) ? codes : [codes]);
-    setDesktopDiagnostics((prev) =>
-      prev.filter((d) => !codeSet.has(d.code))
-    );
+    setDesktopDiagnostics((prev) => prev.filter((d) => !codeSet.has(d.code)));
   }, []);
 
   const clearDiagnostics = useCallback(() => {
@@ -480,12 +478,11 @@ export function useLocalUserSettingsHub() {
         showToast("Desktop Local User backup exported.", "success");
         return;
       }
-      const desktopDiag = diagnosticFromResult(desktopResult);
-      if (desktopDiag) {
-        addDiagnostic(desktopDiag.code);
-      } else {
-        addDiagnostic("backup_export_failed");
-      }
+      const desktopDiag = diagnosticFromResult(
+        desktopResult,
+        "backup_export_failed"
+      );
+      if (desktopDiag) addDiagnostic(desktopDiag.code);
     }
 
     const backup = await exportLocalUserBackupV2({
@@ -503,7 +500,12 @@ export function useLocalUserSettingsHub() {
     a.click?.();
     URL.revokeObjectURL(url);
     showToast("Local User backup exported.", "success");
-  }, [addDiagnostic, isHostedAdminMode, isLocalUserMode, removeDiagnosticsByCode]);
+  }, [
+    addDiagnostic,
+    isHostedAdminMode,
+    isLocalUserMode,
+    removeDiagnosticsByCode,
+  ]);
 
   const importBackupFromText = useCallback(
     async (rawText = "") => {
@@ -529,8 +531,11 @@ export function useLocalUserSettingsHub() {
             const errors =
               desktopImport?.errors?.join(" ") || desktopImport?.reason;
             showToast(`Import failed: ${errors}`, "error");
-            const desktopDiag = diagnosticFromResult(desktopImport);
-            addDiagnostic(desktopDiag ? desktopDiag.code : "backup_import_failed");
+            const desktopDiag = diagnosticFromResult(
+              desktopImport,
+              "backup_import_failed"
+            );
+            if (desktopDiag) addDiagnostic(desktopDiag.code);
             return false;
           }
           restoredModelId = String(

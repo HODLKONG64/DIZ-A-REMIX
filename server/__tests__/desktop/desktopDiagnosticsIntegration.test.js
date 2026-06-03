@@ -80,8 +80,9 @@ describe("backup store failure → diagnostic mapping", () => {
   } = require("../../../desktop/foundation/localBackupStore.cjs");
 
   it("storage contract / path validation failures produce known diagnostic codes", () => {
-    // backup_path_invalid maps via diagnosticFromResult to backup_export_failed
+    // backup_path_invalid maps via diagnosticFromResult to backup_directory_invalid
     expect(isKnownDiagnosticCode("backup_export_failed")).toBe(true);
+    expect(isKnownDiagnosticCode("backup_directory_invalid")).toBe(true);
     expect(isKnownDiagnosticCode("backup_import_failed")).toBe(true);
     expect(isKnownDiagnosticCode("backup_file_symlink_rejected")).toBe(true);
   });

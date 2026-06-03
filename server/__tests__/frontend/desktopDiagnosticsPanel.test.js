@@ -119,6 +119,46 @@ describe("frontend desktopDiagnostics utility", () => {
     expect(entry.code).toBe("backup_import_failed");
   });
 
+  it("diagnosticFromResult maps backup_file_symlink to backup_file_symlink_rejected", () => {
+    const entry = mod.diagnosticFromResult({ ok: false, reason: "backup_file_symlink" });
+    expect(entry).not.toBeNull();
+    expect(entry.code).toBe("backup_file_symlink_rejected");
+  });
+
+  it("diagnosticFromResult maps backup_path_invalid to backup_directory_invalid", () => {
+    const entry = mod.diagnosticFromResult({ ok: false, reason: "backup_path_invalid" });
+    expect(entry).not.toBeNull();
+    expect(entry.code).toBe("backup_directory_invalid");
+  });
+
+  it("diagnosticFromResult maps backup_parse_failed to backup_import_failed", () => {
+    const entry = mod.diagnosticFromResult({ ok: false, reason: "backup_parse_failed" });
+    expect(entry).not.toBeNull();
+    expect(entry.code).toBe("backup_import_failed");
+  });
+
+  it("diagnosticFromResult maps backup_validation_failed to backup_import_failed", () => {
+    const entry = mod.diagnosticFromResult({
+      ok: false,
+      reason: "backup_validation_failed",
+    });
+    expect(entry).not.toBeNull();
+    expect(entry.code).toBe("backup_import_failed");
+  });
+
+  it("diagnosticFromResult returns fallback diagnostic for unknown reason", () => {
+    const entry = mod.diagnosticFromResult(
+      { ok: false, reason: "unknown_xyz" },
+      "backup_export_failed"
+    );
+    expect(entry).not.toBeNull();
+    expect(entry.code).toBe("backup_export_failed");
+  });
+
+  it("diagnosticFromResult returns null for unknown reason without fallback", () => {
+    expect(mod.diagnosticFromResult({ reason: "unknown_xyz" })).toBeNull();
+  });
+
   it("diagnosticFromResult does not include message or path from result", () => {
     const entry = mod.diagnosticFromResult({
       ok: false,

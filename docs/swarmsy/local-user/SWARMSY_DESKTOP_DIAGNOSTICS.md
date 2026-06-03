@@ -67,16 +67,16 @@ Diagnostics are always displayed sorted: **errors first**, then warnings, then i
 | `ollama_not_installed`  | warning  | Ollama Not Installed    | Install Ollama from https://ollama.com.                    |
 | `no_models_installed`   | warning  | No Models Installed     | Pull a model with `ollama pull <model>`.                   |
 | `selected_model_missing`| warning  | Selected Model Missing  | Select a different model or pull the missing model.        |
-| `selected_model_stale`  | info     | Selected Model Stale    | Refresh the model list or select a model.                  |
+| `selected_model_stale`  | info     | Selected Model May Be Stale | Refresh Ollama status to verify your model selection.      |
 | `selected_model_invalid`| error    | Selected Model Invalid  | Select a valid model from the model list.                  |
 
 ### Chat
 
 | Code                       | Severity | Title                       | Suggested Action                                               |
 |----------------------------|----------|-----------------------------|----------------------------------------------------------------|
-| `local_provider_unavailable`| error   | Local Provider Unavailable  | Check Ollama status and that a model is selected.              |
-| `selected_model_not_ready` | error    | Selected Model Not Ready    | Wait for the model to finish loading, then try again.          |
-| `model_restore_failed`     | warning  | Model Restore Failed        | The restored model is not installed. Pull it with Ollama.      |
+| `local_provider_unavailable`| error   | Local Provider Unavailable  | Ensure Ollama is running and a model is selected.              |
+| `selected_model_not_ready` | warning  | Selected Model Not Ready    | Wait for the model to finish loading or select a different model. |
+| `model_restore_failed`     | warning  | Model Restore Failed        | Select a model manually to continue.                           |
 
 ---
 

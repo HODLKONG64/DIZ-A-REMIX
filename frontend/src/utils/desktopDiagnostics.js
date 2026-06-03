@@ -102,8 +102,7 @@ export const DESKTOP_DIAGNOSTIC_CATALOG = Object.freeze({
     severity: "error",
     title: "Backup Directory Invalid",
     description: "The backup directory is not valid or accessible.",
-    action:
-      "Check that your local user data directory exists and is writable.",
+    action: "Check that your local user data directory exists and is writable.",
   },
   backup_file_symlink_rejected: {
     severity: "error",
@@ -176,8 +175,7 @@ export const DESKTOP_DIAGNOSTIC_CATALOG = Object.freeze({
     severity: "warning",
     title: "Selected Model Not Ready",
     description: "The selected model is not ready for use.",
-    action:
-      "Wait for the model to finish loading or select a different model.",
+    action: "Wait for the model to finish loading or select a different model.",
   },
   model_restore_failed: {
     severity: "warning",
@@ -189,6 +187,18 @@ export const DESKTOP_DIAGNOSTIC_CATALOG = Object.freeze({
 
 /** Ordered severity levels for sorting (lower index = higher priority). */
 export const SEVERITY_ORDER = Object.freeze(["error", "warning", "info"]);
+
+/** Maps lower-level bridge/foundation reasons to catalog diagnostic codes. */
+const FOUNDATION_REASON_TO_DIAGNOSTIC_CODE = Object.freeze({
+  backup_file_symlink: "backup_file_symlink_rejected",
+  backup_file_unsafe: "backup_file_symlink_rejected",
+  backup_path_invalid: "backup_directory_invalid",
+  backup_parse_failed: "backup_import_failed",
+  backup_validation_failed: "backup_import_failed",
+  backup_write_failed: "backup_export_failed",
+  backup_settings_invalid: "backup_export_failed",
+  untrusted_origin: "untrusted_origin",
+});
 
 /**
  * Returns a copy of the catalog entry for the given reason code, or null if
@@ -249,9 +259,15 @@ export function sortDiagnostics(diagnostics) {
  * that secrets are never leaked through this pathway.
  *
  * @param {{ reason?: string }} result
+ * @param {string} [fallbackCode]
  * @returns {DiagnosticEntry|null}
  */
-export function diagnosticFromResult(result) {
+export function diagnosticFromResult(result, fallbackCode) {
   const reason = String(result?.reason || "").trim();
-  return getDiagnosticForCode(reason);
+  const mappedCode = FOUNDATION_REASON_TO_DIAGNOSTIC_CODE[reason] || reason;
+  const mappedEntry = getDiagnosticForCode(mappedCode);
+  if (mappedEntry) return mappedEntry;
+
+  if (fallbackCode) return getDiagnosticForCode(fallbackCode);
+  return null;
 }
