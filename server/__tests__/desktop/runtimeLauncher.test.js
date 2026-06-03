@@ -23,6 +23,10 @@ describe("desktop runtime launcher foundation", () => {
     return child;
   }
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("does not auto-start runtime by default", () => {
     const { isDesktopRuntimeAutoStartEnabled } = require(launcherPath);
     expect(isDesktopRuntimeAutoStartEnabled({ env: {} })).toBe(false);
@@ -190,6 +194,135 @@ describe("desktop runtime launcher foundation", () => {
     );
   });
 
+  it("launcher resolves success only after spawn event", async () => {
+    const { launchDesktopLocalRuntime } = require(launcherPath);
+    const child = createMockChild({ pid: 5555 });
+    const spawnImpl = jest.fn(() => child);
+    let settled = false;
+    const launchPromise = launchDesktopLocalRuntime({
+      env: { SWARMSY_DESKTOP_AUTO_START_RUNTIME: "true" },
+      spawnImpl,
+      packageScripts: {
+        "desktop:runtime:dev": "yarn dev:all",
+      },
+    }).then((result) => {
+      settled = true;
+      return result;
+    });
+    await Promise.resolve();
+    expect(settled).toBe(false);
+    child.emit("spawn");
+    await expect(launchPromise).resolves.toEqual(
+      expect.objectContaining({
+        ok: true,
+        pid: 5555,
+      })
+    );
+  });
+
+  it("launcher returns structured failure when spawn never fires", async () => {
+    jest.useFakeTimers();
+    const { launchDesktopLocalRuntime, DEFAULT_LAUNCH_SPAWN_TIMEOUT_MS } = require(
+      launcherPath
+    );
+    const child = createMockChild({ pid: 8181 });
+    const spawnImpl = jest.fn(() => child);
+    const launchPromise = launchDesktopLocalRuntime({
+      env: { SWARMSY_DESKTOP_AUTO_START_RUNTIME: "true" },
+      spawnImpl,
+      packageScripts: {
+        "desktop:runtime:dev": "yarn dev:all",
+      },
+    });
+    jest.advanceTimersByTime(DEFAULT_LAUNCH_SPAWN_TIMEOUT_MS);
+    await expect(launchPromise).resolves.toEqual(
+      expect.objectContaining({
+        ok: false,
+        reason: "runtime_launch_failed",
+        message: "Timed out waiting for SWARMSY local runtime process to spawn.",
+      })
+    );
+    jest.useRealTimers();
+  });
+
+  it("launcher clears spawn timeout when spawn event wins", async () => {
+    jest.useFakeTimers();
+    const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
+    const { launchDesktopLocalRuntime } = require(launcherPath);
+    const child = createMockChild({ pid: 6060 });
+    const spawnImpl = jest.fn(() => child);
+    const launchPromise = launchDesktopLocalRuntime({
+      env: { SWARMSY_DESKTOP_AUTO_START_RUNTIME: "true" },
+      spawnImpl,
+      packageScripts: {
+        "desktop:runtime:dev": "yarn dev:all",
+      },
+    });
+    child.emit("spawn");
+    await expect(launchPromise).resolves.toEqual(
+      expect.objectContaining({
+        ok: true,
+        pid: 6060,
+      })
+    );
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    expect(jest.getTimerCount()).toBe(0);
+    clearTimeoutSpy.mockRestore();
+    jest.useRealTimers();
+  });
+
+  it("launcher clears spawn timeout when error event wins", async () => {
+    jest.useFakeTimers();
+    const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
+    const { launchDesktopLocalRuntime } = require(launcherPath);
+    const child = createMockChild({ pid: 7070 });
+    const spawnImpl = jest.fn(() => child);
+    const launchPromise = launchDesktopLocalRuntime({
+      env: { SWARMSY_DESKTOP_AUTO_START_RUNTIME: "true" },
+      spawnImpl,
+      packageScripts: {
+        "desktop:runtime:dev": "yarn dev:all",
+      },
+    });
+    child.emit("error", new Error("spawn failed"));
+    await expect(launchPromise).resolves.toEqual(
+      expect.objectContaining({
+        ok: false,
+        reason: "runtime_launch_failed",
+        message: "Failed to start SWARMSY local runtime.",
+      })
+    );
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    expect(jest.getTimerCount()).toBe(0);
+    clearTimeoutSpy.mockRestore();
+    jest.useRealTimers();
+  });
+
+  it("launcher does not double-settle in spawn/error/timeout races", async () => {
+    jest.useFakeTimers();
+    const { launchDesktopLocalRuntime, DEFAULT_LAUNCH_SPAWN_TIMEOUT_MS } = require(
+      launcherPath
+    );
+    const child = createMockChild({ pid: 9090 });
+    const spawnImpl = jest.fn(() => child);
+    const launchPromise = launchDesktopLocalRuntime({
+      env: { SWARMSY_DESKTOP_AUTO_START_RUNTIME: "true" },
+      spawnImpl,
+      packageScripts: {
+        "desktop:runtime:dev": "yarn dev:all",
+      },
+    });
+    child.emit("error", new Error("first error wins"));
+    jest.advanceTimersByTime(DEFAULT_LAUNCH_SPAWN_TIMEOUT_MS);
+    child.emit("spawn");
+    await expect(launchPromise).resolves.toEqual(
+      expect.objectContaining({
+        ok: false,
+        reason: "runtime_launch_failed",
+      })
+    );
+  });
+
   it("healthcheck retry succeeds after initial failure", async () => {
     const { waitForRuntimeHealthcheck } = require(launcherPath);
     const runtimeHealthcheckImpl = jest
@@ -272,6 +405,13 @@ describe("desktop runtime launcher foundation", () => {
     jest.useRealTimers();
   });
 
+  it("waitForChildExit resolves true immediately for already-exited child", async () => {
+    const { waitForChildExit } = require(launcherPath);
+    const child = createMockChild({ pid: 3434 });
+    child.exitCode = 0;
+    await expect(waitForChildExit(child, 5000)).resolves.toBe(true);
+  });
+
   it("waitForChildExit resolves false on timeout and removes exit listener", async () => {
     jest.useFakeTimers();
     const { waitForChildExit } = require(launcherPath);
@@ -286,6 +426,46 @@ describe("desktop runtime launcher foundation", () => {
     expect(jest.getTimerCount()).toBe(0);
 
     removeListenerSpy.mockRestore();
+    jest.useRealTimers();
+  });
+
+  it("win32 taskkill cleanup clears timeout when taskkill exits", async () => {
+    jest.useFakeTimers();
+    const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
+    const { stopDesktopLaunchedRuntime } = require(launcherPath);
+    const child = createMockChild({ pid: 5656 });
+    const killer = new EventEmitter();
+    const spawnImpl = jest.fn(() => killer);
+    const stopPromise = stopDesktopLaunchedRuntime({
+      child,
+      platform: "win32",
+      spawnImpl,
+    });
+    killer.emit("exit", 0);
+    await stopPromise;
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    expect(jest.getTimerCount()).toBe(0);
+    clearTimeoutSpy.mockRestore();
+    jest.useRealTimers();
+  });
+
+  it("win32 taskkill cleanup clears timeout when taskkill errors", async () => {
+    jest.useFakeTimers();
+    const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
+    const { stopDesktopLaunchedRuntime } = require(launcherPath);
+    const child = createMockChild({ pid: 5757 });
+    const killer = new EventEmitter();
+    const spawnImpl = jest.fn(() => killer);
+    const stopPromise = stopDesktopLaunchedRuntime({
+      child,
+      platform: "win32",
+      spawnImpl,
+    });
+    killer.emit("error", new Error("taskkill failed"));
+    await stopPromise;
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    expect(jest.getTimerCount()).toBe(0);
+    clearTimeoutSpy.mockRestore();
     jest.useRealTimers();
   });
 });

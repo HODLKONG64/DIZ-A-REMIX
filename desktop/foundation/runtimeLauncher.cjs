@@ -12,6 +12,7 @@ const AUTO_START_RUNTIME_ENV_FLAG = "SWARMSY_DESKTOP_AUTO_START_RUNTIME";
 const RUNTIME_SCRIPT_ENV_FLAG = "SWARMSY_DESKTOP_RUNTIME_SCRIPT";
 const DEFAULT_HEALTHCHECK_WAIT_TIMEOUT_MS = 45000;
 const DEFAULT_HEALTHCHECK_RETRY_INTERVAL_MS = 1000;
+const DEFAULT_LAUNCH_SPAWN_TIMEOUT_MS = 5000;
 const DEFAULT_STOP_TIMEOUT_MS = 5000;
 const repoRoot = path.resolve(__dirname, "../..");
 
@@ -164,22 +165,29 @@ async function launchDesktopLocalRuntime({
 
   return new Promise((resolve) => {
     let settled = false;
+    let spawnTimeout = null;
     const settle = (value) => {
       if (!settled) {
         settled = true;
+        if (spawnTimeout) {
+          clearTimeout(spawnTimeout);
+          spawnTimeout = null;
+        }
+        child.removeListener?.("error", onError);
+        child.removeListener?.("spawn", onSpawn);
         resolve(value);
       }
     };
 
-    child.once?.("error", () => {
+    const onError = () => {
       settle({
         ok: false,
         reason: "runtime_launch_failed",
         message: "Failed to start SWARMSY local runtime.",
       });
-    });
+    };
 
-    child.once?.("spawn", () => {
+    const onSpawn = () => {
       settle({
         ok: true,
         pid: child.pid,
@@ -187,17 +195,19 @@ async function launchDesktopLocalRuntime({
         scriptName: scriptResult.scriptName,
         child,
       });
-    });
+    };
 
-    setTimeout(() => {
+    child.once?.("error", onError);
+    child.once?.("spawn", onSpawn);
+
+    spawnTimeout = setTimeout(() => {
       settle({
-        ok: true,
-        pid: child?.pid ?? null,
-        mode: DESKTOP_RUNTIME_LAUNCH_MODE,
-        scriptName: scriptResult.scriptName,
-        child,
+        ok: false,
+        reason: "runtime_launch_failed",
+        message:
+          "Timed out waiting for SWARMSY local runtime process to spawn.",
       });
-    }, 50);
+    }, DEFAULT_LAUNCH_SPAWN_TIMEOUT_MS);
   });
 }
 
@@ -252,7 +262,7 @@ async function waitForRuntimeHealthcheck({
 
 function waitForChildExit(child, timeoutMs = DEFAULT_STOP_TIMEOUT_MS) {
   return new Promise((resolve) => {
-    if (!child) {
+    if (!child || child.exitCode !== null || child.signalCode !== null) {
       resolve(true);
       return;
     }
@@ -299,9 +309,23 @@ async function stopDesktopLaunchedRuntime({
           stdio: "ignore",
         }
       );
-      killer.once?.("error", resolve);
-      killer.once?.("exit", resolve);
-      setTimeout(resolve, DEFAULT_STOP_TIMEOUT_MS);
+      let settled = false;
+      let timeout = null;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        if (timeout) {
+          clearTimeout(timeout);
+          timeout = null;
+        }
+        killer.removeListener?.("error", onDone);
+        killer.removeListener?.("exit", onDone);
+        resolve();
+      };
+      const onDone = () => done();
+      killer.once?.("error", onDone);
+      killer.once?.("exit", onDone);
+      timeout = setTimeout(done, DEFAULT_STOP_TIMEOUT_MS);
     });
     return { ok: true, mode: DESKTOP_RUNTIME_LAUNCH_MODE };
   }
@@ -336,6 +360,7 @@ module.exports = {
   RUNTIME_SCRIPT_ENV_FLAG,
   DEFAULT_HEALTHCHECK_WAIT_TIMEOUT_MS,
   DEFAULT_HEALTHCHECK_RETRY_INTERVAL_MS,
+  DEFAULT_LAUNCH_SPAWN_TIMEOUT_MS,
   isDesktopRuntimeAutoStartEnabled,
   getAllowlistedRuntimeScripts,
   readRootPackageScripts,
