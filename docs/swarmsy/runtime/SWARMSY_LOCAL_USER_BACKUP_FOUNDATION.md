@@ -2,16 +2,93 @@
 
 ## Purpose
 
-Define and implement the first Local User data ownership layer: a safe,
-user-controlled backup/export/import contract for browser-stored SWARMSY
-state that operates entirely on the client side and never exposes credentials
-or hosted-admin data.
+Define and implement the Local User data ownership layer: a safe,
+user-controlled backup/export/import contract for SWARMSY Local User state.
 
-This is the browser-side foundation, not the final desktop filesystem storage contract.
-Desktop-local directory + manifest contracts are defined in:
+Two backup layers now exist:
 
-- `docs/swarmsy/local-user/SWARMSY_LOCAL_DATA_DIRECTORY_CONTRACT.md`
-- `docs/swarmsy/local-user/SWARMSY_DESKTOP_STORAGE_CONTRACT.md`
+1. **Browser backup** (`swarmsy_local_user_backup` v1) — browser-side
+   localStorage export/import; current compatibility fallback for all surfaces.
+2. **Desktop backup v2** (`swarmsy_desktop_local_user_backup` v1) — filesystem-
+   backed export/import for trusted desktop Local User mode; includes desktop
+   local settings file state; writes backup files to the `backups/` directory
+   in the Local User data root.
+
+The desktop backup v2 is the preferred path when the trusted desktop bridge is
+available. Browser backup remains the fallback when the bridge is unavailable.
+
+---
+
+## Desktop Backup v2
+
+### Schema
+
+```json
+{
+  "schema": "swarmsy_desktop_local_user_backup",
+  "version": 1,
+  "exportedAt": "<ISO 8601 timestamp>",
+  "app": "SWARMSY",
+  "mode": "local_user_desktop",
+  "state": {
+    "settings": {
+      "ollamaModel": "llama3.1:8b",
+      "provider": "ollama"
+    }
+  }
+}
+```
+
+### Security rules
+
+- No auth/session/API key fields are ever included.
+- No server DB paths or hosted/admin data are included.
+- Renderer cannot pass file paths; the main process controls backup path.
+- Bridge methods are disabled for untrusted origins.
+- Backup directory symlinks are rejected.
+- No partial writes — validation happens before any filesystem writes.
+
+### IPC bridge
+
+Exposed via trusted desktop IPC only:
+
+- `window.swarmsyDesktop.foundation.exportLocalUserBackup()` — builds backup
+  from current desktop local settings, writes to `backups/`, returns backup
+  object to renderer for download.
+- `window.swarmsyDesktop.foundation.importLocalUserBackup(payload)` — renderer
+  passes parsed JSON; main validates schema/version/allowlist and writes
+  allowed settings via `localSettingsStore`.
+
+### Source files
+
+| File | Purpose |
+|---|---|
+| `desktop/foundation/localBackupStore.cjs` | Desktop backup schema, export, validate, import |
+| `desktop/electron/main.cjs` | IPC handler registration for backup channels |
+| `desktop/electron/preload.cjs` | Bridge exposure to trusted renderer |
+| `server/__tests__/desktop/localBackupStore.test.js` | Full desktop backup test suite |
+
+---
+
+## Browser Backup (browser-side compatibility fallback)
+
+### Schema
+
+```json
+{
+  "schema": "swarmsy_local_user_backup",
+  "version": 1,
+  "exportedAt": "<ISO 8601 timestamp>",
+  "state": {
+    "ollamaModel": "llama3.1:8b",
+    "appearanceSettings": "{\"theme\":\"dark\"}",
+    ...
+  }
+}
+```
+
+This is a broader browser-state backup. It remains active when the desktop
+bridge is unavailable and is the compatibility layer for browser-only sessions.
 
 ---
 
@@ -45,42 +122,21 @@ the set is skipped even if somehow present in the backup object).
 
 ---
 
-## Backup Schema
-
-```json
-{
-  "schema": "swarmsy_local_user_backup",
-  "version": 1,
-  "exportedAt": "<ISO 8601 timestamp>",
-  "state": {
-    "ollamaModel": "llama3.1:8b",
-    "appearanceSettings": "{\"theme\":\"dark\"}",
-    "promptDrafts": null,
-    "lastVisitedWorkspace": "swarmsy-hive",
-    "completedQuestionnaire": null,
-    "seenDocPinAlert": null,
-    "seenWatchAlert": null,
-    "sidebarToggle": null,
-    "showChatMetrics": null
-  }
-}
-```
-
-### Field rules
-
-- `schema` must equal `"swarmsy_local_user_backup"`.
-- `version` must be a positive integer between 1 and `BACKUP_SCHEMA_VERSION`.
-- `exportedAt` must be a valid ISO 8601 date string.
-- `state` must be a plain object.
-- Every key in `state` must be a known field name from `BACKUP_STATE_FIELDS`.
-  Unknown field names are rejected to prevent hostile or stale backups from
-  silently writing arbitrary data.
-- State field values are stored/restored as raw strings (same representation
-  used by `localStorage.setItem`). A `null` value signals "remove this key."
-
----
-
 ## Export flow
+
+### Desktop v2 export
+
+`exportLocalUserDesktopBackup(options)` in `desktop/foundation/localBackupStore.cjs`:
+
+1. Resolves `layout.paths.backups` and asserts it is within the Local User root.
+2. Ensures the backups directory exists and is not a symlink.
+3. Reads current settings from `getLocalUserSettings()`.
+4. Builds a backup object with `schema`, `version`, `exportedAt`, `app`, `mode`,
+   and `state.settings` (only allowlisted keys).
+5. Writes backup JSON to a uniquely-named file in `backups/`.
+6. Returns `{ ok: true, backup, path }`.
+
+### Browser export
 
 `exportLocalUserBackup({ storage? })` in `frontend/src/utils/localUserBackup.js`:
 
@@ -89,85 +145,66 @@ the set is skipped even if somehow present in the backup object).
 3. Returns a versioned backup object with `schema`, `version`, `exportedAt`,
    and `state`.
 
-The UI handler `exportBackupToFile()` (used by the Local User Settings Hub in onboarding and chat settings):
-
-1. Calls `exportLocalUserBackup()`.
-2. Serialises the result with `JSON.stringify(backup, null, 2)`.
-3. Creates a `Blob` and triggers a browser download named
-   `swarmsy-local-user-backup-<YYYY-MM-DD>.json`.
-4. Shows a success toast.
-
----
-
-## Validate flow
-
-`validateLocalUserBackup(data)` returns `{ valid: boolean, errors: string[] }`.
-
-Checks performed:
-- `data` is a non-null, non-array plain object.
-- `data.schema` matches `BACKUP_SCHEMA_NAME`.
-- `data.version` is an integer in `[1, BACKUP_SCHEMA_VERSION]`.
-- `data.exportedAt` parses as a valid date.
-- `data.state` is a plain object.
-- Every key in `data.state` is a known field name from `BACKUP_STATE_FIELDS`.
-
-Any single failure produces a descriptive error string and sets `valid: false`.
-
 ---
 
 ## Import flow
+
+### Desktop v2 import
+
+`importLocalUserDesktopBackup(payload, options)` in `desktop/foundation/localBackupStore.cjs`:
+
+1. Calls `validateLocalUserDesktopBackup(payload)`. Returns error on failure.
+2. Iterates over allowed settings keys from `BACKUP_ALLOWED_SETTINGS_KEYS`.
+3. Skips keys absent from `payload.state.settings`.
+4. Writes allowed settings via `setLocalUserSettings()`.
+5. Returns `{ ok: true, restored: [...], skipped: [...], errors: [] }`.
+
+### Browser import
 
 `importLocalUserBackup(data, { storage? })` returns
 `{ success, restored, skipped, errors }`.
 
 1. Calls `validateLocalUserBackup(data)`. Returns `success: false` on failure.
 2. Iterates over every entry in `BACKUP_STATE_FIELDS`.
-3. **Skips** the field if:
-   - The storage key is in `NEVER_BACKUP_STORAGE_KEYS` (defensive double-check).
-   - The field is absent from `data.state`.
-4. **Removes** the storage key when the backup value is `null`.
-5. **Writes** the value via `storage.setItem` otherwise.
-6. Returns `{ success: true, restored: [...], skipped: [...], errors: [] }`.
-
-The Local User Settings Hub import handler (`importBackupFromText` + file picker wrapper):
-
-1. Reads the selected `.json` file via `FileReader`.
-2. `JSON.parse`s the content.
-3. Calls `importLocalUserBackup(data)`.
-4. Shows a success or error toast.
-5. Resets the file input so the same file can be re-imported.
+3. Skips/removes/writes as appropriate.
+4. Returns `{ success: true, restored: [...], skipped: [...], errors: [] }`.
 
 ---
 
-## Reject bad backup
+## Settings Hub integration
 
-`validateLocalUserBackup` rejects:
+`useLocalUserSettingsHub` in `frontend/src/components/SwarmsyLocalUserSettingsHub/useLocalUserSettingsHub.js`:
 
-- Non-object payloads (null, string, array).
-- Wrong or missing `schema` value.
-- Version outside the supported range.
-- Non-date `exportedAt`.
-- Non-object `state`.
-- Unknown field names in `state` (prevents hostile injection).
-
-`importLocalUserBackup` independently enforces the never-backup key set even
-after a backup passes validation.
+- `exportBackupToFile`: prefers desktop backup v2 (`exportLocalUserBackup` bridge) when available; falls back to browser export.
+- `importBackupFromText`: detects schema from parsed JSON:
+  - `swarmsy_desktop_local_user_backup` + bridge available → desktop v2 import path.
+  - Any other schema or no bridge → browser import path (fallback/compatibility).
+- After any import, live UI updates immediately: `selectedLocalOllamaModel`, `savedLocalOllamaModel`, stale/missing model warning if applicable.
+- No refresh/check-again required for a valid installed model.
 
 ---
 
 ## Hosted/Admin boundary
 
-The Local User Settings Hub can render in hosted/admin surfaces, but local-only
-controls are hidden behind explicit boundary state messaging:
-`Local User Mode is not active in this hosted/admin environment`.
+- Hosted/Admin mode does not call the desktop backup bridge.
+- Hosted/Admin server data is never exported.
+- Hosted/Admin provider/chat behavior is unchanged.
 
-`BACKUP_STATE_FIELDS` contains only Local User client-side keys. No admin-only,
-server-side, or multi-user keys are present.
+---
 
-The backup file is generated and consumed entirely in the browser. Nothing is
-sent to the server.
+## Hard boundaries
 
-Hosted/Admin mode still stores hosted data server-side and does not use this browser backup as a server data export path.
+- No signed installer.
+- No auto-update.
+- No bundled Ollama.
+- No bundled models.
+- No auto-pull of models.
+- No full browser data migration yet.
+- No server DB export.
+- No auth/session/API key storage in backup.
+- No renderer-provided file paths.
+- No hosted/admin data export.
+- No VPS/Docker/nginx changes.
 
 ---
 
@@ -175,9 +212,13 @@ Hosted/Admin mode still stores hosted data server-side and does not use this bro
 
 | File | Purpose |
 |---|---|
-| `frontend/src/utils/localUserBackup.js` | Schema constants, export, validate, import |
-| `frontend/src/components/SwarmsyLocalUserSettingsHub/index.jsx` | Local User Settings Hub UI (status, model, export/import actions) |
-| `frontend/src/components/SwarmsyLocalUserSettingsHub/useLocalUserSettingsHub.js` | Shared Local User Settings Hub state + sync logic |
-| `frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx` | Onboarding integration of the Local User Settings Hub |
-| `frontend/src/components/WorkspaceChat/ChatContainer/ChatSettingsMenu/LocalUserSettingsHubRow.jsx` | Chat settings entrypoint modal for Local User Settings Hub |
-| `server/__tests__/frontend/localUserBackup.test.js` | Full flow test suite (35 tests) |
+| `desktop/foundation/localBackupStore.cjs` | Desktop backup v2 schema, export, validate, import |
+| `desktop/electron/main.cjs` | IPC handler registration for backup channels |
+| `desktop/electron/preload.cjs` | Bridge exposure to trusted renderer |
+| `frontend/src/utils/localUserBackup.js` | Browser backup schema constants, export, validate, import |
+| `frontend/src/components/SwarmsyLocalUserSettingsHub/useLocalUserSettingsHub.js` | Shared Local User Settings Hub state + sync + backup routing |
+| `frontend/src/components/SwarmsyLocalUserSettingsHub/index.jsx` | Local User Settings Hub UI |
+| `frontend/src/components/SwarmsyFirstRunOnboarding/localUserOllamaSelection.js` | Bridge detection helpers |
+| `server/__tests__/desktop/localBackupStore.test.js` | Desktop backup v2 test suite |
+| `server/__tests__/frontend/localUserBackup.test.js` | Browser backup test suite |
+

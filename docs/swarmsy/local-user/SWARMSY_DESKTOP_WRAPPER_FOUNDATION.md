@@ -74,6 +74,17 @@ The wrapper only prepares a shell path so existing Local User Ollama detection/m
 - Bundled model weights
 - Auto-install of a full local backend runtime
 
+## Desktop backup/export/import v2
+
+A `desktop/foundation/localBackupStore.cjs` helper now provides filesystem-backed Local User backup/export/import:
+
+- Export reads current settings from `settings/local-user-settings.json` and writes a versioned backup file to `backups/`.
+- Import validates the backup schema/version/allowlist and writes allowed settings via the existing `localSettingsStore` helper.
+- The renderer calls `window.swarmsyDesktop.foundation.exportLocalUserBackup()` and `window.swarmsyDesktop.foundation.importLocalUserBackup(payload)` through the trusted IPC bridge.
+- Renderer cannot pass file paths; the main process controls backup path resolution.
+- Bridge is disabled for untrusted origins.
+- Browser backup (`swarmsy_local_user_backup` schema) remains the fallback/compatibility layer when the desktop bridge is unavailable.
+
 This foundation does **not**:
 
 - install dependencies

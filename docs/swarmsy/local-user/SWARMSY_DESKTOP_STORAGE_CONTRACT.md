@@ -89,10 +89,18 @@ Tests cover:
 - no server DB export
 - no auto-install/pull for Ollama
 
-## Desktop local settings foundation (current)
+## Desktop local backup/export/import v2 (current)
 
-- Trusted desktop/local mode now has a narrow filesystem settings bridge for `settings/local-user-settings.json`.
-- File schema is `swarmsy_desktop_local_user_settings` v1 and currently stores only safe Local User settings fields (`ollamaModel`, `provider`).
-- No auth tokens, API keys, session keys, pending home messages, or server DB paths are stored.
-- Browser `localStorage` remains the current compatibility fallback; full migration is not part of this phase.
+- Desktop trusted Local User mode now has a backup/export/import v2 layer via `desktop/foundation/localBackupStore.cjs`.
+- Backup schema is `swarmsy_desktop_local_user_backup` v1 and stores only allowlisted desktop Local User state (`state.settings` with `ollamaModel` and `provider`).
+- Backup files are written to `layout.paths.backups/` (the `backups/` directory in the Local User data root).
+- The renderer never passes file paths — the main process controls backup path resolution entirely.
+- Export and import are exposed as trusted desktop IPC bridge methods:
+  - `window.swarmsyDesktop.foundation.exportLocalUserBackup()` → returns backup object; renderer downloads as JSON file.
+  - `window.swarmsyDesktop.foundation.importLocalUserBackup(payload)` → renderer passes parsed JSON; main validates and writes.
+- Bridge methods are disabled for untrusted origins (same rules as the settings bridge).
+- Import validates schema, version, top-level field allowlist, state field allowlist, and forbidden field denylist before writing any settings.
+- Browser backup (`swarmsy_local_user_backup`) remains the fallback/compatibility layer when the desktop bridge is unavailable.
+- No auth tokens, API keys, session keys, pending home messages, or server DB paths are included.
+- No full data migration yet; no installer, auto-update, bundled Ollama, or bundled models.
 - Hosted/Admin behavior remains separate and unchanged.

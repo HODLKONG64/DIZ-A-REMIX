@@ -47,9 +47,12 @@ Desktop-local folder contract:
 - User can import a backup of local SWARMSY data.
 - Backup behavior should preserve ownership of local project state.
 - Backup/export/import controls are managed from the Local User Settings Hub.
-- The hub copy must remain explicit: browser-side Local User settings backup is not a full desktop filesystem backup.
-- Current backup/export/import remains browser-side Local User state only.
-- Future downloadable app backup uses the real local data directory and `backups/` folder contract.
+- Desktop backup v2 is now available via `desktop/foundation/localBackupStore.cjs` for trusted desktop Local User mode:
+  - Export reads current desktop local settings and writes a versioned backup file to the `backups/` directory in the Local User data root.
+  - Import validates schema/version/allowlist and writes allowed settings via `localSettingsStore`.
+  - Backup schema is `swarmsy_desktop_local_user_backup` v1.
+  - The Settings Hub prefers desktop backup v2 when the trusted bridge is available; browser-side backup (`swarmsy_local_user_backup`) remains the fallback/compatibility layer.
+- No full data migration yet; `backups/` folder contract is now active for desktop local settings state.
 - Hosted/admin server data, secrets, API keys, auth/session tokens, and ephemeral runtime/pending handoff storage are excluded from backup/export/import.
 
 ## Privacy Rules

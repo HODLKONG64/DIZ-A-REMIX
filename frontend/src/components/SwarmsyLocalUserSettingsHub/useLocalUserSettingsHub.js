@@ -7,6 +7,7 @@ import {
   readLocalUserOllamaModelSelection,
   resolveLocalUserOllamaModelSelection,
   hasDesktopLocalSettingsBridge,
+  hasDesktopBackupBridge,
   readDesktopLocalUserOllamaModelSelection,
   mirrorDesktopLocalUserOllamaModelSelection,
 } from "@/components/SwarmsyFirstRunOnboarding/localUserOllamaSelection";
@@ -25,6 +26,8 @@ const LOCAL_OLLAMA_UI_STATES = new Set([
   "no_models",
   "error",
 ]);
+
+const DESKTOP_BACKUP_SCHEMA_NAME = "swarmsy_desktop_local_user_backup";
 
 const IMPORTED_LOCAL_OLLAMA_MODEL_PENDING_MESSAGE =
   "Imported Ollama model saved. SWARMSY will restore it after Ollama status is verified.";
@@ -413,7 +416,32 @@ export function useLocalUserSettingsHub() {
     [mirrorModelSelectionToDesktopSettings]
   );
 
-  const exportBackupToFile = useCallback(() => {
+  const exportBackupToFile = useCallback(async () => {
+    if (
+      typeof window !== "undefined" &&
+      hasDesktopBackupBridge({ targetWindow: window })
+    ) {
+      try {
+        const result = await window.swarmsyDesktop.foundation.exportLocalUserBackup();
+        if (result?.ok && result?.backup) {
+          const json = JSON.stringify(result.backup, null, 2);
+          const blob = new Blob([json], { type: "application/json" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `swarmsy-desktop-local-user-backup-${new Date()
+            .toISOString()
+            .slice(0, 10)}.json`;
+          a.click?.();
+          URL.revokeObjectURL(url);
+          showToast("Desktop Local User backup exported.", "success");
+          return;
+        }
+      } catch {
+        // Fall through to browser backup on unexpected bridge error.
+      }
+    }
+
     const backup = exportLocalUserBackup();
     const json = JSON.stringify(backup, null, 2);
     const blob = new Blob([json], { type: "application/json" });
@@ -430,6 +458,91 @@ export function useLocalUserSettingsHub() {
     async (rawText = "") => {
       try {
         const data = JSON.parse(rawText);
+
+        // Desktop backup v2: route through the desktop bridge when available
+        // and schema matches.
+        if (
+          data?.schema === DESKTOP_BACKUP_SCHEMA_NAME &&
+          typeof window !== "undefined" &&
+          hasDesktopBackupBridge({ targetWindow: window })
+        ) {
+          const bridgeResult =
+            await window.swarmsyDesktop.foundation.importLocalUserBackup(data);
+          if (!bridgeResult?.ok) {
+            const errs = Array.isArray(bridgeResult?.errors)
+              ? bridgeResult.errors
+              : [];
+            const msg = bridgeResult?.message || errs.join(" ") || "Unknown error.";
+            showToast(`Desktop backup import failed: ${msg}`, "error");
+            return false;
+          }
+
+          // After desktop settings are written, re-sync browser localStorage
+          // from the desktop settings file so the UI stays in sync.
+          void mirrorModelSelectionToDesktopSettings(
+            bridgeResult?.restored?.includes("ollamaModel")
+              ? data?.state?.settings?.ollamaModel || ""
+              : readLocalUserOllamaModelSelection()
+          );
+
+          const restoredModelId = String(
+            data?.state?.settings?.ollamaModel || ""
+          ).trim() || readLocalUserOllamaModelSelection();
+
+          if (restoredModelId) {
+            persistLocalUserOllamaModelSelection(restoredModelId);
+          }
+          setSavedLocalOllamaModel(readLocalUserOllamaModelSelection());
+
+          if (!restoredModelId) {
+            setSelectedLocalOllamaModel("");
+            setLocalOllamaSelectionMessage(null);
+          } else if (hasVerifiedLocalOllamaModels) {
+            const importedModelIsInstalled = localOllamaStatus.models.some(
+              (model) => model.id === restoredModelId
+            );
+            if (importedModelIsInstalled) {
+              setSelectedLocalOllamaModel(restoredModelId);
+              setLocalOllamaSelectionMessage(null);
+            } else {
+              setSelectedLocalOllamaModel("");
+              setLocalOllamaSelectionMessage(
+                IMPORTED_LOCAL_OLLAMA_MODEL_MISSING_MESSAGE
+              );
+            }
+          } else {
+            setSelectedLocalOllamaModel("");
+            setLocalOllamaSelectionMessage(
+              IMPORTED_LOCAL_OLLAMA_MODEL_PENDING_MESSAGE
+            );
+            try {
+              await checkLocalUserOllama();
+            } catch {
+              showToast(
+                "Backup imported, but SWARMSY could not refresh Local User Mode Ollama status.",
+                "warning"
+              );
+            }
+          }
+
+          dispatchLocalUserSettingsSync({
+            reason: "backup_import",
+            model: restoredModelId || "",
+          });
+
+          const restoredCount = Array.isArray(bridgeResult?.restored)
+            ? bridgeResult.restored.length
+            : 0;
+          showToast(
+            `Desktop backup imported. ${restoredCount} setting(s) restored.`,
+            "success"
+          );
+          return true;
+        }
+
+        // Browser backup (schema: "swarmsy_local_user_backup") or any
+        // unrecognised desktop schema falls through to the browser import path
+        // so existing backups remain usable as a compatibility fallback.
         const result = importLocalUserBackup(data);
         if (!result.success) {
           showToast(`Import failed: ${result.errors.join(" ")}`, "error");

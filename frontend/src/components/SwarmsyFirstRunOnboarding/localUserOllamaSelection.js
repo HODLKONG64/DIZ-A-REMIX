@@ -66,6 +66,15 @@ export function hasDesktopLocalSettingsBridge({ targetWindow } = {}) {
   );
 }
 
+export function hasDesktopBackupBridge({ targetWindow } = {}) {
+  const bridge = resolveDesktopBridge(targetWindow);
+  return (
+    !!bridge &&
+    typeof bridge.exportLocalUserBackup === "function" &&
+    typeof bridge.importLocalUserBackup === "function"
+  );
+}
+
 export async function readDesktopLocalUserOllamaModelSelection({
   targetWindow,
 } = {}) {
