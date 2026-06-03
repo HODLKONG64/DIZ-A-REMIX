@@ -134,6 +134,39 @@ describe("desktop runtime launcher foundation", () => {
     );
   });
 
+  it("launcher uses shell:true with yarn.cmd on Windows", async () => {
+    const { launchDesktopLocalRuntime } = require(launcherPath);
+    const child = createMockChild({ pid: 4545 });
+    const spawnImpl = jest.fn(() => {
+      setImmediate(() => child.emit("spawn"));
+      return child;
+    });
+    const result = await launchDesktopLocalRuntime({
+      env: { SWARMSY_DESKTOP_AUTO_START_RUNTIME: "true" },
+      spawnImpl,
+      platform: "win32",
+      packageScripts: {
+        "desktop:runtime:dev": "yarn dev:all",
+      },
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        pid: 4545,
+        scriptName: "desktop:runtime:dev",
+      })
+    );
+    expect(spawnImpl).toHaveBeenCalledWith(
+      "yarn.cmd",
+      ["run", "desktop:runtime:dev"],
+      expect.objectContaining({
+        shell: true,
+        detached: false,
+      })
+    );
+  });
+
   it("launcher returns structured failure on spawn error", async () => {
     const { launchDesktopLocalRuntime } = require(launcherPath);
     const child = createMockChild({ pid: 6789 });
@@ -221,5 +254,38 @@ describe("desktop runtime launcher foundation", () => {
     } finally {
       processKillSpy.mockRestore();
     }
+  });
+
+  it("waitForChildExit resolves true and clears timeout when child exits", async () => {
+    jest.useFakeTimers();
+    const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
+    const { waitForChildExit } = require(launcherPath);
+    const child = createMockChild({ pid: 3333 });
+    const waitPromise = waitForChildExit(child, 5000);
+    child.emit("exit", 0, "SIGTERM");
+
+    await expect(waitPromise).resolves.toBe(true);
+    expect(clearTimeoutSpy).toHaveBeenCalled();
+    expect(jest.getTimerCount()).toBe(0);
+
+    clearTimeoutSpy.mockRestore();
+    jest.useRealTimers();
+  });
+
+  it("waitForChildExit resolves false on timeout and removes exit listener", async () => {
+    jest.useFakeTimers();
+    const { waitForChildExit } = require(launcherPath);
+    const child = createMockChild({ pid: 4444 });
+    const removeListenerSpy = jest.spyOn(child, "removeListener");
+    const waitPromise = waitForChildExit(child, 5);
+
+    jest.advanceTimersByTime(5);
+    await expect(waitPromise).resolves.toBe(false);
+    expect(removeListenerSpy).toHaveBeenCalledWith("exit", expect.any(Function));
+    expect(child.listenerCount("exit")).toBe(0);
+    expect(jest.getTimerCount()).toBe(0);
+
+    removeListenerSpy.mockRestore();
+    jest.useRealTimers();
   });
 });

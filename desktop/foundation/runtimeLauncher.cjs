@@ -147,7 +147,7 @@ async function launchDesktopLocalRuntime({
     child = spawnImpl(command, args, {
       cwd: rootDir,
       env,
-      shell: false,
+      shell: platform === "win32",
       detached: platform !== "win32",
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
@@ -256,11 +256,21 @@ function waitForChildExit(child, timeoutMs = DEFAULT_STOP_TIMEOUT_MS) {
       resolve(true);
       return;
     }
-    const onExit = () => resolve(true);
+    let settled = false;
+    let timeout = null;
+    const settle = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    const onExit = () => {
+      if (timeout) clearTimeout(timeout);
+      settle(true);
+    };
     child.once?.("exit", onExit);
-    setTimeout(() => {
+    timeout = setTimeout(() => {
       child.removeListener?.("exit", onExit);
-      resolve(false);
+      settle(false);
     }, timeoutMs);
   });
 }
@@ -335,5 +345,6 @@ module.exports = {
   attachRuntimeLogForwarding,
   launchDesktopLocalRuntime,
   waitForRuntimeHealthcheck,
+  waitForChildExit,
   stopDesktopLaunchedRuntime,
 };
