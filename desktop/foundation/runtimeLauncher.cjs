@@ -318,7 +318,7 @@ async function stopDesktopLaunchedRuntime({
         message: error?.message || "Failed to invoke taskkill.",
       };
     }
-    const taskkillFinished = await new Promise((resolve) => {
+    const taskkillResult = await new Promise((resolve) => {
       let settled = false;
       let timeout = null;
       const done = (result) => {
@@ -328,21 +328,41 @@ async function stopDesktopLaunchedRuntime({
           clearTimeout(timeout);
           timeout = null;
         }
-        killer.removeListener?.("error", onDone);
-        killer.removeListener?.("exit", onDone);
+        killer.removeListener?.("error", onError);
+        killer.removeListener?.("exit", onExit);
         resolve(result);
       };
-      const onDone = () => done(true);
-      killer.once?.("error", onDone);
-      killer.once?.("exit", onDone);
-      timeout = setTimeout(() => done(false), DEFAULT_STOP_TIMEOUT_MS);
+      const onError = () => done({ ok: false, reason: "runtime_stop_failed" });
+      const onExit = (code) =>
+        done(
+          code === 0
+            ? { ok: true }
+            : { ok: false, reason: "runtime_stop_failed" }
+        );
+      killer.once?.("error", onError);
+      killer.once?.("exit", onExit);
+      timeout = setTimeout(
+        () => done({ ok: false, reason: "runtime_stop_timeout" }),
+        DEFAULT_STOP_TIMEOUT_MS
+      );
     });
-    if (!taskkillFinished && child.exitCode === null && child.signalCode === null) {
+    if (taskkillResult.reason === "runtime_stop_timeout") {
       return {
         ok: false,
         reason: "runtime_stop_timeout",
         message:
           "Timed out waiting for Windows taskkill to stop SWARMSY local runtime.",
+        mode: DESKTOP_RUNTIME_LAUNCH_MODE,
+      };
+    }
+    if (taskkillResult.reason === "runtime_stop_failed") {
+      try {
+        child.kill?.();
+      } catch {}
+      return {
+        ok: false,
+        reason: "runtime_stop_failed",
+        message: "Failed to stop SWARMSY local runtime with Windows taskkill.",
         mode: DESKTOP_RUNTIME_LAUNCH_MODE,
       };
     }

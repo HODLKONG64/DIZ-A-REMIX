@@ -429,7 +429,7 @@ describe("desktop runtime launcher foundation", () => {
     jest.useRealTimers();
   });
 
-  it("win32 taskkill cleanup clears timeout when taskkill exits", async () => {
+  it("win32 taskkill exit code 0 returns success and clears timeout", async () => {
     jest.useFakeTimers();
     const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
     const { stopDesktopLaunchedRuntime } = require(launcherPath);
@@ -442,14 +442,19 @@ describe("desktop runtime launcher foundation", () => {
       spawnImpl,
     });
     killer.emit("exit", 0);
-    await stopPromise;
+    await expect(stopPromise).resolves.toEqual(
+      expect.objectContaining({
+        ok: true,
+        mode: "desktop_local_runtime_launcher",
+      })
+    );
     expect(clearTimeoutSpy).toHaveBeenCalled();
     expect(jest.getTimerCount()).toBe(0);
     clearTimeoutSpy.mockRestore();
     jest.useRealTimers();
   });
 
-  it("win32 taskkill cleanup clears timeout when taskkill errors", async () => {
+  it("win32 taskkill error returns structured runtime_stop_failed", async () => {
     jest.useFakeTimers();
     const clearTimeoutSpy = jest.spyOn(global, "clearTimeout");
     const { stopDesktopLaunchedRuntime } = require(launcherPath);
@@ -462,11 +467,56 @@ describe("desktop runtime launcher foundation", () => {
       spawnImpl,
     });
     killer.emit("error", new Error("taskkill failed"));
-    await stopPromise;
+    await expect(stopPromise).resolves.toEqual(
+      expect.objectContaining({
+        ok: false,
+        reason: "runtime_stop_failed",
+        message: "Failed to stop SWARMSY local runtime with Windows taskkill.",
+      })
+    );
     expect(clearTimeoutSpy).toHaveBeenCalled();
     expect(jest.getTimerCount()).toBe(0);
     clearTimeoutSpy.mockRestore();
     jest.useRealTimers();
+  });
+
+  it("win32 taskkill non-zero exit returns structured runtime_stop_failed", async () => {
+    const { stopDesktopLaunchedRuntime } = require(launcherPath);
+    const child = createMockChild({ pid: 5758 });
+    const killer = new EventEmitter();
+    const spawnImpl = jest.fn(() => killer);
+    const stopPromise = stopDesktopLaunchedRuntime({
+      child,
+      platform: "win32",
+      spawnImpl,
+    });
+    killer.emit("exit", 1);
+    await expect(stopPromise).resolves.toEqual(
+      expect.objectContaining({
+        ok: false,
+        reason: "runtime_stop_failed",
+        message: "Failed to stop SWARMSY local runtime with Windows taskkill.",
+      })
+    );
+  });
+
+  it("win32 taskkill settle path does not double-resolve", async () => {
+    const { stopDesktopLaunchedRuntime } = require(launcherPath);
+    const child = createMockChild({ pid: 5759 });
+    const killer = new EventEmitter();
+    const spawnImpl = jest.fn(() => killer);
+    const stopPromise = stopDesktopLaunchedRuntime({
+      child,
+      platform: "win32",
+      spawnImpl,
+    });
+    killer.emit("exit", 0);
+    killer.emit("exit", 1);
+    await expect(stopPromise).resolves.toEqual(
+      expect.objectContaining({
+        ok: true,
+      })
+    );
   });
 
   it("win32 taskkill timeout returns structured timeout failure", async () => {
@@ -522,6 +572,26 @@ describe("desktop runtime launcher foundation", () => {
       })
     );
     expect(child.kill).toHaveBeenCalled();
+  });
+
+  it("win32 stop returns success without taskkill when child already exited", async () => {
+    const { stopDesktopLaunchedRuntime } = require(launcherPath);
+    const child = createMockChild({ pid: 6870 });
+    child.exitCode = 0;
+    const spawnImpl = jest.fn();
+    await expect(
+      stopDesktopLaunchedRuntime({
+        child,
+        platform: "win32",
+        spawnImpl,
+      })
+    ).resolves.toEqual(
+      expect.objectContaining({
+        ok: true,
+        mode: "desktop_local_runtime_launcher",
+      })
+    );
+    expect(spawnImpl).not.toHaveBeenCalled();
   });
 
   it("win32 taskkill failure does not crash shutdown", async () => {
