@@ -20,11 +20,16 @@ function loadBackupModule() {
 module.exports = {
   BACKUP_SCHEMA_NAME,
   BACKUP_SCHEMA_VERSION,
+  DESKTOP_LOCAL_SETTINGS_SCHEMA,
+  DESKTOP_LOCAL_SETTINGS_VERSION,
+  DESKTOP_LOCAL_SETTINGS_ALLOWED_STATE_KEYS,
   BACKUP_STATE_FIELDS,
   NEVER_BACKUP_STORAGE_KEYS,
   exportLocalUserBackup,
+  exportLocalUserBackupV2,
   validateLocalUserBackup,
   importLocalUserBackup,
+  importLocalUserBackupV2,
 };`
   );
 
@@ -57,6 +62,17 @@ function validBackup(overrides = {}) {
     version: mod.BACKUP_SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
     state: { ollamaModel: "llama3.1:8b" },
+    desktop: {
+      localSettings: {
+        schema: mod.DESKTOP_LOCAL_SETTINGS_SCHEMA,
+        version: mod.DESKTOP_LOCAL_SETTINGS_VERSION,
+        updatedAt: new Date().toISOString(),
+        state: {
+          ollamaModel: "llama3.1:8b",
+          provider: "ollama",
+        },
+      },
+    },
     ...overrides,
   };
 }
@@ -71,9 +87,9 @@ describe("SWARMSY Local User backup schema constants", () => {
     expect(BACKUP_SCHEMA_NAME).toBe("swarmsy_local_user_backup");
   });
 
-  it("BACKUP_SCHEMA_VERSION starts at 1", () => {
+  it("BACKUP_SCHEMA_VERSION starts at 2", () => {
     const { BACKUP_SCHEMA_VERSION } = loadBackupModule();
-    expect(BACKUP_SCHEMA_VERSION).toBe(1);
+    expect(BACKUP_SCHEMA_VERSION).toBe(2);
   });
 
   it("BACKUP_STATE_FIELDS includes the Local User Ollama model key", () => {
@@ -111,6 +127,15 @@ describe("SWARMSY Local User backup schema constants", () => {
       )
     ).toBe(true);
   });
+
+  it("NEVER_BACKUP_STORAGE_KEYS covers API and server DB keys", () => {
+    const { NEVER_BACKUP_STORAGE_KEYS } = loadBackupModule();
+    expect(NEVER_BACKUP_STORAGE_KEYS.has("anythingllm_apiKey")).toBe(true);
+    expect(NEVER_BACKUP_STORAGE_KEYS.has("anythingllm_apiKeys")).toBe(true);
+    expect(NEVER_BACKUP_STORAGE_KEYS.has("anythingllm_server_db_path")).toBe(
+      true
+    );
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -125,6 +150,7 @@ describe("exportLocalUserBackup", () => {
     const result = exportLocalUserBackup({ storage });
     expect(result.schema).toBe(BACKUP_SCHEMA_NAME);
     expect(result.version).toBe(BACKUP_SCHEMA_VERSION);
+    expect(result.desktop).toEqual({ localSettings: null });
   });
 
   it("exportedAt is a valid ISO date string", () => {
@@ -153,6 +179,40 @@ describe("exportLocalUserBackup", () => {
     });
     const result = exportLocalUserBackup({ storage });
     expect(result.state.ollamaModel).toBe("phi3:mini");
+  });
+
+  it("includes allowlisted desktop local settings when provided", () => {
+    const { exportLocalUserBackup, DESKTOP_LOCAL_SETTINGS_SCHEMA } =
+      loadBackupModule();
+    const storage = createStorage();
+    const result = exportLocalUserBackup({
+      storage,
+      desktopLocalSettings: {
+        schema: DESKTOP_LOCAL_SETTINGS_SCHEMA,
+        version: 1,
+        updatedAt: new Date().toISOString(),
+        state: { ollamaModel: "phi3:mini", provider: "ollama" },
+      },
+    });
+    expect(result.desktop.localSettings.state).toEqual({
+      ollamaModel: "phi3:mini",
+      provider: "ollama",
+    });
+  });
+
+  it("drops invalid desktop local settings payloads", () => {
+    const { exportLocalUserBackup } = loadBackupModule();
+    const storage = createStorage();
+    const result = exportLocalUserBackup({
+      storage,
+      desktopLocalSettings: {
+        schema: "bad_schema",
+        version: 1,
+        updatedAt: "bad-date",
+        state: { authToken: "secret" },
+      },
+    });
+    expect(result.desktop.localSettings).toBeNull();
   });
 
   it("records null for keys not present in storage", () => {
@@ -272,6 +332,32 @@ describe("validateLocalUserBackup", () => {
     expect(errors.some((e) => e.includes("unknownHostileField"))).toBe(true);
   });
 
+  it("rejects unknown top-level fields", () => {
+    const { validateLocalUserBackup } = loadBackupModule();
+    const { valid } = validateLocalUserBackup(
+      validBackup({ hostileRootField: true })
+    );
+    expect(valid).toBe(false);
+  });
+
+  it("rejects invalid desktop local settings payload", () => {
+    const { validateLocalUserBackup } = loadBackupModule();
+    const { valid, errors } = validateLocalUserBackup(
+      validBackup({
+        desktop: {
+          localSettings: {
+            schema: "bad",
+            version: 999,
+            updatedAt: "not-a-date",
+            state: { authToken: "secret" },
+          },
+        },
+      })
+    );
+    expect(valid).toBe(false);
+    expect(errors.some((e) => e.includes("desktop.localSettings"))).toBe(true);
+  });
+
   it("rejects a state containing an auth key name as a field", () => {
     const { validateLocalUserBackup } = loadBackupModule();
     const { valid } = validateLocalUserBackup(
@@ -368,6 +454,21 @@ describe("importLocalUserBackup", () => {
       )
     ).toBe(false);
   });
+
+  it("accepts v1 backups without desktop payload", () => {
+    const { importLocalUserBackup } = loadBackupModule();
+    const storage = createStorage();
+    const result = importLocalUserBackup(
+      {
+        schema: "swarmsy_local_user_backup",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        state: { ollamaModel: "safe-model" },
+      },
+      { storage }
+    );
+    expect(result.success).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -418,6 +519,40 @@ describe("full round-trip: export then import", () => {
         "anythingllm_authToken"
       )
     ).toBe(false);
+  });
+});
+
+describe("desktop-aware v2 helpers", () => {
+  it("exportLocalUserBackupV2 includes trusted desktop settings when callback succeeds", async () => {
+    const { exportLocalUserBackupV2, DESKTOP_LOCAL_SETTINGS_SCHEMA } =
+      loadBackupModule();
+    const backup = await exportLocalUserBackupV2({
+      storage: createStorage(),
+      readDesktopLocalSettings: async () => ({
+        ok: true,
+        settings: {
+          schema: DESKTOP_LOCAL_SETTINGS_SCHEMA,
+          version: 1,
+          updatedAt: new Date().toISOString(),
+          state: { ollamaModel: "llama3.1:8b", provider: "ollama" },
+        },
+      }),
+    });
+    expect(backup.desktop.localSettings.state.ollamaModel).toBe("llama3.1:8b");
+  });
+
+  it("importLocalUserBackupV2 restores desktop settings through callback", async () => {
+    const { importLocalUserBackupV2 } = loadBackupModule();
+    const applyDesktopLocalSettings = jest.fn().mockResolvedValue({ ok: true });
+    const result = await importLocalUserBackupV2(validBackup(), {
+      storage: createStorage(),
+      applyDesktopLocalSettings,
+    });
+    expect(result.success).toBe(true);
+    expect(applyDesktopLocalSettings).toHaveBeenCalledWith({
+      ollamaModel: "llama3.1:8b",
+      provider: "ollama",
+    });
   });
 });
 
