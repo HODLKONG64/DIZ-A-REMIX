@@ -29,6 +29,12 @@ const BACKUP_ALLOWED_TOP_LEVEL_KEYS = new Set([
   "state",
   "desktop",
 ]);
+const BACKUP_V1_ALLOWED_TOP_LEVEL_KEYS = new Set([
+  "schema",
+  "version",
+  "exportedAt",
+  "state",
+]);
 const DESKTOP_BACKUP_ALLOWED_KEYS = new Set(["localSettings"]);
 const DESKTOP_LOCAL_SETTINGS_ALLOWED_KEYS = new Set([
   "schema",
@@ -118,6 +124,20 @@ function normalizeDesktopLocalSettingsForBackup(input) {
   };
 }
 
+function normalizeDesktopLocalSettingsStateForRestore(state) {
+  const normalizedState = {};
+  for (const key of DESKTOP_LOCAL_SETTINGS_ALLOWED_STATE_KEYS) {
+    const value = state?.[key];
+    if (typeof value !== "string") {
+      normalizedState[key] = null;
+      continue;
+    }
+    const trimmedValue = value.trim();
+    normalizedState[key] = trimmedValue || null;
+  }
+  return normalizedState;
+}
+
 /**
  * Read all allowed backup fields from storage and return a versioned
  * Local User backup object ready to serialize.
@@ -167,8 +187,13 @@ export function validateLocalUserBackup(data) {
     return { valid: false, errors };
   }
 
+  const allowedTopLevelKeys =
+    data.version === 1
+      ? BACKUP_V1_ALLOWED_TOP_LEVEL_KEYS
+      : BACKUP_ALLOWED_TOP_LEVEL_KEYS;
+
   for (const topLevelKey of Object.keys(data)) {
-    if (!BACKUP_ALLOWED_TOP_LEVEL_KEYS.has(topLevelKey)) {
+    if (!allowedTopLevelKeys.has(topLevelKey)) {
       errors.push(`Unknown top-level field "${topLevelKey}".`);
     }
   }
@@ -374,17 +399,27 @@ export async function importLocalUserBackupV2(
   const result = importLocalUserBackup(data, { storage });
   if (!result.success) return result;
 
+  let restoredDesktopState = null;
+
   if (
     typeof applyDesktopLocalSettings === "function" &&
+    data?.version >= 2 &&
     data?.desktop?.localSettings?.state &&
     isPlainObject(data.desktop.localSettings.state)
   ) {
     try {
-      await applyDesktopLocalSettings(data.desktop.localSettings.state);
+      restoredDesktopState = normalizeDesktopLocalSettingsStateForRestore(
+        data.desktop.localSettings.state
+      );
+      await applyDesktopLocalSettings(restoredDesktopState);
     } catch {
+      restoredDesktopState = null;
       // Browser fallback import remains successful.
     }
   }
 
-  return result;
+  return {
+    ...result,
+    restoredDesktopState,
+  };
 }

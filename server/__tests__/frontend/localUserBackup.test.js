@@ -359,6 +359,26 @@ describe("validateLocalUserBackup", () => {
     expect(errors.some((e) => e.includes("desktop.localSettings"))).toBe(true);
   });
 
+  it("rejects v1 backups that include a desktop payload", () => {
+    const { validateLocalUserBackup } = loadBackupModule();
+    const { valid, errors } = validateLocalUserBackup({
+      schema: "swarmsy_local_user_backup",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      state: { ollamaModel: "safe-model" },
+      desktop: {
+        localSettings: {
+          schema: "swarmsy_desktop_local_user_settings",
+          version: 1,
+          updatedAt: new Date().toISOString(),
+          state: { ollamaModel: "llama3.1:8b", provider: "ollama" },
+        },
+      },
+    });
+    expect(valid).toBe(false);
+    expect(errors).toContain('Unknown top-level field "desktop".');
+  });
+
   it("rejects a state containing an auth key name as a field", () => {
     const { validateLocalUserBackup } = loadBackupModule();
     const { valid } = validateLocalUserBackup(
@@ -554,6 +574,84 @@ describe("desktop-aware v2 helpers", () => {
       ollamaModel: "llama3.1:8b",
       provider: "ollama",
     });
+    expect(result.restoredDesktopState).toEqual({
+      ollamaModel: "llama3.1:8b",
+      provider: "ollama",
+    });
+  });
+
+  it("importLocalUserBackupV2 trims desktop values and converts empties to null", async () => {
+    const { importLocalUserBackupV2 } = loadBackupModule();
+    const applyDesktopLocalSettings = jest.fn().mockResolvedValue({ ok: true });
+    const backup = validBackup({
+      desktop: {
+        localSettings: {
+          schema: "swarmsy_desktop_local_user_settings",
+          version: 1,
+          updatedAt: new Date().toISOString(),
+          state: { ollamaModel: "   ", provider: "  ollama  " },
+        },
+      },
+    });
+
+    const result = await importLocalUserBackupV2(backup, {
+      storage: createStorage(),
+      applyDesktopLocalSettings,
+    });
+    expect(result.success).toBe(true);
+    expect(applyDesktopLocalSettings).toHaveBeenCalledWith({
+      ollamaModel: null,
+      provider: "ollama",
+    });
+    expect(result.restoredDesktopState).toEqual({
+      ollamaModel: null,
+      provider: "ollama",
+    });
+  });
+
+  it("importLocalUserBackupV2 does not invoke desktop restore for v1 desktop payloads", async () => {
+    const { importLocalUserBackupV2 } = loadBackupModule();
+    const applyDesktopLocalSettings = jest.fn().mockResolvedValue({ ok: true });
+    const backup = {
+      schema: "swarmsy_local_user_backup",
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      state: { ollamaModel: "safe-model" },
+      desktop: {
+        localSettings: {
+          schema: "swarmsy_desktop_local_user_settings",
+          version: 1,
+          updatedAt: new Date().toISOString(),
+          state: { ollamaModel: "llama3.1:8b", provider: "ollama" },
+        },
+      },
+    };
+    const result = await importLocalUserBackupV2(backup, {
+      storage: createStorage(),
+      applyDesktopLocalSettings,
+    });
+    expect(result.success).toBe(false);
+    expect(applyDesktopLocalSettings).not.toHaveBeenCalled();
+  });
+
+  it("importLocalUserBackupV2 rejects invalid desktop payloads safely", async () => {
+    const { importLocalUserBackupV2 } = loadBackupModule();
+    const applyDesktopLocalSettings = jest.fn().mockResolvedValue({ ok: true });
+    const result = await importLocalUserBackupV2(
+      validBackup({
+        desktop: {
+          localSettings: {
+            schema: "bad_schema",
+            version: 1,
+            updatedAt: new Date().toISOString(),
+            state: { ollamaModel: "llama3.1:8b", provider: "ollama" },
+          },
+        },
+      }),
+      { storage: createStorage(), applyDesktopLocalSettings }
+    );
+    expect(result.success).toBe(false);
+    expect(applyDesktopLocalSettings).not.toHaveBeenCalled();
   });
 });
 

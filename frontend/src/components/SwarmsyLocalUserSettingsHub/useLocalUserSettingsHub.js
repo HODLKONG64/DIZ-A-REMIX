@@ -93,6 +93,31 @@ function dispatchLocalUserSettingsSync(detail = {}) {
   );
 }
 
+export function resolveLocalUserBackupImportModelState({
+  backupData,
+  browserRestoredModelId = "",
+  desktopRestoredModelId = "",
+} = {}) {
+  const normalizedBrowserModelId = String(browserRestoredModelId || "").trim();
+  const normalizedDesktopModelId = String(desktopRestoredModelId || "").trim();
+  const backupState =
+    backupData?.state && typeof backupData.state === "object"
+      ? backupData.state
+      : {};
+  const browserBackupDefinesModel = Object.prototype.hasOwnProperty.call(
+    backupState,
+    "ollamaModel"
+  );
+
+  return {
+    restoredModelId: normalizedBrowserModelId || normalizedDesktopModelId,
+    shouldMirrorBrowserModel:
+      !!normalizedBrowserModelId ||
+      (browserBackupDefinesModel && !normalizedDesktopModelId),
+    mirrorModelId: normalizedBrowserModelId,
+  };
+}
+
 export function useLocalUserSettingsHub() {
   const loginMode = useLoginMode();
   const isLoginModePending = loginMode === null;
@@ -450,9 +475,23 @@ export function useLocalUserSettingsHub() {
           return false;
         }
 
-        const restoredModelId = readLocalUserOllamaModelSelection();
+        const browserRestoredModelId = readLocalUserOllamaModelSelection();
+        const desktopRestoredModelId = String(
+          result?.restoredDesktopState?.ollamaModel || ""
+        ).trim();
+        const importModelState = resolveLocalUserBackupImportModelState({
+          backupData: data,
+          browserRestoredModelId,
+          desktopRestoredModelId,
+        });
+        const restoredModelId = importModelState.restoredModelId;
+
         setSavedLocalOllamaModel(restoredModelId);
-        void mirrorModelSelectionToDesktopSettings(restoredModelId);
+        if (importModelState.shouldMirrorBrowserModel) {
+          void mirrorModelSelectionToDesktopSettings(
+            importModelState.mirrorModelId
+          );
+        }
 
         if (!restoredModelId) {
           setSelectedLocalOllamaModel("");

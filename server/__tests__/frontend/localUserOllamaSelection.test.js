@@ -197,4 +197,27 @@ describe("Local User Ollama model selection storage helper", () => {
       provider: "ollama",
     });
   });
+
+  it("normalizes desktop restore payload values before bridge write", async () => {
+    const module = loadSelectionModule();
+    const getStorageContract = jest.fn().mockResolvedValue({
+      layout: { mode: "local_user", root: "/tmp/.config/swarmsy" },
+    });
+    const setLocalUserSettings = jest.fn().mockResolvedValue({ ok: true });
+    const result = await module.restoreDesktopLocalUserSettingsFromBackup(
+      { ollamaModel: "   ", provider: 12345 },
+      {
+        targetWindow: {
+          swarmsyDesktop: {
+            foundation: { getStorageContract, setLocalUserSettings },
+          },
+        },
+      }
+    );
+    expect(result.ok).toBe(true);
+    expect(setLocalUserSettings).toHaveBeenCalledWith({
+      ollamaModel: null,
+      provider: null,
+    });
+  });
 });

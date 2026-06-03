@@ -207,9 +207,14 @@ export async function restoreDesktopLocalUserSettingsFromBackup(
       return { ok: false, reason: "invalid_storage_contract" };
     }
 
+    const normalizedOllamaModel = normalizeLocalUserOllamaModelId(
+      state?.ollamaModel
+    );
+    const normalizedProvider =
+      typeof state?.provider === "string" ? state.provider.trim() : "";
     const payload = {
-      ollamaModel: state?.ollamaModel ?? null,
-      provider: state?.provider ?? null,
+      ollamaModel: normalizedOllamaModel || null,
+      provider: normalizedProvider || null,
     };
     const response = await bridge.setLocalUserSettings(payload);
     if (!response?.ok) {
