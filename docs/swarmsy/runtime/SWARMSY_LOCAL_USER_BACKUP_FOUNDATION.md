@@ -181,3 +181,9 @@ Hosted/Admin mode still stores hosted data server-side and does not use this bro
 | `frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx` | Onboarding integration of the Local User Settings Hub |
 | `frontend/src/components/WorkspaceChat/ChatContainer/ChatSettingsMenu/LocalUserSettingsHubRow.jsx` | Chat settings entrypoint modal for Local User Settings Hub |
 | `server/__tests__/frontend/localUserBackup.test.js` | Full flow test suite (35 tests) |
+
+## Desktop filesystem-backed backup v2
+
+In trusted desktop Local User mode, the Local User Settings Hub now prefers the desktop filesystem-backed backup bridge when available. The Electron main process resolves the storage contract, writes backup JSON only inside `layout.paths.backups`, rejects backup directory/file symlinks, and validates all paths against the Local User root. Import accepts a parsed object or serialized JSON, rejects malformed JSON with a parse-specific reason, rejects unknown/forbidden fields, and restores only allowlisted desktop local settings through the desktop local settings store.
+
+The browser backup v2 shape remains fallback and compatibility. No secrets, auth/session/API keys, runtime/pending state, server DB paths/data, or Hosted/Admin data are exported. Hosted/Admin separation is unchanged, and this backup foundation does not add an installer, signing, auto-update, bundled Ollama/models, or model auto-pull.

@@ -17,7 +17,12 @@ export const BACKUP_SCHEMA_NAME = "swarmsy_local_user_backup";
 export const BACKUP_SCHEMA_VERSION = 2;
 export const DESKTOP_LOCAL_SETTINGS_SCHEMA =
   "swarmsy_desktop_local_user_settings";
+export const DESKTOP_LOCAL_USER_BACKUP_SCHEMA =
+  "swarmsy_desktop_local_user_backup";
 export const DESKTOP_LOCAL_SETTINGS_VERSION = 1;
+export const DESKTOP_LOCAL_USER_BACKUP_VERSION = 1;
+export const DESKTOP_LOCAL_USER_BACKUP_APP = "SWARMSY";
+export const DESKTOP_LOCAL_USER_BACKUP_MODE = "local_user_desktop";
 export const DESKTOP_LOCAL_SETTINGS_ALLOWED_STATE_KEYS = new Set([
   "ollamaModel",
   "provider",
@@ -478,4 +483,14 @@ export async function importLocalUserBackupV2(
     restoredDesktopState,
     desktopRestore,
   };
+}
+
+export function isDesktopLocalUserBackup(data) {
+  return (
+    isPlainObject(data) &&
+    data.schema === DESKTOP_LOCAL_USER_BACKUP_SCHEMA &&
+    data.version === DESKTOP_LOCAL_USER_BACKUP_VERSION &&
+    data.app === DESKTOP_LOCAL_USER_BACKUP_APP &&
+    data.mode === DESKTOP_LOCAL_USER_BACKUP_MODE
+  );
 }

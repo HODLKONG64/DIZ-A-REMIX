@@ -1,4 +1,5 @@
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const {
   validateLocalUserStorageManifest,
@@ -157,6 +158,12 @@ describe("SWARMSY desktop wrapper foundation", () => {
       { virtual: true }
     );
 
+    const previousXdgConfigHome = process.env.XDG_CONFIG_HOME;
+    const desktopIpcTmpRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-desktop-ipc-")
+    );
+    process.env.XDG_CONFIG_HOME = desktopIpcTmpRoot;
+
     const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
     const shellApi = { openExternal: jest.fn().mockResolvedValue(undefined) };
     const webContents = {
@@ -264,6 +271,12 @@ describe("SWARMSY desktop wrapper foundation", () => {
     const setLocalUserSettingsHandler = ipcMainApi.handle.mock.calls.find(
       ([channel]) => channel === "swarmsy:set-local-user-settings"
     )[1];
+    const exportLocalUserBackupHandler = ipcMainApi.handle.mock.calls.find(
+      ([channel]) => channel === "swarmsy:export-local-user-backup"
+    )[1];
+    const importLocalUserBackupHandler = ipcMainApi.handle.mock.calls.find(
+      ([channel]) => channel === "swarmsy:import-local-user-backup"
+    )[1];
 
     const trustedContract = storageContractHandler({
       senderFrame: { url: "http://localhost:3000" },
@@ -301,6 +314,40 @@ describe("SWARMSY desktop wrapper foundation", () => {
     );
     expect(settingsWriteResult.ok).toBe(false);
     expect(settingsWriteResult.reason).toBe("settings_validation_error");
+
+    expect(
+      await exportLocalUserBackupHandler({
+        senderFrame: { url: "https://hosted.example.com" },
+      })
+    ).toEqual(expect.objectContaining({ ok: false, reason: "untrusted_origin" }));
+
+    const trustedExport = await exportLocalUserBackupHandler({
+      senderFrame: { url: "http://localhost:3000" },
+    });
+    expect(trustedExport.ok).toBe(true);
+    expect(trustedExport.path).toContain("backups");
+
+    const arbitraryPathImport = await importLocalUserBackupHandler(
+      { senderFrame: { url: "http://localhost:3000" } },
+      {
+        schema: "swarmsy_desktop_local_user_backup",
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        app: "SWARMSY",
+        mode: "local_user_desktop",
+        path: "/tmp/evil",
+        state: { settings: { ollamaModel: "llama3.1:8b" } },
+      }
+    );
+    expect(arbitraryPathImport.ok).toBe(false);
+    expect(arbitraryPathImport.reason).toBe("backup_validation_failed");
+
+    if (previousXdgConfigHome === undefined) {
+      delete process.env.XDG_CONFIG_HOME;
+    } else {
+      process.env.XDG_CONFIG_HOME = previousXdgConfigHome;
+    }
+    fs.rmSync(desktopIpcTmpRoot, { recursive: true, force: true });
   });
 
   it("only exposes the preload bridge on trusted local origins", async () => {
@@ -348,6 +395,8 @@ describe("SWARMSY desktop wrapper foundation", () => {
           getLocalUserSettings: expect.any(Function),
           setLocalUserSettings: expect.any(Function),
           clearLocalUserSettings: expect.any(Function),
+          exportLocalUserBackup: expect.any(Function),
+          importLocalUserBackup: expect.any(Function),
         }),
       })
     );
@@ -360,6 +409,10 @@ describe("SWARMSY desktop wrapper foundation", () => {
       ok: true,
     });
     expect(await bridge.clearLocalUserSettings()).toEqual({ ok: true });
+    expect(await bridge.exportLocalUserBackup()).toEqual({ ok: true });
+    expect(await bridge.importLocalUserBackup({ path: "/tmp/evil" })).toEqual({
+      ok: true,
+    });
     expect(trustedIpcRenderer.invoke).toHaveBeenCalledWith(
       "swarmsy:get-storage-contract"
     );
@@ -372,6 +425,13 @@ describe("SWARMSY desktop wrapper foundation", () => {
     );
     expect(trustedIpcRenderer.invoke).toHaveBeenCalledWith(
       "swarmsy:clear-local-user-settings"
+    );
+    expect(trustedIpcRenderer.invoke).toHaveBeenCalledWith(
+      "swarmsy:export-local-user-backup"
+    );
+    expect(trustedIpcRenderer.invoke).toHaveBeenCalledWith(
+      "swarmsy:import-local-user-backup",
+      { path: "/tmp/evil" }
     );
     expect(preload.isTrustedDesktopOrigin("https://hosted.example.com")).toBe(
       false
