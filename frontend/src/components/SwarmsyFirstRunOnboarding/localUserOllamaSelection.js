@@ -1,3 +1,5 @@
+export const LOCAL_USER_SETTINGS_SYNC_EVENT =
+  "anythingllm_swarmsy_local_user_settings_sync";
 const LOCAL_USER_OLLAMA_MODEL_STORAGE_KEY =
   "anythingllm_swarmsy_local_user_ollama_model";
 const DESKTOP_LOCAL_SETTINGS_SCHEMA = "swarmsy_desktop_local_user_settings";
@@ -12,6 +14,27 @@ function resolveDesktopBridge(targetWindow) {
   const scopedWindow =
     targetWindow || (typeof window !== "undefined" ? window : null);
   return scopedWindow?.swarmsyDesktop?.foundation || null;
+}
+
+function dispatchLocalUserSettingsSync(detail = {}) {
+  const scopedWindow = typeof window !== "undefined" ? window : null;
+  if (!scopedWindow || typeof scopedWindow.dispatchEvent !== "function") return;
+
+  let EventCtor = null;
+  if (typeof scopedWindow.CustomEvent === "function") {
+    EventCtor = scopedWindow.CustomEvent;
+  } else if (typeof CustomEvent === "function") {
+    EventCtor = CustomEvent;
+  }
+  if (!EventCtor) return;
+
+  try {
+    scopedWindow.dispatchEvent(
+      new EventCtor(LOCAL_USER_SETTINGS_SYNC_EVENT, { detail })
+    );
+  } catch {
+    // Storage persistence must not fail because sync notification failed.
+  }
 }
 
 export function normalizeLocalUserOllamaModelId(modelId = "") {
@@ -41,12 +64,20 @@ export function persistLocalUserOllamaModelSelection(
   try {
     if (!normalizedModelId) {
       localStorage.removeItem(LOCAL_USER_OLLAMA_MODEL_STORAGE_KEY);
+      dispatchLocalUserSettingsSync({
+        reason: "model_selection",
+        model: "",
+      });
       return true;
     }
     localStorage.setItem(
       LOCAL_USER_OLLAMA_MODEL_STORAGE_KEY,
       normalizedModelId
     );
+    dispatchLocalUserSettingsSync({
+      reason: "model_selection",
+      model: normalizedModelId,
+    });
     return true;
   } catch {
     return false;
