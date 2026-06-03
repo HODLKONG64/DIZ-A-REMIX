@@ -43,6 +43,8 @@ import {
   PROOF_TRACKER_UNDERLOADED_MESSAGE,
 } from "./proofTracker";
 import {
+  hasDesktopLocalSettingsBridge,
+  mirrorDesktopLocalUserOllamaModelSelection,
   persistLocalUserOllamaModelSelection,
   readLocalUserOllamaModelSelection,
   resolveLocalUserOllamaModelSelection,
@@ -1064,14 +1066,20 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
               localOllamaSelectionMessage,
               checkLocalUserOllama,
               onSelectLocalOllamaModel: (nextModelId) => {
-                setSelectedLocalOllamaModel(nextModelId);
-                persistLocalUserOllamaModelSelection(nextModelId);
+                const normalizedModelId = String(nextModelId || "").trim();
+                setSelectedLocalOllamaModel(normalizedModelId);
+                persistLocalUserOllamaModelSelection(normalizedModelId);
                 setLocalOllamaSelectionMessage(null);
+                if (hasDesktopLocalSettingsBridge()) {
+                  void mirrorDesktopLocalUserOllamaModelSelection(
+                    normalizedModelId
+                  );
+                }
                 window.dispatchEvent(
                   new CustomEvent(LOCAL_USER_SETTINGS_SYNC_EVENT, {
                     detail: {
                       reason: "model_selection",
-                      model: String(nextModelId || "").trim(),
+                      model: normalizedModelId,
                     },
                   })
                 );
