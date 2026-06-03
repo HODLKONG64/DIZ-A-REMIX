@@ -15,7 +15,8 @@
 
 export const BACKUP_SCHEMA_NAME = "swarmsy_local_user_backup";
 export const BACKUP_SCHEMA_VERSION = 2;
-export const DESKTOP_LOCAL_SETTINGS_SCHEMA = "swarmsy_desktop_local_user_settings";
+export const DESKTOP_LOCAL_SETTINGS_SCHEMA =
+  "swarmsy_desktop_local_user_settings";
 export const DESKTOP_LOCAL_SETTINGS_VERSION = 1;
 export const DESKTOP_LOCAL_SETTINGS_ALLOWED_STATE_KEYS = new Set([
   "ollamaModel",

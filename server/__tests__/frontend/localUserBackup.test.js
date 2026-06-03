@@ -13,6 +13,7 @@ function loadBackupModule() {
     )
     // Strip ES module export keywords so vm.Script can run the source.
     .replace(/export const /g, "const ")
+    .replace(/export async function /g, "async function ")
     .replace(/export function /g, "function ");
 
   const script = new vm.Script(
