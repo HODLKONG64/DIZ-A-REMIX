@@ -1,10 +1,5 @@
 import { useRef } from "react";
 import { ArrowClockwise, SpinnerGap } from "@phosphor-icons/react";
-import {
-  hasDesktopLocalSettingsBridge,
-  mirrorDesktopLocalUserOllamaModelSelection,
-} from "@/components/SwarmsyFirstRunOnboarding/localUserOllamaSelection";
-import showToast from "@/utils/toast";
 
 const LOCAL_OLLAMA_SETUP_GUIDANCE = [
   "Ollama was not detected.",
@@ -49,7 +44,6 @@ export default function SwarmsyLocalUserSettingsHub({
     onSelectLocalOllamaModel,
     exportBackupToFile,
     importBackupFromText,
-    mirrorsDesktopLocalSettings = false,
   } = controller;
 
   const isHostedBoundary = isHostedAdminMode && !isLocalUserMode;
@@ -61,27 +55,6 @@ export default function SwarmsyLocalUserSettingsHub({
   function handleSelectLocalOllamaModel(nextModelId) {
     const normalizedModelId = String(nextModelId || "").trim();
     onSelectLocalOllamaModel(normalizedModelId);
-
-    const shouldMirrorDesktopSelection =
-      !mirrorsDesktopLocalSettings && typeof isLoginModePending === "undefined";
-    if (
-      !shouldMirrorDesktopSelection ||
-      typeof window === "undefined" ||
-      !hasDesktopLocalSettingsBridge({ targetWindow: window })
-    ) {
-      return;
-    }
-
-    void mirrorDesktopLocalUserOllamaModelSelection(normalizedModelId, {
-      targetWindow: window,
-    }).then((mirrored) => {
-      if (!mirrored.ok) {
-        showToast(
-          "Desktop local settings sync failed. Browser Local User storage remains active.",
-          "warning"
-        );
-      }
-    });
   }
 
   function handleImportBackupFile(event) {
