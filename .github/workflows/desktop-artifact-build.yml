@@ -34,6 +34,18 @@ jobs:
       - name: Install root dependencies
         run: npm ci
 
+      - name: Validate package lockfile
+        shell: pwsh
+        run: |
+          if (!(Test-Path "package-lock.json")) {
+            throw "Missing required lockfile: package-lock.json"
+          }
+          npm install --package-lock-only --ignore-scripts
+          if (!(git diff --quiet -- package-lock.json)) {
+            git diff -- package-lock.json
+            throw "package-lock.json changed after npm lockfile validation."
+          }
+
       - name: Install frontend dependencies
         working-directory: frontend
         run: yarn install --frozen-lockfile
@@ -46,11 +58,10 @@ jobs:
         working-directory: collector
         run: yarn install --frozen-lockfile
 
-      - name: Validate lockfiles
+      - name: Validate yarn lockfiles
         shell: pwsh
         run: |
           $required = @(
-            "package-lock.json",
             "frontend/yarn.lock",
             "server/yarn.lock",
             "collector/yarn.lock"
@@ -59,11 +70,6 @@ jobs:
             if (!(Test-Path $lockfile)) {
               throw "Missing required lockfile: $lockfile"
             }
-          }
-          npm install --package-lock-only --ignore-scripts
-          if (!(git diff --quiet -- package-lock.json)) {
-            git diff -- package-lock.json
-            throw "package-lock.json changed after npm lockfile validation."
           }
           git diff --quiet -- frontend/yarn.lock server/yarn.lock collector/yarn.lock
 
