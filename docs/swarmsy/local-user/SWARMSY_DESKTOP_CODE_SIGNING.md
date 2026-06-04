@@ -70,8 +70,8 @@ The installer workflow now generates a release manifest after the artifact zip a
   "version": "1.13.0",
   "buildDate": "2026-06-04T00:00:00.000Z",
   "commitSha": "<git commit sha>",
-  "artifact": "desktop/artifacts/swarmsy-desktop-win32-x64.zip",
-  "installer": "desktop/artifacts/SWARMSY-Desktop-Setup.exe",
+  "artifact": "swarmsy-desktop-win32-x64.zip",
+  "installer": "SWARMSY-Desktop-Setup.exe",
   "artifactSHA256": "<sha256>",
   "installerSHA256": "<sha256>",
   "signingStatus": "signing_unavailable",
@@ -87,6 +87,12 @@ Use the validation utility to confirm that the artifact zip and installer exe st
 
 ```bash
 npm run desktop:release:validate
+```
+
+When validating files after downloading a workflow artifact, the artifact should contain `SWARMSY-Desktop-Setup.exe`, `SWARMSY-Desktop-Setup.manifest.json`, `SWARMSY-Desktop-Release.json`, and `swarmsy-desktop-win32-x64.zip`. Keep `SWARMSY-Desktop-Release.json`, `SWARMSY-Desktop-Setup.exe`, and `swarmsy-desktop-win32-x64.zip` in the same directory and pass the manifest path explicitly if it is outside the repo default:
+
+```bash
+node desktop/scripts/validate-release-integrity.cjs /path/to/download/SWARMSY-Desktop-Release.json
 ```
 
 The utility checks that:

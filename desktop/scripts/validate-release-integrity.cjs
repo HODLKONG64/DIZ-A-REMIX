@@ -16,8 +16,15 @@ function resolveFromManifest(manifestPath, manifestArtifactPath) {
   if (!manifestArtifactPath || typeof manifestArtifactPath !== "string") {
     fail("Manifest artifact path is missing or invalid.");
   }
-  if (path.isAbsolute(manifestArtifactPath)) return manifestArtifactPath;
-  return path.join(repoRoot, manifestArtifactPath);
+  if (path.isAbsolute(manifestArtifactPath)) {
+    fail("Manifest artifact paths must be relative for portable validation.");
+  }
+  const manifestRelativePath = path.resolve(
+    path.dirname(manifestPath),
+    manifestArtifactPath
+  );
+  if (fs.existsSync(manifestRelativePath)) return manifestRelativePath;
+  return path.resolve(repoRoot, manifestArtifactPath);
 }
 
 function assertSha256(value, label) {
@@ -62,7 +69,7 @@ function validateReleaseIntegrity({ manifestPath = releaseManifest } = {}) {
 
 function main() {
   try {
-    validateReleaseIntegrity();
+    validateReleaseIntegrity({ manifestPath: process.argv[2] || releaseManifest });
     console.log("[desktop:release:integrity] Release manifest hashes validated.");
   } catch (error) {
     console.error(`[desktop:release:integrity] ${error.message}`);

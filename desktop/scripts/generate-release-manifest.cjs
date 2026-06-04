@@ -40,8 +40,8 @@ function resolveCommitSha() {
   return "unknown";
 }
 
-function relativeArtifact(targetPath) {
-  return path.relative(repoRoot, targetPath).replace(/\\/g, "/");
+function relativeManifestArtifact(outputPath, targetPath) {
+  return path.relative(path.dirname(outputPath), targetPath).replace(/\\/g, "/");
 }
 
 function createReleaseManifest({
@@ -66,8 +66,8 @@ function createReleaseManifest({
     version,
     buildDate,
     commitSha,
-    artifact: relativeArtifact(artifactPath),
-    installer: relativeArtifact(installerPath),
+    artifact: relativeManifestArtifact(outputPath, artifactPath),
+    installer: relativeManifestArtifact(outputPath, installerPath),
     artifactSHA256: artifactSha256,
     installerSHA256: installerSha256,
     signingStatus: signing.status,
@@ -81,11 +81,11 @@ function createReleaseManifest({
     },
     artifacts: {
       desktopZip: {
-        path: relativeArtifact(artifactPath),
+        path: relativeManifestArtifact(outputPath, artifactPath),
         sha256: artifactSha256,
       },
       installerExe: {
-        path: relativeArtifact(installerPath),
+        path: relativeManifestArtifact(outputPath, installerPath),
         sha256: installerSha256,
       },
     },
@@ -114,5 +114,6 @@ module.exports = {
   createReleaseManifest,
   installerExe,
   releaseManifest,
+  relativeManifestArtifact,
   sha256File,
 };
