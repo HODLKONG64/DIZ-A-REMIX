@@ -64,6 +64,13 @@ describe("desktop Windows installer packaging foundation", () => {
     expect(workflow).toContain("if (Test-Path package-lock.json)");
     expect(workflow).toContain("elseif (Test-Path npm-shrinkwrap.json)");
     expect(workflow).toContain("skipping root npm ci");
+    expect(workflow).toContain(
+      "git diff --quiet -- frontend/yarn.lock server/yarn.lock collector/yarn.lock"
+    );
+    expect(workflow).toContain("if ($LASTEXITCODE -ne 0)");
+    expect(workflow).toContain(
+      "yarn.lock files changed during install/build steps. Please commit lockfile updates."
+    );
     expect(workflow).toContain("working-directory: frontend");
     expect(workflow).toContain("working-directory: server");
     expect(workflow).toContain("working-directory: collector");
@@ -74,6 +81,25 @@ describe("desktop Windows installer packaging foundation", () => {
     expect(workflow).toContain(
       "npx --yes jest@29.7.0 server/__tests__/desktop/desktopInstallerPackaging.test.js --runInBand"
     );
+  });
+
+  it("removes stale installer outputs before invoking makensis", () => {
+    const builderScript = fs.readFileSync(installerBuilderPath, "utf8");
+    const validationIndex = builderScript.indexOf(
+      "validateArtifact({ packageRoot, archivePath });"
+    );
+    const installerRemovalIndex = builderScript.indexOf(
+      "fs.rmSync(installerOutput, { force: true });"
+    );
+    const manifestRemovalIndex = builderScript.indexOf(
+      "fs.rmSync(installerManifest, { force: true });"
+    );
+    const makensisIndex = builderScript.indexOf("spawnSync(makensisPath");
+
+    expect(validationIndex).toBeGreaterThan(-1);
+    expect(installerRemovalIndex).toBeGreaterThan(validationIndex);
+    expect(manifestRemovalIndex).toBeGreaterThan(installerRemovalIndex);
+    expect(makensisIndex).toBeGreaterThan(manifestRemovalIndex);
   });
 
   it("escapes NSIS define values without breaking Windows paths", () => {
@@ -108,6 +134,24 @@ describe("desktop Windows installer packaging foundation", () => {
     );
     expect(uninstallSection).toContain(
       "SWARMSY Desktop uninstall aborted because the selected install directory is missing expected SWARMSY application files."
+    );
+    expect(nsis).toContain(
+      'WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\SWARMSY Desktop" "DisplayName" "SWARMSY Desktop"'
+    );
+    expect(nsis).toContain(
+      'WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\SWARMSY Desktop" "UninstallString" "$\\"$INSTDIR\\Uninstall SWARMSY Desktop.exe$\\""'
+    );
+    expect(nsis).toContain(
+      'WriteRegStr HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\SWARMSY Desktop" "InstallLocation" "$INSTDIR"'
+    );
+    expect(nsis).toContain(
+      'WriteRegDWORD HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\SWARMSY Desktop" "NoModify" 1'
+    );
+    expect(nsis).toContain(
+      'WriteRegDWORD HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\SWARMSY Desktop" "NoRepair" 1'
+    );
+    expect(uninstallSection).toContain(
+      'DeleteRegKey HKCU "Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\SWARMSY Desktop"'
     );
     expect(uninstallSection).toContain('RMDir /r "$INSTDIR"');
     expect(uninstallSection).not.toMatch(

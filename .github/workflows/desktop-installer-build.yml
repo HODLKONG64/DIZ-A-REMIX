@@ -72,6 +72,10 @@ jobs:
             }
           }
           git diff --quiet -- frontend/yarn.lock server/yarn.lock collector/yarn.lock
+          if ($LASTEXITCODE -ne 0) {
+            git diff -- frontend/yarn.lock server/yarn.lock collector/yarn.lock
+            throw "yarn.lock files changed during install/build steps. Please commit lockfile updates."
+          }
 
       - name: Build frontend
         working-directory: frontend

@@ -40,6 +40,12 @@ Section "SWARMSY Desktop" SEC_INSTALL
   CreateDirectory "$SMPROGRAMS\SWARMSY Desktop"
   CreateShortcut "$SMPROGRAMS\SWARMSY Desktop\SWARMSY Desktop.lnk" "$INSTDIR\SWARMSY Desktop.exe"
   CreateShortcut "$SMPROGRAMS\SWARMSY Desktop\Uninstall SWARMSY Desktop.lnk" "$INSTDIR\Uninstall SWARMSY Desktop.exe"
+
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SWARMSY Desktop" "DisplayName" "SWARMSY Desktop"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SWARMSY Desktop" "UninstallString" "$\"$INSTDIR\Uninstall SWARMSY Desktop.exe$\""
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SWARMSY Desktop" "InstallLocation" "$INSTDIR"
+  WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SWARMSY Desktop" "NoModify" 1
+  WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SWARMSY Desktop" "NoRepair" 1
 SectionEnd
 
 Section "Uninstall"
@@ -50,6 +56,7 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\SWARMSY Desktop\SWARMSY Desktop.lnk"
   Delete "$SMPROGRAMS\SWARMSY Desktop\Uninstall SWARMSY Desktop.lnk"
   RMDir "$SMPROGRAMS\SWARMSY Desktop"
+  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SWARMSY Desktop"
 
   ; The installer only writes application files under $INSTDIR. Local User
   ; files are created outside the install directory and are not removed by

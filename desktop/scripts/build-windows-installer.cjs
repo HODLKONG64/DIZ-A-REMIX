@@ -78,6 +78,7 @@ function buildInstaller({ makensisPath = resolveMakensis() } = {}) {
   ensureExists(installerScript, "NSIS installer script");
   validateArtifact({ packageRoot, archivePath });
   fs.rmSync(installerOutput, { force: true });
+  fs.rmSync(installerManifest, { force: true });
 
   const args = [
     "/V3",
