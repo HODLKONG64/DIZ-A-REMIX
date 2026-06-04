@@ -16,6 +16,14 @@ const artifactSmokePath = path.join(
   repoRoot,
   "desktop/scripts/desktop-artifact-smoke-check.cjs"
 );
+const installerWorkflowPath = path.join(
+  repoRoot,
+  ".github/workflows/desktop-installer-build.yml"
+);
+const nsisInstallerPath = path.join(
+  repoRoot,
+  "desktop/installer/swarmsy-desktop.nsi"
+);
 
 describe("desktop Windows installer packaging foundation", () => {
   it("documents required installer contents and explicit exclusions", () => {
@@ -46,6 +54,33 @@ describe("desktop Windows installer packaging foundation", () => {
         "credentials",
       ])
     );
+  });
+
+  it("uses guarded root npm install while preserving package install/build steps", () => {
+    const workflow = fs.readFileSync(installerWorkflowPath, "utf8");
+
+    expect(workflow).toContain("node-version-file: \".nvmrc\"");
+    expect(workflow).toContain("Install root dependencies when lockfile exists");
+    expect(workflow).toContain("if (Test-Path package-lock.json)");
+    expect(workflow).toContain("elseif (Test-Path npm-shrinkwrap.json)");
+    expect(workflow).toContain("skipping root npm ci");
+    expect(workflow).toContain("working-directory: frontend");
+    expect(workflow).toContain("working-directory: server");
+    expect(workflow).toContain("working-directory: collector");
+    expect(workflow).toContain("run: yarn install --frozen-lockfile");
+    expect(workflow).toContain("run: yarn build");
+    expect(workflow).toContain("run: npm run desktop:artifact:package:win");
+    expect(workflow).toContain("run: npm run desktop:installer:package:win");
+    expect(workflow).toContain("npx --yes jest@29.7.0");
+  });
+
+  it("removes the full installed app tree without touching Local User paths", () => {
+    const nsis = fs.readFileSync(nsisInstallerPath, "utf8");
+    const uninstallSection = nsis.slice(nsis.indexOf('Section "Uninstall"'));
+
+    expect(uninstallSection).toContain('RMDir /r "$INSTDIR"');
+    expect(uninstallSection).not.toMatch(/\$APPDATA|\$LOCALAPPDATA|backups|settings/i);
+    expect(uninstallSection).not.toMatch(/anythingllm-desktop|local-user-data/i);
   });
 
   it("generates an unsigned per-user installer from the existing artifact output", () => {

@@ -47,8 +47,8 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\SWARMSY Desktop\Uninstall SWARMSY Desktop.lnk"
   RMDir "$SMPROGRAMS\SWARMSY Desktop"
 
-  Delete "$INSTDIR\Uninstall SWARMSY Desktop.exe"
-  Delete "$INSTDIR\SWARMSY Desktop.exe"
-  RMDir /r "$INSTDIR\resources"
-  RMDir "$INSTDIR"
+  ; The installer only writes application files under $INSTDIR. Local User
+  ; files are created outside the install directory and are not removed by
+  ; this uninstaller.
+  RMDir /r "$INSTDIR"
 SectionEnd
