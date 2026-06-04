@@ -113,7 +113,7 @@ describe("resolveLocalUserBackupImportModelState", () => {
     });
   });
 
-  it("prefers browser model when browser and desktop restored values differ", () => {
+  it("keeps desktop-restored model when browser fallback and desktop values differ", () => {
     const module = loadSettingsHubModule();
     const result = module.resolveLocalUserBackupImportModelState({
       browserModelWasRestored: true,
@@ -122,9 +122,9 @@ describe("resolveLocalUserBackupImportModelState", () => {
     });
 
     expect(result).toEqual({
-      restoredModelId: "browser:model",
-      shouldMirrorBrowserModel: true,
-      mirrorModelId: "browser:model",
+      restoredModelId: "desktop:model",
+      shouldMirrorBrowserModel: false,
+      mirrorModelId: "",
     });
   });
 });

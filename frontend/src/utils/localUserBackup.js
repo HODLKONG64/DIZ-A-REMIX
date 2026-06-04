@@ -160,12 +160,16 @@ export function resolveLocalUserBackupImportModelState({
   const normalizedBrowserModelId = String(browserRestoredModelId || "").trim();
   const normalizedDesktopModelId = String(desktopRestoredModelId || "").trim();
 
+  const restoredModelId = normalizedDesktopModelId || normalizedBrowserModelId;
+  const shouldMirrorBrowserModel =
+    browserModelWasRestored &&
+    !normalizedDesktopModelId &&
+    (!!normalizedBrowserModelId || !restoredModelId);
+
   return {
-    restoredModelId: normalizedBrowserModelId || normalizedDesktopModelId,
-    shouldMirrorBrowserModel:
-      browserModelWasRestored &&
-      (!!normalizedBrowserModelId || !normalizedDesktopModelId),
-    mirrorModelId: normalizedBrowserModelId,
+    restoredModelId,
+    shouldMirrorBrowserModel,
+    mirrorModelId: shouldMirrorBrowserModel ? normalizedBrowserModelId : "",
   };
 }
 
