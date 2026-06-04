@@ -645,7 +645,7 @@ describe("SWARMSY HIVE action hub", () => {
     expect(hookSource).toContain('url: "http://localhost:8188"');
   });
 
-  it("renders Local Image Engine fallback safely for manual first-run controllers", () => {
+  it("wires first-run Local Image Engine checks instead of exposing a no-op action", () => {
     const source = fs.readFileSync(
       path.resolve(
         __dirname,
@@ -667,8 +667,13 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toContain('typeof checkLocalImageEngine === "function"');
     expect(source).toContain("onClick={safeCheckLocalImageEngine}");
     expect(source).not.toContain("localImageEngineStatus.available");
-    expect(onboardingSource).toContain("localImageEngineStatus: {");
-    expect(onboardingSource).toContain("checkLocalImageEngine: () => {}");
+    expect(onboardingSource).toContain(
+      "SwarmsyOnboarding.localUserImageEngineStatus"
+    );
+    expect(onboardingSource).toContain("isCheckingLocalImageEngine,");
+    expect(onboardingSource).toContain("localImageEngineStatus,");
+    expect(onboardingSource).toContain("checkLocalImageEngine,");
+    expect(onboardingSource).not.toContain("checkLocalImageEngine: () => {}");
   });
 
   it("shows the desktop first-run wizard button only when the desktop bridge exists", () => {
