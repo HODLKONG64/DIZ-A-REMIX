@@ -619,6 +619,32 @@ describe("SWARMSY HIVE action hub", () => {
     );
   });
 
+  it("surfaces read-only Local Image Engine status in Local User Settings Hub", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyLocalUserSettingsHub/index.jsx"
+      ),
+      "utf8"
+    );
+    const hookSource = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyLocalUserSettingsHub/useLocalUserSettingsHub.js"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("Local Image Engine");
+    expect(source).toContain("Connected");
+    expect(source).toContain("Not connected");
+    expect(source).toContain("Engine: {localImageEngineStatus.engine");
+    expect(source).toContain("URL: {localImageEngineStatus.url");
+    expect(source).toContain("Check image engine");
+    expect(hookSource).toContain("SwarmsyOnboarding.localUserImageEngineStatus");
+    expect(hookSource).toContain('url: "http://localhost:8188"');
+  });
+
   it("shows the desktop first-run wizard button only when the desktop bridge exists", () => {
     const source = fs.readFileSync(
       path.resolve(
