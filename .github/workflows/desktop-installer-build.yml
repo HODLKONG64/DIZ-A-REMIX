@@ -36,10 +36,18 @@ jobs:
         run: |
           if (Test-Path package-lock.json) {
             npm ci
-            git diff -- package-lock.json
+            git diff --quiet -- package-lock.json
+            if ($LASTEXITCODE -ne 0) {
+              git diff -- package-lock.json
+              throw "package-lock.json changed during npm ci. Please commit lockfile updates."
+            }
           } elseif (Test-Path npm-shrinkwrap.json) {
             npm ci
-            git diff -- npm-shrinkwrap.json
+            git diff --quiet -- npm-shrinkwrap.json
+            if ($LASTEXITCODE -ne 0) {
+              git diff -- npm-shrinkwrap.json
+              throw "npm-shrinkwrap.json changed during npm ci. Please commit lockfile updates."
+            }
           } else {
             Write-Host "No root npm lockfile found; skipping root npm ci. Desktop packaging scripts use Node built-ins."
           }

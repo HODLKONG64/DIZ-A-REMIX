@@ -62,7 +62,15 @@ describe("desktop Windows installer packaging foundation", () => {
     expect(workflow).toContain("node-version-file: \".nvmrc\"");
     expect(workflow).toContain("Install root dependencies when lockfile exists");
     expect(workflow).toContain("if (Test-Path package-lock.json)");
+    expect(workflow).toContain("git diff --quiet -- package-lock.json");
+    expect(workflow).toContain(
+      "package-lock.json changed during npm ci. Please commit lockfile updates."
+    );
     expect(workflow).toContain("elseif (Test-Path npm-shrinkwrap.json)");
+    expect(workflow).toContain("git diff --quiet -- npm-shrinkwrap.json");
+    expect(workflow).toContain(
+      "npm-shrinkwrap.json changed during npm ci. Please commit lockfile updates."
+    );
     expect(workflow).toContain("skipping root npm ci");
     expect(workflow).toContain(
       "git diff --quiet -- frontend/yarn.lock server/yarn.lock collector/yarn.lock"
