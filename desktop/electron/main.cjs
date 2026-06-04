@@ -145,7 +145,10 @@ function configureWindowSecurity(window, startUrl, { shellApi = shell } = {}) {
   });
 }
 
-function registerDesktopIpc({ ipcMainApi = ipcMain } = {}) {
+function registerDesktopIpc({
+  ipcMainApi = ipcMain,
+  runtimeHealthcheck = runDesktopRuntimeHealthcheck,
+} = {}) {
   ipcMainApi.removeHandler?.(STORAGE_CONTRACT_CHANNEL);
   ipcMainApi.removeHandler?.(GET_RUNTIME_STATUS_CHANNEL);
   ipcMainApi.removeHandler?.(GET_LOCAL_USER_SETTINGS_CHANNEL);
@@ -153,19 +156,39 @@ function registerDesktopIpc({ ipcMainApi = ipcMain } = {}) {
   ipcMainApi.removeHandler?.(CLEAR_LOCAL_USER_SETTINGS_CHANNEL);
   ipcMainApi.removeHandler?.(EXPORT_LOCAL_USER_BACKUP_CHANNEL);
   ipcMainApi.removeHandler?.(IMPORT_LOCAL_USER_BACKUP_CHANNEL);
-  ipcMainApi.handle(GET_RUNTIME_STATUS_CHANNEL, (event) => {
+  ipcMainApi.handle(GET_RUNTIME_STATUS_CHANNEL, async (event) => {
     const senderUrl =
       event?.senderFrame?.url || event?.sender?.getURL?.() || "";
+    const startUrl = resolveStartUrl();
+    const managed = !!managedRuntimeChild;
     if (!isTrustedDesktopOrigin(senderUrl)) {
-      return { ok: false, responding: false, reason: "untrusted_origin" };
+      return {
+        ok: false,
+        responding: false,
+        reason: "untrusted_origin",
+        startUrl,
+        managed,
+      };
     }
+
+    const health = await runtimeHealthcheck({ startUrl });
+    if (health?.ok) {
+      return {
+        ok: true,
+        responding: true,
+        mode: health?.mode || "desktop_local_runtime",
+        startUrl: health?.startUrl || startUrl,
+        managed,
+      };
+    }
+
     return {
-      ok: true,
-      responding: true,
-      mode: "desktop_local_runtime",
-      startUrl: resolveStartUrl(),
-      managed: !!managedRuntimeChild,
-      message: "SWARMSY Desktop runtime is responding.",
+      ok: false,
+      responding: false,
+      reason: health?.reason || "runtime_healthcheck_failed",
+      mode: health?.mode || "desktop_local_runtime",
+      startUrl: health?.startUrl || startUrl,
+      managed,
     };
   });
 

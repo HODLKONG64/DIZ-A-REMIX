@@ -159,10 +159,7 @@ function ollamaCheck(ollamaStatus = null) {
     title: "Ollama is not reachable",
     message: ollamaStatus?.message || "SWARMSY could not reach Ollama.",
     action: "Install or start Ollama: https://ollama.com",
-    diagnosticCode:
-      ollamaStatus?.status === "error"
-        ? "ollama_unreachable"
-        : "ollama_unreachable",
+    diagnosticCode: "ollama_unreachable",
     metadata: {
       endpoint: ollamaStatus?.endpoint || null,
       reason: ollamaStatus?.reason || null,

@@ -39,6 +39,13 @@ function resolveDesktopBridge(targetWindow = window) {
   return targetWindow?.swarmsyDesktop?.foundation || null;
 }
 
+function hasTrustedDesktopBridge(targetWindow) {
+  const scopedWindow =
+    targetWindow || (typeof window !== "undefined" ? window : null);
+  if (!scopedWindow) return false;
+  return hasDesktopLocalSettingsBridge({ targetWindow: scopedWindow });
+}
+
 function normalizeModel(model = null, index = 0) {
   const name = String(model?.name || model?.id || "").trim();
   if (!name) return null;
@@ -92,7 +99,7 @@ export default function SwarmsyDesktopFirstRunWizard() {
 
   const desktopBridgeAvailable = useMemo(() => {
     if (typeof window === "undefined") return false;
-    return hasDesktopLocalSettingsBridge({ targetWindow: window });
+    return hasTrustedDesktopBridge(window);
   }, [visible]);
 
   const runReadinessChecks = useCallback(async () => {
@@ -136,7 +143,7 @@ export default function SwarmsyDesktopFirstRunWizard() {
     if (typeof window === "undefined") return;
     async function boot() {
       if (loginMode === null || isHostedAdminMode) return;
-      if (!hasDesktopLocalSettingsBridge({ targetWindow: window })) return;
+      if (!hasTrustedDesktopBridge(window)) return;
       const desktopCompletion = await readDesktopLocalUserFirstRunCompleted({
         targetWindow: window,
       });
@@ -154,7 +161,7 @@ export default function SwarmsyDesktopFirstRunWizard() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     function relaunch() {
-      if (isHostedAdminMode) return;
+      if (isHostedAdminMode || !hasTrustedDesktopBridge(window)) return;
       setManualLaunch(true);
       setVisible(true);
       setStepIndex(0);
@@ -172,12 +179,36 @@ export default function SwarmsyDesktopFirstRunWizard() {
   const selectedModelInstalled =
     !selectedModel ||
     ollamaStatus.models.some((model) => model.id === selectedModel);
+  const runtimeStepReady =
+    runtimeCheck && storageCheck && desktopBridgeAvailable;
+  const selectedModelReady = !!selectedModel && selectedModelInstalled;
   const canFinish =
-    runtimeCheck &&
-    storageCheck &&
-    ollamaCheck &&
-    modelCheck &&
-    selectedModelInstalled;
+    runtimeStepReady && ollamaCheck && modelCheck && selectedModelReady;
+  const canAdvanceFromCurrentStep =
+    stepIndex === 0 ||
+    (stepIndex === 1 && runtimeStepReady) ||
+    (stepIndex === 2 && ollamaCheck) ||
+    (stepIndex === 3 && modelCheck) ||
+    (stepIndex === 4 && selectedModelReady);
+  const currentStepHint =
+    stepIndex === 1 && !runtimeStepReady
+      ? "Runtime, storage, and trusted desktop bridge checks must pass before continuing. You can still skip setup and return later."
+      : stepIndex === 2 && !ollamaCheck
+        ? "Install or start Ollama manually, then check again before continuing."
+        : stepIndex === 3 && !modelCheck
+          ? `Pull a model manually, for example: ollama pull ${DEFAULT_MODEL}`
+          : stepIndex === 4 && !selectedModelReady
+            ? "Select an installed Ollama model before continuing to Ready."
+            : null;
+
+  function goBack() {
+    setStepIndex((current) => Math.max(0, current - 1));
+  }
+
+  function goNext() {
+    if (!canAdvanceFromCurrentStep) return;
+    setStepIndex((current) => Math.min(WIZARD_STEPS.length - 1, current + 1));
+  }
 
   const checks = [
     {
@@ -362,6 +393,12 @@ export default function SwarmsyDesktopFirstRunWizard() {
           )}
         </div>
 
+        {currentStepHint && (
+          <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-theme-text-secondary">
+            {currentStepHint}
+          </div>
+        )}
+
         <div className="mt-6 flex flex-wrap justify-between gap-3">
           <button
             type="button"
@@ -385,12 +422,31 @@ export default function SwarmsyDesktopFirstRunWizard() {
             </button>
             <button
               type="button"
-              onClick={completeWizard}
-              disabled={!canFinish}
-              className="rounded-lg bg-teal px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              onClick={goBack}
+              disabled={stepIndex === 0}
+              className="rounded-lg border border-theme-sidebar-border px-4 py-2 text-sm font-medium hover:bg-theme-bg-secondary disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Ready — finish setup
+              Back
             </button>
+            {stepIndex < WIZARD_STEPS.length - 1 ? (
+              <button
+                type="button"
+                onClick={goNext}
+                disabled={!canAdvanceFromCurrentStep}
+                className="rounded-lg bg-teal px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Continue
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={completeWizard}
+                disabled={!canFinish}
+                className="rounded-lg bg-teal px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Ready — finish setup
+              </button>
+            )}
           </div>
         </div>
       </section>

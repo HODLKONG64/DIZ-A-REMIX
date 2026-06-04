@@ -2,6 +2,7 @@ import { useRef } from "react";
 import { ArrowClockwise, SpinnerGap } from "@phosphor-icons/react";
 import SwarmsyDesktopDiagnosticsPanel from "@/components/SwarmsyDesktopDiagnosticsPanel";
 import { DESKTOP_FIRST_RUN_RELAUNCH_EVENT } from "@/components/SwarmsyDesktopFirstRunWizard";
+import { hasDesktopLocalSettingsBridge } from "@/components/SwarmsyFirstRunOnboarding/localUserOllamaSelection";
 
 const LOCAL_OLLAMA_SETUP_GUIDANCE = [
   "Ollama was not detected.",
@@ -54,6 +55,9 @@ export default function SwarmsyLocalUserSettingsHub({
   const title = showNeutralPendingState
     ? "Checking environment..."
     : localOllamaStatusTitle;
+  const hasTrustedDesktopBridge =
+    typeof window !== "undefined" &&
+    hasDesktopLocalSettingsBridge({ targetWindow: window });
 
   function handleSelectLocalOllamaModel(nextModelId) {
     const normalizedModelId = String(nextModelId || "").trim();
@@ -131,13 +135,15 @@ export default function SwarmsyLocalUserSettingsHub({
               )}
             </div>
             <div className="flex flex-col gap-2 sm:flex-row">
-              <button
-                type="button"
-                onClick={relaunchDesktopFirstRunWizard}
-                className="flex items-center justify-center gap-x-2 rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary px-4 py-2 text-sm font-medium text-theme-text-primary transition hover:bg-theme-bg-menu"
-              >
-                First-run wizard
-              </button>
+              {hasTrustedDesktopBridge && (
+                <button
+                  type="button"
+                  onClick={relaunchDesktopFirstRunWizard}
+                  className="flex items-center justify-center gap-x-2 rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary px-4 py-2 text-sm font-medium text-theme-text-primary transition hover:bg-theme-bg-menu"
+                >
+                  First-run wizard
+                </button>
+              )}
               <button
                 type="button"
                 onClick={checkLocalUserOllama}

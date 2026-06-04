@@ -12,8 +12,9 @@ function wizardSource() {
 }
 
 describe("SWARMSY Desktop first-run wizard frontend", () => {
-  it("first launch displays wizard until desktopFirstRunCompleted is stored", () => {
+  it("first launch starts on Welcome and displays wizard until desktopFirstRunCompleted is stored", () => {
     const source = wizardSource();
+    expect(source).toContain("const [stepIndex, setStepIndex] = useState(0)");
     expect(source).toContain("readDesktopLocalUserFirstRunCompleted");
     expect(source).toContain("mirrorDesktopLocalUserFirstRunCompleted");
     expect(source).toContain("setVisible(true)");
@@ -27,11 +28,31 @@ describe("SWARMSY Desktop first-run wizard frontend", () => {
     expect(source).toContain("return null");
   });
 
-  it("manual relaunch works from the shared settings event", () => {
+  it("manual relaunch is gated to trusted desktop bridge sessions", () => {
     const source = wizardSource();
     expect(source).toContain("DESKTOP_FIRST_RUN_RELAUNCH_EVENT");
     expect(source).toContain("window.addEventListener(DESKTOP_FIRST_RUN_RELAUNCH_EVENT, relaunch)");
+    expect(source).toContain("!hasTrustedDesktopBridge(window)");
     expect(source).toContain("setManualLaunch(true)");
+  });
+
+  it("Continue and Back advance through real wizard steps", () => {
+    const source = wizardSource();
+    expect(source).toContain("function goNext()");
+    expect(source).toContain("function goBack()");
+    expect(source).toMatch(/setStepIndex\(\(current\) =>\s*Math\.min\(WIZARD_STEPS\.length - 1, current \+ 1\)\s*\)/);
+    expect(source).toContain("setStepIndex((current) => Math.max(0, current - 1))");
+    expect(source).toContain("Continue");
+    expect(source).toContain("Back");
+  });
+
+  it("blocks false completion unless readiness gates pass or setup is explicitly skipped", () => {
+    const source = wizardSource();
+    expect(source).toMatch(/const runtimeStepReady =\s*runtimeCheck && storageCheck && desktopBridgeAvailable/);
+    expect(source).toContain("const selectedModelReady = !!selectedModel && selectedModelInstalled");
+    expect(source).toContain("runtimeStepReady && ollamaCheck && modelCheck && selectedModelReady");
+    expect(source).toContain("disabled={!canFinish}");
+    expect(source).toContain("Skip for now");
   });
 
   it("runs readiness checks and maps failures to existing diagnostics", () => {
