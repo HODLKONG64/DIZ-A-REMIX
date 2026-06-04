@@ -65,6 +65,35 @@ describe("SWARMSY Desktop first-run wizard frontend", () => {
     expect(source).toContain("selected_model_missing");
   });
 
+
+  it("does not show no_models_installed or pull guidance until Ollama is reachable", () => {
+    const source = wizardSource();
+    expect(source).toContain(
+      "Models could not be verified until Ollama is reachable"
+    );
+    expect(source).toContain("Start or check Ollama first");
+    expect(source).toMatch(/diagnostic: !ollamaCheck\s*\? null/);
+    expect(source).toMatch(
+      /: `No models found\. Run: ollama pull \$\{DEFAULT_MODEL\}`/
+    );
+    expect(source).toContain(': "no_models_installed"');
+  });
+
+  it("keeps completion visible and honest when desktop settings mirror fails", () => {
+    const source = wizardSource();
+    expect(source).toContain(
+      "const mirrored = await mirrorDesktopLocalUserFirstRunCompleted"
+    );
+    expect(source).toContain("if (!mirrored?.ok)");
+    expect(source).toContain("setup completion could not be saved");
+    expect(source).toContain("return false");
+    expect(source).toContain("setVisible(false)");
+    expect(source).toContain("SWARMSY Desktop setup saved.");
+    expect(source.indexOf("if (!mirrored?.ok)")).toBeLessThan(
+      source.indexOf("setVisible(false)")
+    );
+  });
+
   it("shows manual Ollama and model install actions without automatic installs", () => {
     const source = wizardSource();
     expect(source).toContain("https://ollama.com");

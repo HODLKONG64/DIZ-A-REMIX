@@ -5,8 +5,15 @@ const {
 } = require("../../../utils/swarmsy/desktopReadiness");
 
 describe("SWARMSY Desktop readiness engine", () => {
-  const readyRuntime = { ok: true, responding: true, startUrl: "http://127.0.0.1:3000" };
-  const readyStorage = { ok: true, layout: { mode: "local_user", root: "/tmp/swarmsy" } };
+  const readyRuntime = {
+    ok: true,
+    responding: true,
+    startUrl: "http://127.0.0.1:3000",
+  };
+  const readyStorage = {
+    ok: true,
+    layout: { mode: "local_user", root: "/tmp/swarmsy" },
+  };
   const readyBridge = { ok: true };
   const readyOllama = {
     reachable: true,
@@ -37,20 +44,26 @@ describe("SWARMSY Desktop readiness engine", () => {
 
   it("blocks readiness when runtime is unavailable", async () => {
     const result = await getDesktopReadiness({
-      runtimeStatus: { ok: false, responding: false, reason: "runtime_unreachable" },
+      runtimeStatus: {
+        ok: false,
+        responding: false,
+        reason: "runtime_unreachable",
+      },
       storageStatus: readyStorage,
       desktopBridgeStatus: readyBridge,
       ollamaStatus: readyOllama,
     });
 
     expect(result.status).toBe(READINESS_LEVELS.BLOCKED);
-    expect(result.checks.find((check) => check.id === CHECK_IDS.RUNTIME_AVAILABLE)).toMatchObject({
+    expect(
+      result.checks.find((check) => check.id === CHECK_IDS.RUNTIME_AVAILABLE)
+    ).toMatchObject({
       status: READINESS_LEVELS.BLOCKED,
       diagnosticCode: "runtime_healthcheck_failed",
     });
   });
 
-  it("warns when Ollama is unavailable and maps to diagnostics", async () => {
+  it("warns when Ollama is unavailable without claiming models are missing", async () => {
     const result = await getDesktopReadiness({
       runtimeStatus: readyRuntime,
       storageStatus: readyStorage,
@@ -58,11 +71,26 @@ describe("SWARMSY Desktop readiness engine", () => {
       ollamaStatus: { reachable: false, status: "unreachable", models: [] },
     });
 
+    const diagnosticCodes = result.diagnostics.map(
+      (diagnostic) => diagnostic.code
+    );
+    const modelCheck = result.checks.find(
+      (check) => check.id === CHECK_IDS.MODEL_AVAILABLE
+    );
+
     expect(result.status).toBe(READINESS_LEVELS.WARNING);
-    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain("ollama_unreachable");
+    expect(diagnosticCodes).toContain("ollama_unreachable");
+    expect(diagnosticCodes).not.toContain("no_models_installed");
+    expect(modelCheck).toMatchObject({
+      status: READINESS_LEVELS.WARNING,
+      title: "Models could not be verified",
+      diagnosticCode: null,
+      action: "Start or check Ollama, then run readiness checks again.",
+    });
+    expect(modelCheck.action).not.toContain("ollama pull");
   });
 
-  it("warns when Ollama has no models and suggests the default pull command", async () => {
+  it("warns when reachable Ollama has no models and suggests the default pull command", async () => {
     const result = await getDesktopReadiness({
       runtimeStatus: readyRuntime,
       storageStatus: readyStorage,
@@ -71,7 +99,12 @@ describe("SWARMSY Desktop readiness engine", () => {
       defaultModel: "llama3.1:8b",
     });
 
-    const modelCheck = result.checks.find((check) => check.id === CHECK_IDS.MODEL_AVAILABLE);
+    const modelCheck = result.checks.find(
+      (check) => check.id === CHECK_IDS.MODEL_AVAILABLE
+    );
+    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain(
+      "no_models_installed"
+    );
     expect(modelCheck).toMatchObject({
       status: READINESS_LEVELS.WARNING,
       diagnosticCode: "no_models_installed",
@@ -88,7 +121,12 @@ describe("SWARMSY Desktop readiness engine", () => {
       selectedModel: "missing:model",
     });
 
-    expect(result.checks.find((check) => check.id === CHECK_IDS.MODEL_AVAILABLE)).toMatchObject({
+    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).not.toContain(
+      "no_models_installed"
+    );
+    expect(
+      result.checks.find((check) => check.id === CHECK_IDS.MODEL_AVAILABLE)
+    ).toMatchObject({
       status: READINESS_LEVELS.WARNING,
       diagnosticCode: "selected_model_missing",
     });

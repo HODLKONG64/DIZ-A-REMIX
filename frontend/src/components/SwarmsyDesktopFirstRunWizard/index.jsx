@@ -175,7 +175,8 @@ export default function SwarmsyDesktopFirstRunWizard() {
   const runtimeCheck = runtimeStatus?.ok && runtimeStatus?.responding !== false;
   const storageCheck = storageStatus?.ok;
   const ollamaCheck = ollamaStatus.reachable && ollamaStatus.status !== "error";
-  const modelCheck = ollamaStatus.models.length > 0;
+  const installedModelsAvailable = ollamaStatus.models.length > 0;
+  const modelCheck = ollamaCheck && installedModelsAvailable;
   const selectedModelInstalled =
     !selectedModel ||
     ollamaStatus.models.some((model) => model.id === selectedModel);
@@ -196,7 +197,9 @@ export default function SwarmsyDesktopFirstRunWizard() {
       : stepIndex === 2 && !ollamaCheck
         ? "Install or start Ollama manually, then check again before continuing."
         : stepIndex === 3 && !modelCheck
-          ? `Pull a model manually, for example: ollama pull ${DEFAULT_MODEL}`
+          ? ollamaCheck
+            ? `Pull a model manually, for example: ollama pull ${DEFAULT_MODEL}`
+            : "Start or check Ollama before verifying installed models."
           : stepIndex === 4 && !selectedModelReady
             ? "Select an installed Ollama model before continuing to Ready."
             : null;
@@ -251,25 +254,46 @@ export default function SwarmsyDesktopFirstRunWizard() {
       id: "model_available",
       label: "Installed model",
       status: modelCheck && selectedModelInstalled ? "ready" : "warning",
-      message: modelCheck
-        ? "At least one installed model is available."
-        : `No models found. Run: ollama pull ${DEFAULT_MODEL}`,
-      diagnostic: modelCheck
-        ? selectedModelInstalled
-          ? null
-          : "selected_model_missing"
-        : "no_models_installed",
+      message: !ollamaCheck
+        ? "Models could not be verified until Ollama is reachable. Start or check Ollama first."
+        : modelCheck
+          ? "At least one installed model is available."
+          : `No models found. Run: ollama pull ${DEFAULT_MODEL}`,
+      diagnostic: !ollamaCheck
+        ? null
+        : modelCheck
+          ? selectedModelInstalled
+            ? null
+            : "selected_model_missing"
+          : "no_models_installed",
     },
   ];
 
   const completeWizard = useCallback(async () => {
-    persistDesktopFirstRunCompleted(true);
-    await mirrorDesktopLocalUserFirstRunCompleted(true, {
+    if (!hasTrustedDesktopBridge(window)) {
+      showToast(
+        "SWARMSY Desktop setup completion can only be saved from the trusted desktop app.",
+        "warning"
+      );
+      return false;
+    }
+
+    const mirrored = await mirrorDesktopLocalUserFirstRunCompleted(true, {
       targetWindow: window,
     });
+    if (!mirrored?.ok) {
+      showToast(
+        "SWARMSY Desktop setup completion could not be saved. Check Desktop Local User settings and try again.",
+        "warning"
+      );
+      return false;
+    }
+
+    persistDesktopFirstRunCompleted(true);
     setVisible(false);
     setManualLaunch(false);
     showToast("SWARMSY Desktop setup saved.", "success");
+    return true;
   }, []);
 
   const skipWizard = useCallback(async () => {
@@ -382,8 +406,14 @@ export default function SwarmsyDesktopFirstRunWizard() {
             </select>
           ) : (
             <p className="mt-2 text-sm text-theme-text-secondary">
-              No models were reported. Install one manually with:{" "}
-              <code>ollama pull {DEFAULT_MODEL}</code>
+              {!ollamaCheck ? (
+                "Models could not be verified. Start or check Ollama first, then run readiness checks again."
+              ) : (
+                <>
+                  No models were reported. Install one manually with:{" "}
+                  <code>ollama pull {DEFAULT_MODEL}</code>
+                </>
+              )}
             </p>
           )}
           {ollamaStatus.endpoint && (

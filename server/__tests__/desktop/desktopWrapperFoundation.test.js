@@ -394,7 +394,8 @@ describe("SWARMSY desktop wrapper foundation", () => {
         mode: "desktop_local_runtime",
         reason: "runtime_unreachable",
         startUrl: "http://127.0.0.1:3210",
-      });
+      })
+      .mockRejectedValueOnce(new Error("boom /tmp/secret"));
 
     try {
       main.registerDesktopIpc({ ipcMainApi, runtimeHealthcheck });
@@ -436,6 +437,17 @@ describe("SWARMSY desktop wrapper foundation", () => {
         ok: false,
         responding: false,
         reason: "runtime_unreachable",
+        mode: "desktop_local_runtime",
+        startUrl: "http://127.0.0.1:3210",
+        managed: false,
+      });
+
+      await expect(
+        runtimeStatusHandler({ senderFrame: { url: "http://localhost:3000" } })
+      ).resolves.toEqual({
+        ok: false,
+        responding: false,
+        reason: "runtime_healthcheck_failed",
         mode: "desktop_local_runtime",
         startUrl: "http://127.0.0.1:3210",
         managed: false,

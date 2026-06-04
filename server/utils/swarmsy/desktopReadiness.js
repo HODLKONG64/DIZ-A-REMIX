@@ -174,6 +174,25 @@ function modelCheck({
 } = {}) {
   const models = normalizeModels(ollamaStatus?.models);
   const normalizedSelected = String(selectedModel || "").trim();
+  const ollamaReachable =
+    ollamaStatus?.reachable === true && ollamaStatus?.status !== "error";
+
+  if (!ollamaReachable) {
+    return makeCheck({
+      id: CHECK_IDS.MODEL_AVAILABLE,
+      status: READINESS_LEVELS.WARNING,
+      title: "Models could not be verified",
+      message: "Installed models cannot be verified until Ollama is reachable.",
+      action: "Start or check Ollama, then run readiness checks again.",
+      diagnosticCode: null,
+      metadata: {
+        models,
+        selectedModel: normalizedSelected || null,
+        defaultModel,
+      },
+    });
+  }
+
   if (models.length === 0) {
     return makeCheck({
       id: CHECK_IDS.MODEL_AVAILABLE,

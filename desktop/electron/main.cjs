@@ -171,25 +171,36 @@ function registerDesktopIpc({
       };
     }
 
-    const health = await runtimeHealthcheck({ startUrl });
-    if (health?.ok) {
+    try {
+      const health = await runtimeHealthcheck({ startUrl });
+      if (health?.ok) {
+        return {
+          ok: true,
+          responding: true,
+          mode: health?.mode || "desktop_local_runtime",
+          startUrl: health?.startUrl || startUrl,
+          managed,
+        };
+      }
+
       return {
-        ok: true,
-        responding: true,
+        ok: false,
+        responding: false,
+        reason: health?.reason || "runtime_healthcheck_failed",
         mode: health?.mode || "desktop_local_runtime",
         startUrl: health?.startUrl || startUrl,
         managed,
       };
+    } catch {
+      return {
+        ok: false,
+        responding: false,
+        reason: "runtime_healthcheck_failed",
+        mode: "desktop_local_runtime",
+        startUrl,
+        managed,
+      };
     }
-
-    return {
-      ok: false,
-      responding: false,
-      reason: health?.reason || "runtime_healthcheck_failed",
-      mode: health?.mode || "desktop_local_runtime",
-      startUrl: health?.startUrl || startUrl,
-      managed,
-    };
   });
 
   ipcMainApi.handle(STORAGE_CONTRACT_CHANNEL, (event) => {
