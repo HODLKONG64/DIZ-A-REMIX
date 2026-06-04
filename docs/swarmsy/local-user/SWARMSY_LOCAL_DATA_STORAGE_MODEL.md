@@ -48,10 +48,34 @@ Local User Mode should support:
 - Clear user warnings before overwriting local project state.
 - Optional cloud/API sync only when explicitly enabled by the user.
 
+## Backup Secret Exclusion Rules
+
+Normal Local User backups must not include API keys or provider secrets.
+
+Backups may include project state, HIVE content, chats, memory locks, generated assets, prompt metadata, proof notes, campaign notes, and non-secret settings.
+
+Backups must exclude:
+
+- OpenAI keys.
+- Grok / xAI keys.
+- Anthropic keys.
+- Gemini keys.
+- OpenRouter keys.
+- Any other provider API keys.
+- Provider secrets.
+- Auth/session tokens.
+- Server credentials.
+- Hosted/admin data.
+- Hosted/admin database exports.
+- Pending runtime state.
+- Tokens.
+
+If a future advanced encrypted secrets export is added, it must be explicit, separately named, password-protected, and opt-in. It must never be part of the default project backup.
+
 ## Storage Safety Rules
 
 - Do not export hosted/server databases as if they were local-user data.
-- Do not include auth sessions or server credentials in normal user backups.
+- Do not include API keys, provider secrets, auth sessions, tokens, pending runtime state, or server credentials in normal user backups.
 - Do not silently upload backups.
 - Do not silently store paid API keys on hosted infrastructure in Local User Mode.
 - Hosted/Admin Mode must warn users when keys or data may be stored on the server.
