@@ -8,8 +8,8 @@ Define routing rules for local-only, API-enabled, and hybrid SWARMSY operation.
 
 When `Use API` is off and no opt-in API workflow is active:
 
-- Text uses local Ollama.
-- Images use local ComfyUI or another connected local image engine.
+- Text routes to local Ollama.
+- Images route to local ComfyUI or another connected local image engine.
 - Project data stays in local project storage.
 - No paid API calls occur.
 - If a local tool is missing, Sparky explains the missing local dependency and asks permission before using online services.

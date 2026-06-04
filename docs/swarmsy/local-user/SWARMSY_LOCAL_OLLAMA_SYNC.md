@@ -23,7 +23,7 @@ Define how Local User Mode detects and uses a user's existing local Ollama insta
 3. SWARMSY lists installed local models returned by Ollama.
 4. User selects an installed model.
 5. SWARMSY saves the selected model to local project/user settings.
-6. Sparky uses that selected local model for local-only chat and planning tasks.
+6. Sparky should use that selected local model for local-only chat and planning tasks.
 
 ## Unreachable Flow
 

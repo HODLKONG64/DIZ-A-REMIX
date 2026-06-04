@@ -6,8 +6,8 @@ Define how SWARMSY Local User Mode generates image files through a local image e
 
 ## Current Image Truth
 
-- Ollama/qwen handles text generation.
-- Ollama/Hermes does not currently render image files in SWARMSY.
+- Ollama text models, for example qwen or Hermes, handle text generation.
+- Ollama text models do not currently render image files in SWARMSY.
 - Sparky can create prompts, art direction, campaign concepts, and finished art packs.
 - Sparky needs a connected image engine to generate actual image files.
 

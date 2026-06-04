@@ -18,8 +18,8 @@ In Local User Mode:
 
 - The user downloads SWARMSY.
 - The user installs or runs SWARMSY on their own machine.
-- SWARMSY checks local Ollama first for text AI.
-- SWARMSY checks a configured local image engine before attempting image rendering.
+- SWARMSY should check local Ollama first for text AI.
+- SWARMSY should check a configured local image engine before attempting image rendering.
 - The user selects an installed model or connects their own provider.
 - The user creates a local `SWARMSY HIVE`.
 - Project data, chats, HIVE content, generated assets, settings, and backups stay local by default.
