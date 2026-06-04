@@ -100,7 +100,9 @@ function runtimeCheck(runtimeStatus = null) {
 }
 
 function storageCheck(storageStatus = null) {
-  if (storageStatus?.ok && storageStatus?.layout?.mode === "local_user") {
+  const mode = storageStatus?.layout?.mode || storageStatus?.mode || null;
+
+  if (storageStatus?.ok && mode === "local_user") {
     return makeCheck({
       id: CHECK_IDS.STORAGE_AVAILABLE,
       status: READINESS_LEVELS.READY,

@@ -5,6 +5,7 @@ const {
   CHECK_IDS,
   READINESS_LEVELS,
   getDesktopReadiness,
+  storageCheck,
 } = require("../../../utils/swarmsy/desktopReadiness");
 
 describe("SWARMSY Desktop readiness engine", () => {
@@ -69,6 +70,40 @@ describe("SWARMSY Desktop readiness engine", () => {
     );
     expect(storageCheck.metadata).toEqual({});
     expect(JSON.stringify(result)).not.toContain("/tmp/swarmsy");
+  });
+
+
+  it("accepts safe storage status shapes without exposing local paths", () => {
+    const minimalStorage = storageCheck({ ok: true, mode: "local_user" });
+    const layoutStorage = storageCheck({
+      ok: true,
+      layout: { mode: "local_user", root: "/tmp/swarmsy" },
+    });
+
+    expect(minimalStorage).toMatchObject({
+      id: CHECK_IDS.STORAGE_AVAILABLE,
+      status: READINESS_LEVELS.READY,
+      metadata: {},
+    });
+    expect(layoutStorage).toMatchObject({
+      id: CHECK_IDS.STORAGE_AVAILABLE,
+      status: READINESS_LEVELS.READY,
+      metadata: {},
+    });
+    expect(JSON.stringify(layoutStorage)).not.toContain("/tmp/swarmsy");
+  });
+
+  it("rejects non-local-user storage modes", () => {
+    expect(storageCheck({ ok: true, mode: "hosted" })).toMatchObject({
+      id: CHECK_IDS.STORAGE_AVAILABLE,
+      status: READINESS_LEVELS.BLOCKED,
+      diagnosticCode: "storage_contract_invalid",
+    });
+    expect(storageCheck({ ok: true, layout: { mode: "hosted" } })).toMatchObject({
+      id: CHECK_IDS.STORAGE_AVAILABLE,
+      status: READINESS_LEVELS.BLOCKED,
+      diagnosticCode: "storage_contract_invalid",
+    });
   });
 
   it("blocks readiness when runtime is unavailable", async () => {
