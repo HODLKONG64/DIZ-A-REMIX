@@ -49,7 +49,7 @@ Provider status claims must stay separate from capability claims:
 | Ollama unreachable | `Unavailable` + `Needs user action` (endpoint/model/start service). |
 | ComfyUI connected but generation not wired | `Connected` + `Not wired yet` (do not claim image generation live). |
 | ComfyUI missing | `Unavailable` (+ `Needs user action` if user setup is required). |
-| API key missing | `Needs user action` + `Configured: no`. |
+| API key missing | `Needs user action` + `Blocked` (missing key/config). |
 | hosted server storage | `Hosted/admin` (do not label as local-only). |
 | Local User Mode planned | `Planned` / `Docs/spec only` until shipped runtime exists. |
 | desktop/local shipped foundation | `Desktop/local` (only for actually shipped local path). |

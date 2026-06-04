@@ -2,20 +2,20 @@
 
 ## Scope
 
-This salvages old SWARMSY repair/safety doctrine into DIZ-A-REMIX docs as future-facing behavior unless explicitly runtime-wired.
+This document salvages old SWARMSY repair/safety doctrine into DIZ-A-REMIX docs as future-facing behavior unless explicitly runtime-wired.
 
 ## Doctor repair agent
 
 Doctor is the safe repair lane that should:
 
-1. inspect
-2. diagnose
-3. propose fix
-4. create backup/snapshot
-5. rehearse in sandbox
-6. compare result
-7. explain risk
-8. apply only after confirmation
+1. Inspect.
+2. Diagnose.
+3. Propose fix.
+4. Create backup/snapshot.
+5. Rehearse in sandbox.
+6. Compare result.
+7. Explain risk.
+8. Apply only after confirmation.
 
 Status in DIZ-A-REMIX: **Docs/spec only** unless explicitly implemented in runtime.
 
@@ -23,11 +23,11 @@ Status in DIZ-A-REMIX: **Docs/spec only** unless explicitly implemented in runti
 
 Before destructive action:
 
-1. create sandbox
-2. rehearse fix
-3. compare outputs
-4. report risk
-5. apply only after confirmation
+1. Create sandbox.
+2. Rehearse fix.
+3. Compare outputs.
+4. Report risk.
+5. Apply only after confirmation.
 
 Status in DIZ-A-REMIX: **Future-facing** unless explicitly implemented in runtime.
 

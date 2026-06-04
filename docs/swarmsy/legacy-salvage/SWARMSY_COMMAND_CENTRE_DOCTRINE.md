@@ -74,4 +74,4 @@ Routing/orchestration details remain future-facing unless explicitly wired in DI
 Prefer direct command-centre language:
 
 - build / launch / prove / review / repair / next move
-- current truth / provider truth / not wired yet / docs-spec only
+- current truth / provider truth / not wired yet / docs/spec only
