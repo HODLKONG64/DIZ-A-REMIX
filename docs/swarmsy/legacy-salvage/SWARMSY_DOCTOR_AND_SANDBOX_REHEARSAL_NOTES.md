@@ -2,45 +2,49 @@
 
 ## Scope
 
-This document captures the Doctor/sandbox safety concept as a future-facing operating spec unless already implemented.
+This salvages old SWARMSY repair/safety doctrine into DIZ-A-REMIX docs as future-facing behavior unless explicitly runtime-wired.
 
-## Doctor Repair Agent
+## Doctor repair agent
 
-Doctor is a future agent lane that can:
+Doctor is the safe repair lane that should:
 
-- inspect system/project state safely,
-- explain detected issues clearly,
-- propose repair options with risk notes,
-- avoid silent/destructive auto-changes.
+1. inspect
+2. diagnose
+3. propose fix
+4. create backup/snapshot
+5. rehearse in sandbox
+6. compare result
+7. explain risk
+8. apply only after confirmation
 
-Status: **Docs/spec only** unless explicitly implemented in runtime.
+Status in DIZ-A-REMIX: **Docs/spec only** unless explicitly implemented in runtime.
 
-## Sandbox Rehearsal Lane
+## Sandbox rehearsal lane
 
-Before any destructive action:
+Before destructive action:
 
-1. Create sandbox.
-2. Rehearse fix.
-3. Compare outputs (before vs rehearsal).
-4. Report risk and rollback path.
-5. Apply only after explicit confirmation.
+1. create sandbox
+2. rehearse fix
+3. compare outputs
+4. report risk
+5. apply only after confirmation
 
-Status: **Future-facing** unless explicitly implemented.
+Status in DIZ-A-REMIX: **Future-facing** unless explicitly implemented in runtime.
 
 ## Guardrails
 
-- No destructive commands without backup.
-- No secret leakage.
-- No cross-workspace mutation.
-- No fake provider output.
-- No deleting hosted/admin setup unless explicitly requested.
-- No overwriting live config without snapshot.
-- No old runtime migration unless scoped.
+Guardrails should prevent accidental damage without making the system boring.
 
-These guardrails should prevent accidental damage without making the system boring.
+- no destructive commands without backup
+- no secret leakage
+- no cross-workspace mutation
+- no fake provider output
+- no deleting hosted/admin setup unless explicitly requested
+- no overwriting live config without snapshot
+- no old runtime migration unless explicitly scoped
 
-## Future Implementation Notes
+## Boundary
 
-- Doctor tooling, sandbox orchestration, and repair workflows remain future-facing specs by default.
-- Any runtime claim must be labeled `Live` only after real wiring, validation, and mode-safe boundaries exist.
-- Hosted/admin continuity remains protected while local-user capabilities evolve separately.
+- No automatic migration of old SWARMSY runtime/app code.
+- No hidden destructive behavior.
+- Keep hosted/admin continuity protected.

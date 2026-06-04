@@ -2,48 +2,61 @@
 
 ## Purpose
 
-This audit salvages reusable product doctrine from the old SWARMSY repo into the new DIZ-A-REMIX / AnythingLLM-based SWARMSY build.
+This audit extracts reusable doctrine and product-operating ideas from the old `HODLKONG64/SWARMSY` repository into the current AnythingLLM-based `HODLKONG64/DIZ-A-REMIX` SWARMSY build.
 
-It is documentation-only and future-facing where runtime implementation does not already exist.
+This is docs/spec salvage only. No old runtime migration is included.
 
-## Source Repo
+## Source repo
 
 - `https://github.com/HODLKONG64/SWARMSY`
 
-## Source Inspection Notes
+## Audit method
 
-- Attempted direct source inspection of `https://github.com/HODLKONG64/SWARMSY` before writing this audit.
-- Repo content was not accessible from this environment at audit time (HTTP 404 via GitHub API/web fetch).
-- Concepts below are marked `Unverified / needs follow-up` when they cannot be directly confirmed from the old repo content.
+1. Cloned and inspected old repo directly into `/tmp/old-swarmsy`.
+2. Ran source searches for doctrine/runtime terms (rg-style term scan; executed with `grep -RInE` in this environment because `rg` is unavailable).
+3. Inspected README/docs/source files directly (doctrine, current-truth, architecture, guardrails, sandbox/rehearsal, persona, and department-model files).
+4. Recorded source-backed mappings in `docs/swarmsy/legacy-salvage/OLD_SWARMSY_SOURCE_MAP.md`.
 
-## Salvage Categories
+## Salvage labels
 
-| Idea / concept | Category | Notes |
+- Keep as doctrine
+- Keep as future spec
+- Do not migrate runtime
+- Discard / obsolete
+- Needs follow-up
+
+## Runtime boundary (strict)
+
+- No old runtime code copied
+- No Expo/Electron app migration
+- No package/build migration
+- No UI migration
+- No dependency migration
+- Only doctrine/spec/product language preserved
+
+## Source-driven salvage decisions
+
+| Idea / concept | Label | Source-backed notes |
 |---|---|---|
-| SWARMSY as Identity Operating System | Needs follow-up | `Unverified / needs follow-up` in old repo source; keep as strategic framing candidate. |
-| “The Writing Is On The Wall” doctrine | Needs follow-up | `Unverified / needs follow-up` from old repo source. |
-| “Friction creates soul” | Needs follow-up | `Unverified / needs follow-up` from old repo source. |
-| SPARKY / GHOST / STICKUP / SWARMNET / SIGNAL department model | Keep as doctrine | Already present in current SWARMSY docs; treat as preserved operating language. |
-| Workspace-first command-centre model (HIVE) | Keep as doctrine | Already present in current SWARMSY docs; preserve as core product behavior. |
-| Workspace Brain / Sparky Chat / Agent Studio operating model | Keep as future spec | Brain/chat framing exists; Agent Studio routing remains `Unverified / needs follow-up` from old repo. |
-| Workspace chat scoping + anti-cross-workspace safety | Keep as doctrine | Keep strict workspace isolation and no cross-workspace mutation/leakage rules. |
-| Current Truth status labels | Keep as future spec | Create explicit status taxonomy in docs now; wire into runtime later. |
-| Provider truth / no fake provider output | Keep as doctrine | Consistent with current no-fake-claims/no-fake-proof standards. |
-| Doctor repair agent + sandbox rehearsal lanes | Keep as future spec | Future-facing safety workflow; not claimed as live runtime feature. |
-| Old Expo/Electron runtime code paths | Do not migrate yet | Explicitly out of scope for DIZ-A-REMIX runtime. |
-| Old package/build/deployment wiring | Discard / obsolete | Do not import old build/runtime/deployment setup into current hosted app. |
+| SWARMSY as Identity Operating System | Keep as doctrine | Explicit in old `README.md`, `README_MEGA_STREET_SWARM.md`, `MEGATRUTH.md`, and doctrine files. |
+| “The Writing Is On The Wall” doctrine | Keep as doctrine | Explicit old doctrine in `README.md` and `docs/doctrine/THE_WRITING_IS_ON_THE_WALL.md`. |
+| “Friction creates soul” | Keep as doctrine | Explicit in old `README.md`, `MEGATRUTH.md`, and `docs/doctrine/THE_BOOTLOADER_WAKES_UP.md`. |
+| SPARKY / GHOST / STICKUP / SWARMNET / SIGNAL department model | Keep as doctrine | Explicit role model in old README + Identity Forge department docs. |
+| Workspace-first Command Centre | Keep as doctrine | Explicit in old current-truth and architecture docs (`workspace-first Command Centre`). |
+| Workspace Brain / Sparky Chat / Agent Studio operating model | Keep as future spec | Strongly documented in old docs; runtime wiring details were mixed maturity in old repo and remain future-facing in DIZ-A-REMIX unless explicitly implemented. |
+| Workspace chat scoping + anti-cross-workspace safety | Keep as doctrine | Explicit old claims: guarded send/switch behavior and workspace-scoped safety notes. |
+| Current Truth status labels | Keep as doctrine | Explicit old status-label canon and “working now/planned/docs-only” truth discipline. |
+| Provider truth / no fake provider output | Keep as doctrine | Explicit old rules: no fake provider output, no fake live claims. |
+| Doctor repair agent + sandbox rehearsal lanes | Keep as future spec | Explicit old conceptual lanes and guardrails; kept as future-safe model unless runtime-wired. |
+| Old Expo/Electron/package/build/runtime surfaces | Do not migrate runtime | Out of scope for this PR and for this salvage set. |
+| Old app-specific UI/runtime implementation details | Discard / obsolete | Preserve doctrine only; do not transplant old UI/runtime implementation. |
 
-## Runtime Boundary
+## Best reusable ideas for new SWARMSY
 
-- Old Expo/Electron/runtime code is **not** being copied.
-- Old package/build files are **not** being copied.
-- Old UI is **not** being migrated.
-- Only operating ideas and doctrine are being preserved.
+1. Identity OS positioning + writing-on-the-wall doctrine + friction/soul framing.
+2. Workspace-first Command Centre operating model.
+3. SPARKY-governed department language (SPARKY/GHOST/STICKUP/SWARMNET/SIGNAL).
+4. Current Truth + provider-truth discipline (no fake live/provider claims).
+5. Doctor/sandbox repair doctrine with explicit non-destructive guardrails.
 
-## Best Reusable Ideas (for new build)
-
-1. **Command-centre first workspace behavior** → Keep as core SWARMSY HIVE product doctrine.
-2. **SPARKY-led department model** (SPARKY, GHOST, STICKUP, SWARMNET, SIGNAL) → Keep as operator language and routing vocabulary.
-3. **Truth-first communication** (provider truth, no fake output, clear runtime state) → Keep as hard product integrity rule.
-4. **Safety with momentum** (guardrails + sandbox rehearsal before destructive steps) → Keep as future Doctor/automation spec.
-5. **Hosted/admin continuity with local-user separation** → Keep hosted/admin mode untouched while local-user plans remain separate and explicit.
+For exact old-source paths and evidence summaries, see `OLD_SWARMSY_SOURCE_MAP.md`.

@@ -1,69 +1,77 @@
 # SWARMSY Command Centre Doctrine
 
-## Doctrine Position
+## Doctrine anchor (salvaged from old SWARMSY)
 
-SWARMSY is positioned as a command centre / operating system layer on top of AnythingLLM workspace capabilities.
+- SWARMSY as **Identity Operating System**.
+- Core doctrine: **The Writing Is On The Wall**.
+- Core pressure/character line: **Friction creates soul**.
 
-> Note: direct old-repo validation was unavailable in this environment. Any old-repo-specific phrasing is marked `Unverified / needs follow-up`.
-
-## SWARMSY as Identity Operating System
-
-- SWARMSY should operate as an identity execution system, not generic chat.
-- Operator outcomes should be routed to project moves (build, launch, prove, review).
-- `Unverified / needs follow-up` for exact old-repo wording of “Identity Operating System.”
+These are preserved as SWARMSY operating doctrine for DIZ-A-REMIX.
 
 ## Workspace-first Command Centre
 
-- Workspace is the primary command centre (HIVE model).
-- Project state, doctrine, proof, and task continuity stay workspace-scoped.
-- New thread does not equal new identity/project.
+Command Centre in this salvage means a workspace-first operator shell:
 
-## Workspace Brain
+- Workspace is the active operating scope.
+- Workspace state and memory are primary context.
+- Command routing must stay workspace-scoped.
+- Cross-workspace mutation is blocked by default.
 
-- Workspace docs act as project brain (doctrine + proof + memory context).
-- Decisions and references must remain attributable to workspace state.
+## Workspace Brain / Sparky Chat / Agent Studio model
 
-## Sparky Chat
+- **Workspace Brain**: workspace-scoped memory/retrieval layer.
+- **Sparky Chat**: primary command lane for operator interaction.
+- **Agent Studio**: specialist-worker model under Sparky governance.
 
-- Sparky Chat is the primary operator lane for day-to-day command execution.
-- Chat should be command-oriented, not passive/open-ended.
+Routing/orchestration details remain future-facing unless explicitly wired in DIZ-A-REMIX runtime.
 
-## Agent Studio
+## Department model
 
-- Agent Studio-like routing is a future-facing model for specialist lanes under SPARKY governance.
-- Runtime wiring and orchestration are **future spec** unless explicitly implemented.
-- `Unverified / needs follow-up` for exact old-repo Agent Studio framing.
+### SPARKY
+- Role: Strategy + identity architect; root operator brain.
+- What it controls: command intent, project reasoning, top-level routing.
+- What it must not fake: provider connectivity, generation results, runtime capability.
+- Current status in DIZ-A-REMIX: Doctrine is preserved; full department runtime routing is future-facing.
 
-## Department Model (future-facing routing unless implemented)
+### GHOST
+- Role: PR operator / public narrative lane.
+- What it controls: PR framing, announcement structure, narrative presentation.
+- What it must not fake: media traction, publish outcomes, live integrations.
+- Current status in DIZ-A-REMIX: Doctrine preserved as department vocabulary; runtime lane not fully wired.
 
-- **SPARKY** — Main project manager (master brain)
-- **GHOST** — PR operator
-- **STICKUP** — Campaign director
-- **SWARMNET** — Distribution planner
-- **SIGNAL** — Analytics and proof tracker
+### STICKUP
+- Role: Campaign director.
+- What it controls: campaign direction, slogan systems, lawful activation planning.
+- What it must not fake: campaign execution, platform delivery, compliance outcomes.
+- Current status in DIZ-A-REMIX: Doctrine preserved; routing remains future-facing.
 
-All department/runtime routing should be treated as **future-facing** unless already implemented in runtime.
+### SWARMNET
+- Role: Distribution engine.
+- What it controls: distribution planning, collaborator coordination, release sequencing.
+- What it must not fake: distribution reach, sync state, external platform automation.
+- Current status in DIZ-A-REMIX: Doctrine preserved; runtime distribution automation is future-facing.
 
-## Anti-cross-workspace Safety
+### SIGNAL
+- Role: Analytics + emotional resonance lane.
+- What it controls: feedback interpretation, weak-spot detection, momentum signals.
+- What it must not fake: analytics data, attribution confidence, live telemetry.
+- Current status in DIZ-A-REMIX: Doctrine preserved; advanced runtime telemetry/routing remains future-facing.
 
-- Never mutate or leak data across workspaces.
-- Keep memory/lock/project-state operations scoped to the active workspace.
-- Reject cross-workspace command execution without explicit safe workflow.
+## Command routing and project-state awareness
 
-## Project State Awareness
+- Routing should reflect explicit intent (identity, campaign, PR, distribution, analytics, repair).
+- State language must declare what is live vs planned vs docs/spec.
+- Operator should see current blockers and next safe action.
 
-- Always surface current project state before proposing major moves.
-- Distinguish: current priorities, blockers, proof gaps, next best action.
-- Do not restart intake unless explicitly requested.
+## Anti-cross-workspace safety
 
-## Command Routing
+- No cross-workspace send/mutate by default.
+- No cross-workspace profile/config writes.
+- Require explicit active workspace context before command execution.
 
-- Route requests by intent: identity, lore, visuals, product, content, PR, campaign, proof, review.
-- Keep routing transparent to the operator.
-- If runtime capability is missing, label as docs/spec or planned.
+## Operator language
 
-## Operator Language
+Prefer direct command-centre language:
 
-- Prefer command-centre language: build, launch, prove, review, next move.
-- Preserve “no fake” and proof-oriented language.
-- Preserve guardrails that prevent damage without killing momentum.
+- build / launch / prove / review / repair / next move
+- current truth / provider truth / not wired yet / docs-spec only

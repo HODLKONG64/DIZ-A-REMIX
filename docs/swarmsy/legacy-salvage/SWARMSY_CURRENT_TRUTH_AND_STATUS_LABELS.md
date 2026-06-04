@@ -1,54 +1,56 @@
 # SWARMSY Current Truth and Status Labels
 
-## Current Truth Principle
+## Current Truth rules
 
-The app must tell the user what is actually true **now**.
+SWARMSY must report runtime truth exactly as it is now.
 
-- No pretending runtime features exist when they do not.
-- No presenting docs/spec plans as shipped behavior.
-- No hiding hosted-vs-local reality.
+- never fake provider output
+- never pretend a model/API/tool is connected
+- never claim image generation is available unless an engine is connected **and** generation is wired
+- never claim local storage if data is on hosted server
+- distinguish hosted/admin mode from Local User Mode
+- distinguish docs/spec from runtime
+- distinguish readiness check from actual generation
+- distinguish image prompt pack from generated image file
 
-## Status Labels
+## Status labels
 
 | Label | Definition |
 |---|---|
 | Live | Implemented and currently available in runtime now. |
-| Working | Feature path currently functions in runtime checks/usage. |
-| Connected | External provider/tool endpoint is reachable now. |
-| Configured | Required settings/keys are present and validly configured. |
-| Local-only | Runs only in local user environment, not hosted/admin path. |
-| Hosted/admin | Runs in the hosted/admin deployment path. |
-| Docs/spec only | Documented concept with no runtime implementation yet. |
-| Planned | Intended future implementation; not wired yet. |
-| Blocked | Cannot proceed due to dependency/permission/missing prerequisite. |
-| Unavailable | Not present or not reachable in current environment. |
-| Unknown | State cannot be determined from current evidence/checks. |
-| Not wired yet | Components exist in part, but runtime wiring is incomplete. |
-| Needs user action | User must provide setup/action before progress can continue. |
+| Working | Runtime path currently functions for intended use. |
+| Connected | Endpoint/provider is reachable now. |
+| Configured | Required key/config is present. |
+| Local-only | Available only in local-user runtime context. |
+| Hosted/admin | Available in hosted/admin mode context. |
+| Desktop/local | Shipped desktop/local foundation path. |
+| Browser fallback | Browser-only fallback path is active/required. |
+| Docs/spec only | Documented concept; no runtime implementation yet. |
+| Planned | Intended future implementation, not shipped now. |
+| Blocked | Cannot proceed due to unmet dependency/constraint. |
+| Unavailable | Not present or not reachable in current state. |
+| Unknown | State cannot be confirmed from current checks. |
+| Not wired yet | Components exist, but runtime connection is incomplete. |
+| Needs user action | User must complete setup/action to proceed. |
 
-## Provider Truth Rules
+## Provider-truth notes
 
-- Never fake provider output.
-- Never pretend a model/API/tool is connected.
-- Never claim image generation is available unless an image engine is connected.
-- Never claim local storage if data is on hosted server storage.
-- Always distinguish hosted/admin mode from Local User Mode.
-- Always distinguish docs/spec from runtime.
+Provider status claims must stay separate from capability claims:
 
-## UI/Status Examples
+- `Connected` does not automatically mean generation is `Live`.
+- A successful readiness ping does not equal successful generation wiring.
+- If only prompt templates exist, label as docs/spec or not wired; do not claim generated artifact output.
 
-| Scenario | Correct status expression |
+## Example truth expressions
+
+| Scenario | Correct expression |
 |---|---|
-| Ollama connected | `Connected` + `Live` (if active runtime path uses it). |
-| Ollama unreachable | `Unavailable` or `Blocked` + `Needs user action` (fix endpoint/runtime). |
-| ComfyUI connected | `Connected` (image path can be offered if routed). |
-| ComfyUI missing | `Unavailable` + `Not wired yet` or `Needs user action` depending on mode/setup. |
-| API key missing | `Needs user action` + `Not configured`. |
-| Hosted server storage in use | `Hosted/admin` (do not label as local-only storage). |
-| Local User Mode planned work | `Docs/spec only` or `Planned` until runtime is shipped. |
-
-## Product Integrity Notes
-
-- If confidence is low, say `Unknown` rather than inventing certainty.
-- If a feature is future-facing, label it explicitly.
-- “Current Truth” applies to providers, storage, capabilities, and mode boundaries.
+| Ollama connected | `Connected`; and `Live` only for routes actually wired to use it. |
+| Ollama unreachable | `Unavailable` + `Needs user action` (endpoint/model/start service). |
+| ComfyUI connected but generation not wired | `Connected` + `Not wired yet` (do not claim image generation live). |
+| ComfyUI missing | `Unavailable` (+ `Needs user action` if user setup is required). |
+| API key missing | `Needs user action` + `Configured: no`. |
+| hosted server storage | `Hosted/admin` (do not label as local-only). |
+| Local User Mode planned | `Planned` / `Docs/spec only` until shipped runtime exists. |
+| desktop/local shipped foundation | `Desktop/local` (only for actually shipped local path). |
+| browser-only fallback | `Browser fallback` + reason (desktop/local path unavailable/experimental). |

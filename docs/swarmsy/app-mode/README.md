@@ -35,4 +35,6 @@ This folder is not runtime wiring yet. It defines the future app mode that later
 
 ## Legacy salvage docs
 
+- [`../legacy-salvage/`](../legacy-salvage/)
 - [`../legacy-salvage/OLD_SWARMSY_REPO_SALVAGE_AUDIT.md`](../legacy-salvage/OLD_SWARMSY_REPO_SALVAGE_AUDIT.md)
+- [`../legacy-salvage/OLD_SWARMSY_SOURCE_MAP.md`](../legacy-salvage/OLD_SWARMSY_SOURCE_MAP.md)
