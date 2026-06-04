@@ -80,6 +80,8 @@ describe("SWARMSY Desktop first-run wizard frontend", () => {
       "const handleDismissWizard = manualLaunch ? closeManualWizard : skipWizard"
     );
     expect(source).toContain("onClick={handleDismissWizard}");
+    expect(source).toContain('? "Close SWARMSY Desktop first-run wizard"');
+    expect(source).toContain(': "Skip SWARMSY Desktop first-run wizard"');
   });
 
   it("first-run Skip and Complete still persist completion through completeWizard", () => {
@@ -93,7 +95,8 @@ describe("SWARMSY Desktop first-run wizard frontend", () => {
 
     expect(completeBody).toContain("mirrorDesktopLocalUserFirstRunCompleted");
     expect(completeBody).toContain("persistDesktopFirstRunCompleted(true)");
-    expect(skipBody).toContain("await completeWizard()");
+    expect(skipBody).toContain("const saved = await completeWizard()");
+    expect(skipBody).toContain("if (saved) return");
   });
 
   it("does not show no_models_installed or pull guidance until Ollama is reachable", () => {
@@ -109,19 +112,28 @@ describe("SWARMSY Desktop first-run wizard frontend", () => {
     expect(source).toContain(': "no_models_installed"');
   });
 
-  it("keeps completion visible and honest when desktop settings mirror fails", () => {
+  it("keeps Complete honest while first-run Skip closes for the current session when desktop settings mirror fails", () => {
     const source = wizardSource();
-    expect(source).toContain(
+    const completeStart = source.indexOf("const completeWizard = useCallback");
+    const completeEnd = source.indexOf("const skipWizard", completeStart);
+    const completeBody = source.slice(completeStart, completeEnd);
+    const skipStart = source.indexOf("const skipWizard = useCallback");
+    const skipEnd = source.indexOf("function closeManualWizard", skipStart);
+    const skipBody = source.slice(skipStart, skipEnd);
+
+    expect(completeBody).toContain(
       "const mirrored = await mirrorDesktopLocalUserFirstRunCompleted"
     );
-    expect(source).toContain("if (!mirrored?.ok)");
-    expect(source).toContain("setup completion could not be saved");
-    expect(source).toContain("return false");
-    expect(source).toContain("setVisible(false)");
-    expect(source).toContain("SWARMSY Desktop setup saved.");
-    expect(source.indexOf("if (!mirrored?.ok)")).toBeLessThan(
-      source.indexOf("setVisible(false)")
+    expect(completeBody).toContain("if (!mirrored?.ok)");
+    expect(completeBody).toContain("setup completion could not be saved");
+    expect(completeBody).toContain("return false");
+    expect(completeBody.indexOf("if (!mirrored?.ok)")).toBeLessThan(
+      completeBody.indexOf("setVisible(false)")
     );
+    expect(completeBody).toContain("SWARMSY Desktop setup saved.");
+    expect(skipBody).toContain("const saved = await completeWizard()");
+    expect(skipBody).toContain("if (saved) return");
+    expect(skipBody).toContain("setVisible(false)");
   });
 
   it("shows manual Ollama and model install actions without automatic installs", () => {

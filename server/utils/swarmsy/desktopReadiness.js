@@ -106,7 +106,7 @@ function storageCheck(storageStatus = null) {
       status: READINESS_LEVELS.READY,
       title: "Local User storage is ready",
       message: "The Local User storage contract is available.",
-      metadata: { root: storageStatus?.layout?.root || null },
+      metadata: {},
     });
   }
 

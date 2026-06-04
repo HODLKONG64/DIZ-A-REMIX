@@ -297,7 +297,12 @@ export default function SwarmsyDesktopFirstRunWizard() {
   }, []);
 
   const skipWizard = useCallback(async () => {
-    await completeWizard();
+    const saved = await completeWizard();
+    if (saved) return;
+
+    setVisible(false);
+    setManualLaunch(false);
+    setStepIndex(0);
   }, [completeWizard]);
 
   function closeManualWizard() {
@@ -340,7 +345,11 @@ export default function SwarmsyDesktopFirstRunWizard() {
           </div>
           <button
             type="button"
-            aria-label="Skip SWARMSY Desktop first-run wizard"
+            aria-label={
+              manualLaunch
+                ? "Close SWARMSY Desktop first-run wizard"
+                : "Skip SWARMSY Desktop first-run wizard"
+            }
             onClick={handleDismissWizard}
             className="rounded-lg border border-theme-sidebar-border p-2 hover:bg-theme-bg-secondary"
           >

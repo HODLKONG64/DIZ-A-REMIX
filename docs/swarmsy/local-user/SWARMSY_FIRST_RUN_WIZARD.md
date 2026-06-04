@@ -11,7 +11,7 @@ The SWARMSY Desktop first-run wizard is a guided Local User onboarding flow that
 5. **Select Model** — lets the user select an installed Ollama model when models are available.
 6. **Ready** — saves completion state after readiness is confirmed, or lets the user skip and return later.
 
-The wizard is skippable. Skipping records completion so users are not blocked by setup, but readiness warnings remain visible through the existing diagnostics and Local User settings surfaces.
+The wizard is skippable. Skipping attempts to record completion so users are not blocked by setup; if Desktop Local User settings cannot be written, the wizard closes for the current session, warns the user that completion was not saved, and may reappear on the next launch. Readiness warnings remain visible through the existing diagnostics and Local User settings surfaces.
 
 ## Readiness checks
 

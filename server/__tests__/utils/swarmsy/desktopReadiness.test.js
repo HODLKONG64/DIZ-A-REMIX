@@ -64,6 +64,11 @@ describe("SWARMSY Desktop readiness engine", () => {
       CHECK_IDS.MODEL_AVAILABLE,
     ]);
     expect(result.diagnostics).toEqual([]);
+    const storageCheck = result.checks.find(
+      (check) => check.id === CHECK_IDS.STORAGE_AVAILABLE
+    );
+    expect(storageCheck.metadata).toEqual({});
+    expect(JSON.stringify(result)).not.toContain("/tmp/swarmsy");
   });
 
   it("blocks readiness when runtime is unavailable", async () => {
