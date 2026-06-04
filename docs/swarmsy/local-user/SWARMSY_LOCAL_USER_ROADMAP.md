@@ -4,6 +4,18 @@
 
 Track the docs-first path toward the downloadable SWARMSY Local User product without changing or removing the hosted/admin deployment.
 
+## Shipped Foundations Already Present
+
+The Local User Mode roadmap does not start from zero.
+
+The repository already includes several foundations that future local-user work should preserve and build on:
+
+- Ollama status/readiness plumbing used by the frontend onboarding model (`frontend/src/models/swarmsyOnboarding.js`).
+- Desktop/runtime smoke scripts in root `package.json`, including `desktop:dev`, `desktop:smoke`, and `desktop:runtime:dev`.
+- Desktop foundation storage/settings/backup structures under `desktop/foundation/`, including local settings and backup store foundations.
+
+Future local-user work must not repeat, remove, or regress these foundations. New phases should extend these existing pieces where appropriate.
+
 ## Phase 1 — Product Split and Guardrails
 
 - Preserve Hosted/Admin Mode at `swarmsy.cryptomoonboys.com` for website/admin/testing/demo use.
