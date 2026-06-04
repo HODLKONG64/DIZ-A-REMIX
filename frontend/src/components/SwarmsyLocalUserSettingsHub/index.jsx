@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { ArrowClockwise, SpinnerGap } from "@phosphor-icons/react";
 import SwarmsyDesktopDiagnosticsPanel from "@/components/SwarmsyDesktopDiagnosticsPanel";
+import { DESKTOP_FIRST_RUN_RELAUNCH_EVENT } from "@/components/SwarmsyDesktopFirstRunWizard";
 
 const LOCAL_OLLAMA_SETUP_GUIDANCE = [
   "Ollama was not detected.",
@@ -57,6 +58,10 @@ export default function SwarmsyLocalUserSettingsHub({
   function handleSelectLocalOllamaModel(nextModelId) {
     const normalizedModelId = String(nextModelId || "").trim();
     onSelectLocalOllamaModel(normalizedModelId);
+  }
+
+  function relaunchDesktopFirstRunWizard() {
+    window.dispatchEvent(new CustomEvent(DESKTOP_FIRST_RUN_RELAUNCH_EVENT));
   }
 
   function handleImportBackupFile(event) {
@@ -125,19 +130,28 @@ export default function SwarmsyLocalUserSettingsHub({
                 </p>
               )}
             </div>
-            <button
-              type="button"
-              onClick={checkLocalUserOllama}
-              disabled={isCheckingLocalOllama}
-              className="flex items-center justify-center gap-x-2 rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary px-4 py-2 text-sm font-medium text-theme-text-primary transition hover:bg-theme-bg-menu disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isCheckingLocalOllama ? (
-                <SpinnerGap className="animate-spin" size={18} />
-              ) : (
-                <ArrowClockwise size={18} />
-              )}
-              Check again
-            </button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                onClick={relaunchDesktopFirstRunWizard}
+                className="flex items-center justify-center gap-x-2 rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary px-4 py-2 text-sm font-medium text-theme-text-primary transition hover:bg-theme-bg-menu"
+              >
+                First-run wizard
+              </button>
+              <button
+                type="button"
+                onClick={checkLocalUserOllama}
+                disabled={isCheckingLocalOllama}
+                className="flex items-center justify-center gap-x-2 rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary px-4 py-2 text-sm font-medium text-theme-text-primary transition hover:bg-theme-bg-menu disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isCheckingLocalOllama ? (
+                  <SpinnerGap className="animate-spin" size={18} />
+                ) : (
+                  <ArrowClockwise size={18} />
+                )}
+                Check again
+              </button>
+            </div>
           </div>
 
           {localOllamaStatus.status === "unreachable" && (

@@ -1,0 +1,96 @@
+const {
+  CHECK_IDS,
+  READINESS_LEVELS,
+  getDesktopReadiness,
+} = require("../../../utils/swarmsy/desktopReadiness");
+
+describe("SWARMSY Desktop readiness engine", () => {
+  const readyRuntime = { ok: true, responding: true, startUrl: "http://127.0.0.1:3000" };
+  const readyStorage = { ok: true, layout: { mode: "local_user", root: "/tmp/swarmsy" } };
+  const readyBridge = { ok: true };
+  const readyOllama = {
+    reachable: true,
+    status: "reachable",
+    endpoint: "http://localhost:11434/api/tags",
+    models: [{ id: "llama3.1:8b", name: "llama3.1:8b" }],
+  };
+
+  it("returns ready when runtime, storage, bridge, Ollama, and selected model are available", async () => {
+    const result = await getDesktopReadiness({
+      runtimeStatus: readyRuntime,
+      storageStatus: readyStorage,
+      desktopBridgeStatus: readyBridge,
+      ollamaStatus: readyOllama,
+      selectedModel: "llama3.1:8b",
+    });
+
+    expect(result.status).toBe(READINESS_LEVELS.READY);
+    expect(result.checks.map((check) => check.id)).toEqual([
+      CHECK_IDS.RUNTIME_AVAILABLE,
+      CHECK_IDS.STORAGE_AVAILABLE,
+      CHECK_IDS.DESKTOP_BRIDGE_AVAILABLE,
+      CHECK_IDS.OLLAMA_AVAILABLE,
+      CHECK_IDS.MODEL_AVAILABLE,
+    ]);
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  it("blocks readiness when runtime is unavailable", async () => {
+    const result = await getDesktopReadiness({
+      runtimeStatus: { ok: false, responding: false, reason: "runtime_unreachable" },
+      storageStatus: readyStorage,
+      desktopBridgeStatus: readyBridge,
+      ollamaStatus: readyOllama,
+    });
+
+    expect(result.status).toBe(READINESS_LEVELS.BLOCKED);
+    expect(result.checks.find((check) => check.id === CHECK_IDS.RUNTIME_AVAILABLE)).toMatchObject({
+      status: READINESS_LEVELS.BLOCKED,
+      diagnosticCode: "runtime_healthcheck_failed",
+    });
+  });
+
+  it("warns when Ollama is unavailable and maps to diagnostics", async () => {
+    const result = await getDesktopReadiness({
+      runtimeStatus: readyRuntime,
+      storageStatus: readyStorage,
+      desktopBridgeStatus: readyBridge,
+      ollamaStatus: { reachable: false, status: "unreachable", models: [] },
+    });
+
+    expect(result.status).toBe(READINESS_LEVELS.WARNING);
+    expect(result.diagnostics.map((diagnostic) => diagnostic.code)).toContain("ollama_unreachable");
+  });
+
+  it("warns when Ollama has no models and suggests the default pull command", async () => {
+    const result = await getDesktopReadiness({
+      runtimeStatus: readyRuntime,
+      storageStatus: readyStorage,
+      desktopBridgeStatus: readyBridge,
+      ollamaStatus: { reachable: true, status: "no_models", models: [] },
+      defaultModel: "llama3.1:8b",
+    });
+
+    const modelCheck = result.checks.find((check) => check.id === CHECK_IDS.MODEL_AVAILABLE);
+    expect(modelCheck).toMatchObject({
+      status: READINESS_LEVELS.WARNING,
+      diagnosticCode: "no_models_installed",
+      action: "Run: ollama pull llama3.1:8b",
+    });
+  });
+
+  it("warns when the saved model is not installed", async () => {
+    const result = await getDesktopReadiness({
+      runtimeStatus: readyRuntime,
+      storageStatus: readyStorage,
+      desktopBridgeStatus: readyBridge,
+      ollamaStatus: readyOllama,
+      selectedModel: "missing:model",
+    });
+
+    expect(result.checks.find((check) => check.id === CHECK_IDS.MODEL_AVAILABLE)).toMatchObject({
+      status: READINESS_LEVELS.WARNING,
+      diagnosticCode: "selected_model_missing",
+    });
+  });
+});

@@ -1,0 +1,399 @@
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  CheckCircle,
+  ArrowClockwise,
+  X,
+  Warning,
+  Desktop,
+} from "@phosphor-icons/react";
+import useLoginMode from "@/hooks/useLoginMode";
+import SwarmsyOnboarding from "@/models/swarmsyOnboarding";
+import showToast from "@/utils/toast";
+import {
+  hasDesktopLocalSettingsBridge,
+  mirrorDesktopLocalUserFirstRunCompleted,
+  mirrorDesktopLocalUserOllamaModelSelection,
+  persistDesktopFirstRunCompleted,
+  persistLocalUserOllamaModelSelection,
+  readDesktopFirstRunCompleted,
+  readDesktopLocalUserFirstRunCompleted,
+  readLocalUserOllamaModelSelection,
+  resolveLocalUserOllamaModelSelection,
+} from "@/components/SwarmsyFirstRunOnboarding/localUserOllamaSelection";
+import { LOCAL_USER_SETTINGS_SYNC_EVENT } from "@/components/SwarmsyLocalUserSettingsHub/useLocalUserSettingsHub";
+
+export const DESKTOP_FIRST_RUN_RELAUNCH_EVENT =
+  "anythingllm_swarmsy_desktop_first_run_relaunch";
+
+const DEFAULT_MODEL = "llama3.1:8b";
+const WIZARD_STEPS = [
+  "Welcome",
+  "Runtime",
+  "Ollama",
+  "Models",
+  "Select Model",
+  "Ready",
+];
+
+function resolveDesktopBridge(targetWindow = window) {
+  return targetWindow?.swarmsyDesktop?.foundation || null;
+}
+
+function normalizeModel(model = null, index = 0) {
+  const name = String(model?.name || model?.id || "").trim();
+  if (!name) return null;
+  return { id: String(model?.id || name || `model-${index}`).trim(), name };
+}
+
+function normalizeOllamaStatus(response = null) {
+  const models = Array.isArray(response?.models)
+    ? response.models.map(normalizeModel).filter(Boolean)
+    : [];
+  return {
+    status: response?.status || "error",
+    reachable: response?.reachable === true,
+    endpoint: response?.endpoint || null,
+    message: response?.message || null,
+    models,
+  };
+}
+
+function checkTone(status) {
+  if (status === "ready") return "border-emerald-500/30 bg-emerald-500/10";
+  if (status === "blocked") return "border-red-500/30 bg-red-500/10";
+  return "border-amber-500/30 bg-amber-500/10";
+}
+
+function dispatchSettingsSync(model = "") {
+  window.dispatchEvent(
+    new CustomEvent(LOCAL_USER_SETTINGS_SYNC_EVENT, {
+      detail: { reason: "desktop_first_run_wizard", model },
+    })
+  );
+}
+
+export default function SwarmsyDesktopFirstRunWizard() {
+  const loginMode = useLoginMode();
+  const isHostedAdminMode = loginMode === "multi";
+  const [visible, setVisible] = useState(false);
+  const [manualLaunch, setManualLaunch] = useState(false);
+  const [stepIndex, setStepIndex] = useState(0);
+  const [isChecking, setIsChecking] = useState(false);
+  const [runtimeStatus, setRuntimeStatus] = useState(null);
+  const [storageStatus, setStorageStatus] = useState(null);
+  const [ollamaStatus, setOllamaStatus] = useState({
+    status: "checking",
+    reachable: false,
+    models: [],
+  });
+  const [selectedModel, setSelectedModel] = useState(
+    readLocalUserOllamaModelSelection()
+  );
+
+  const desktopBridgeAvailable = useMemo(() => {
+    if (typeof window === "undefined") return false;
+    return hasDesktopLocalSettingsBridge({ targetWindow: window });
+  }, [visible]);
+
+  const runReadinessChecks = useCallback(async () => {
+    if (typeof window === "undefined" || isHostedAdminMode) return;
+    const bridge = resolveDesktopBridge(window);
+    setIsChecking(true);
+    try {
+      const runtime =
+        typeof bridge?.getRuntimeStatus === "function"
+          ? await bridge.getRuntimeStatus()
+          : { ok: false, responding: false, reason: "bridge_unavailable" };
+      setRuntimeStatus(runtime);
+
+      const storage =
+        typeof bridge?.getStorageContract === "function"
+          ? await bridge.getStorageContract()
+          : null;
+      setStorageStatus(
+        storage?.layout?.mode === "local_user"
+          ? { ok: true, layout: storage.layout }
+          : { ok: false, reason: "storage_contract_invalid" }
+      );
+
+      const ollama = normalizeOllamaStatus(
+        await SwarmsyOnboarding.localUserOllamaStatus()
+      );
+      setOllamaStatus(ollama);
+
+      const resolved = resolveLocalUserOllamaModelSelection({
+        models: ollama.models,
+        selectedModelId: selectedModel,
+        storedModelId: readLocalUserOllamaModelSelection(),
+      });
+      if (resolved.modelId) setSelectedModel(resolved.modelId);
+    } finally {
+      setIsChecking(false);
+    }
+  }, [isHostedAdminMode, selectedModel]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    async function boot() {
+      if (loginMode === null || isHostedAdminMode) return;
+      if (!hasDesktopLocalSettingsBridge({ targetWindow: window })) return;
+      const desktopCompletion = await readDesktopLocalUserFirstRunCompleted({
+        targetWindow: window,
+      });
+      const completed = desktopCompletion.ok
+        ? desktopCompletion.completed
+        : readDesktopFirstRunCompleted();
+      if (!completed) {
+        setVisible(true);
+        void runReadinessChecks();
+      }
+    }
+    void boot();
+  }, [isHostedAdminMode, loginMode, runReadinessChecks]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    function relaunch() {
+      if (isHostedAdminMode) return;
+      setManualLaunch(true);
+      setVisible(true);
+      setStepIndex(0);
+      void runReadinessChecks();
+    }
+    window.addEventListener(DESKTOP_FIRST_RUN_RELAUNCH_EVENT, relaunch);
+    return () =>
+      window.removeEventListener(DESKTOP_FIRST_RUN_RELAUNCH_EVENT, relaunch);
+  }, [isHostedAdminMode, runReadinessChecks]);
+
+  const runtimeCheck = runtimeStatus?.ok && runtimeStatus?.responding !== false;
+  const storageCheck = storageStatus?.ok;
+  const ollamaCheck = ollamaStatus.reachable && ollamaStatus.status !== "error";
+  const modelCheck = ollamaStatus.models.length > 0;
+  const selectedModelInstalled =
+    !selectedModel ||
+    ollamaStatus.models.some((model) => model.id === selectedModel);
+  const canFinish =
+    runtimeCheck &&
+    storageCheck &&
+    ollamaCheck &&
+    modelCheck &&
+    selectedModelInstalled;
+
+  const checks = [
+    {
+      id: "runtime_available",
+      label: "Desktop runtime",
+      status: runtimeCheck ? "ready" : "blocked",
+      message: runtimeCheck
+        ? "Runtime launcher is available and responding."
+        : "Restart SWARMSY Desktop or start the local runtime, then check again.",
+      diagnostic: runtimeCheck ? null : "runtime_healthcheck_failed",
+    },
+    {
+      id: "storage_available",
+      label: "Local User storage",
+      status: storageCheck ? "ready" : "blocked",
+      message: storageCheck
+        ? "Local User storage contract is available."
+        : "Local User storage could not be verified.",
+      diagnostic: storageCheck ? null : "storage_contract_invalid",
+    },
+    {
+      id: "desktop_bridge_available",
+      label: "Desktop bridge",
+      status: desktopBridgeAvailable ? "ready" : "blocked",
+      message: desktopBridgeAvailable
+        ? "Trusted desktop bridge can persist Local User settings."
+        : "Open this flow from SWARMSY Desktop, not hosted/admin mode.",
+      diagnostic: desktopBridgeAvailable ? null : "untrusted_origin",
+    },
+    {
+      id: "ollama_available",
+      label: "Ollama",
+      status: ollamaCheck ? "ready" : "warning",
+      message: ollamaCheck
+        ? ollamaStatus.message || "Ollama is reachable."
+        : "Install or start Ollama: https://ollama.com",
+      diagnostic: ollamaCheck ? null : "ollama_unreachable",
+    },
+    {
+      id: "model_available",
+      label: "Installed model",
+      status: modelCheck && selectedModelInstalled ? "ready" : "warning",
+      message: modelCheck
+        ? "At least one installed model is available."
+        : `No models found. Run: ollama pull ${DEFAULT_MODEL}`,
+      diagnostic: modelCheck
+        ? selectedModelInstalled
+          ? null
+          : "selected_model_missing"
+        : "no_models_installed",
+    },
+  ];
+
+  const completeWizard = useCallback(async () => {
+    persistDesktopFirstRunCompleted(true);
+    await mirrorDesktopLocalUserFirstRunCompleted(true, {
+      targetWindow: window,
+    });
+    setVisible(false);
+    setManualLaunch(false);
+    showToast("SWARMSY Desktop setup saved.", "success");
+  }, []);
+
+  const skipWizard = useCallback(async () => {
+    await completeWizard();
+  }, [completeWizard]);
+
+  const selectModel = useCallback(async (modelId) => {
+    const normalized = String(modelId || "").trim();
+    setSelectedModel(normalized);
+    persistLocalUserOllamaModelSelection(normalized);
+    await mirrorDesktopLocalUserOllamaModelSelection(normalized, {
+      targetWindow: window,
+    });
+    dispatchSettingsSync(normalized);
+  }, []);
+
+  if (!visible || isHostedAdminMode) return null;
+
+  return (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 px-4 py-8 backdrop-blur-sm">
+      <section className="max-h-full w-full max-w-4xl overflow-y-auto rounded-2xl border border-theme-sidebar-border bg-theme-bg-primary p-6 text-theme-text-primary shadow-2xl">
+        <div className="flex items-start justify-between gap-4">
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-theme-text-secondary">
+              SWARMSY Desktop first-run setup
+            </p>
+            <h2 className="flex items-center gap-2 text-2xl font-bold">
+              <Desktop size={26} /> Welcome to SWARMSY Desktop
+            </h2>
+            <p className="text-sm leading-6 text-theme-text-secondary">
+              Follow these readiness checks to confirm the desktop runtime,
+              Ollama, installed models, and Local User settings before your
+              first chat. This wizard never installs software or downloads
+              models.
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Skip SWARMSY Desktop first-run wizard"
+            onClick={skipWizard}
+            className="rounded-lg border border-theme-sidebar-border p-2 hover:bg-theme-bg-secondary"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <ol className="mt-6 grid gap-2 md:grid-cols-6">
+          {WIZARD_STEPS.map((step, index) => (
+            <li
+              key={step}
+              className={`rounded-lg border px-3 py-2 text-xs font-semibold ${
+                index === stepIndex
+                  ? "border-teal bg-teal/10 text-teal"
+                  : "border-theme-sidebar-border bg-theme-bg-secondary"
+              }`}
+            >
+              Step {index + 1}: {step}
+            </li>
+          ))}
+        </ol>
+
+        <div className="mt-6 grid gap-3 md:grid-cols-2">
+          {checks.map((check) => (
+            <div
+              key={check.id}
+              className={`rounded-xl border p-4 ${checkTone(check.status)}`}
+            >
+              <div className="flex items-start gap-3">
+                {check.status === "ready" ? (
+                  <CheckCircle className="mt-0.5 text-emerald-300" size={22} />
+                ) : (
+                  <Warning className="mt-0.5 text-amber-300" size={22} />
+                )}
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold">{check.label}</p>
+                  <p className="text-sm text-theme-text-secondary">
+                    {check.message}
+                  </p>
+                  {check.diagnostic && (
+                    <p className="text-xs text-theme-text-secondary">
+                      Diagnostic: {check.diagnostic}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-6 rounded-xl border border-theme-sidebar-border bg-theme-bg-secondary p-4">
+          <label
+            htmlFor="desktop-first-run-model"
+            className="text-sm font-semibold uppercase tracking-[0.2em]"
+          >
+            Select model
+          </label>
+          {ollamaStatus.models.length > 0 ? (
+            <select
+              id="desktop-first-run-model"
+              value={selectedModel}
+              onChange={(event) => selectModel(event.target.value)}
+              className="mt-2 w-full rounded-lg border border-theme-sidebar-border bg-theme-bg-primary px-3 py-2 text-sm outline-none focus:border-teal"
+            >
+              <option value="">Select an installed model</option>
+              {ollamaStatus.models.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="mt-2 text-sm text-theme-text-secondary">
+              No models were reported. Install one manually with:{" "}
+              <code>ollama pull {DEFAULT_MODEL}</code>
+            </p>
+          )}
+          {ollamaStatus.endpoint && (
+            <p className="mt-2 text-xs text-theme-text-secondary">
+              Ollama endpoint: {ollamaStatus.endpoint}
+            </p>
+          )}
+        </div>
+
+        <div className="mt-6 flex flex-wrap justify-between gap-3">
+          <button
+            type="button"
+            onClick={runReadinessChecks}
+            disabled={isChecking}
+            className="flex items-center gap-2 rounded-lg border border-theme-sidebar-border px-4 py-2 text-sm font-medium hover:bg-theme-bg-secondary disabled:opacity-60"
+          >
+            <ArrowClockwise
+              className={isChecking ? "animate-spin" : ""}
+              size={18}
+            />
+            Check again
+          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={skipWizard}
+              className="rounded-lg border border-theme-sidebar-border px-4 py-2 text-sm font-medium hover:bg-theme-bg-secondary"
+            >
+              {manualLaunch ? "Close" : "Skip for now"}
+            </button>
+            <button
+              type="button"
+              onClick={completeWizard}
+              disabled={!canFinish}
+              className="rounded-lg bg-teal px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Ready — finish setup
+            </button>
+          </div>
+        </div>
+      </section>
+    </div>
+  );
+}
