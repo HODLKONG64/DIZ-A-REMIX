@@ -1101,7 +1101,16 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
               isHostedAdminMode: false,
               isLocalUserMode,
               isCheckingLocalOllama: busyAction === "local-ollama-refresh",
+              isCheckingLocalImageEngine: false,
               localOllamaStatus,
+              localImageEngineStatus: {
+                success: false,
+                mode: "local_user",
+                available: false,
+                engine: "comfyui",
+                url: "http://localhost:8188",
+                message: "Local image engine status has not been checked yet.",
+              },
               localOllamaStatusTone: localOllamaTone,
               localOllamaStatusTitle: localOllamaTitle,
               hasVerifiedLocalOllamaModels,
@@ -1115,6 +1124,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                 readLocalUserOllamaModelSelection(),
               localOllamaSelectionMessage,
               checkLocalUserOllama,
+              checkLocalImageEngine: () => {},
               onSelectLocalOllamaModel: (nextModelId) => {
                 const normalizedModelId = String(nextModelId || "").trim();
                 setSelectedLocalOllamaModel(normalizedModelId);

@@ -10,7 +10,10 @@ const {
   ingestSwarmsyRequiredDocs,
 } = require("../utils/swarmsy/ingestRequiredDocs");
 const { detectLocalOllama } = require("../utils/swarmsy/localUserOllama");
-const { detectLocalImageEngine } = require("../utils/swarmsy/localImageEngine");
+const {
+  detectLocalImageEngine,
+  resolveLocalImageEngineUrl,
+} = require("../utils/swarmsy/localImageEngine");
 const { validatedRequest } = require("../utils/middleware/validatedRequest");
 const {
   flexUserRoleValid,
@@ -213,7 +216,7 @@ async function swarmsyLocalUserImageEngineStatus(_request, response) {
       mode: "local_user",
       available: false,
       engine: "comfyui",
-      url: "http://localhost:8188",
+      url: resolveLocalImageEngineUrl(),
       message: "Failed to detect local image engine.",
     });
   }

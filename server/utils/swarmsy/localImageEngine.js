@@ -27,6 +27,20 @@ function unavailableResult(url, message = COMFYUI_UNREACHABLE_MESSAGE) {
   };
 }
 
+function nonOkResult(url, status) {
+  return unavailableResult(
+    url,
+    `ComfyUI returned HTTP ${status ?? "unknown"}. Check the configured image engine URL.`
+  );
+}
+
+function unexpectedErrorResult(url, error = null) {
+  const message = String(
+    error?.message || "Unexpected ComfyUI detection error."
+  ).trim();
+  return unavailableResult(url, `Failed to detect ComfyUI: ${message}`);
+}
+
 function isUnreachableError(error = null) {
   const message = String(error?.message || "").toLowerCase();
   return (
@@ -70,7 +84,7 @@ async function detectLocalImageEngine({
 
   try {
     const response = await fetchWithTimeout(fetchImpl, resolvedUrl, timeoutMs);
-    if (!response?.ok) return unavailableResult(resolvedUrl);
+    if (!response?.ok) return nonOkResult(resolvedUrl, response?.status);
 
     return {
       success: true,
@@ -82,7 +96,7 @@ async function detectLocalImageEngine({
     };
   } catch (error) {
     if (isUnreachableError(error)) return unavailableResult(resolvedUrl);
-    return unavailableResult(resolvedUrl, COMFYUI_UNREACHABLE_MESSAGE);
+    return unexpectedErrorResult(resolvedUrl, error);
   }
 }
 

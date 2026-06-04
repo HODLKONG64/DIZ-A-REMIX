@@ -55,6 +55,36 @@ describe("local image engine detection", () => {
     });
   });
 
+  it("includes HTTP status when ComfyUI returns a non-OK response", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({ ok: false, status: 404 });
+
+    const status = await detectLocalImageEngine({ fetchImpl });
+
+    expect(status).toEqual({
+      success: true,
+      mode: "local_user",
+      available: false,
+      engine: "comfyui",
+      url: DEFAULT_LOCAL_IMAGE_ENGINE_URL,
+      message:
+        "ComfyUI returned HTTP 404. Check the configured image engine URL.",
+    });
+  });
+
+  it("includes safe unexpected exception details without exposing stack traces", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockRejectedValue(new Error("TLS handshake failed"));
+
+    const status = await detectLocalImageEngine({ fetchImpl });
+
+    expect(status.message).toBe(
+      "Failed to detect ComfyUI: TLS handshake failed"
+    );
+    expect(status.message).not.toContain(" at ");
+    expect(status.available).toBe(false);
+  });
+
   it("does not submit a generation job during readiness checks", async () => {
     const fetchImpl = jest.fn().mockResolvedValue({ ok: true, status: 200 });
 

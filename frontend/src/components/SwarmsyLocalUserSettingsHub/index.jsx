@@ -53,6 +53,18 @@ export default function SwarmsyLocalUserSettingsHub({
     importBackupFromText,
   } = controller;
 
+  const safeLocalImageEngineStatus = localImageEngineStatus || {
+    success: false,
+    mode: "local_user",
+    available: false,
+    engine: "comfyui",
+    url: "http://localhost:8188",
+    message: "Local image engine status has not been checked yet.",
+  };
+  const safeCheckLocalImageEngine =
+    typeof checkLocalImageEngine === "function"
+      ? checkLocalImageEngine
+      : () => {};
   const isHostedBoundary = isHostedAdminMode && !isLocalUserMode;
   const showNeutralPendingState = isLoginModePending && !isHostedBoundary;
   const title = showNeutralPendingState
@@ -241,25 +253,26 @@ export default function SwarmsyLocalUserSettingsHub({
                   Local Image Engine
                 </p>
                 <h3 className="text-base font-semibold text-theme-text-primary">
-                  {localImageEngineStatus.available
+                  {safeLocalImageEngineStatus.available
                     ? "Connected"
                     : "Not connected"}
                 </h3>
                 <p className="text-sm text-theme-text-secondary">
-                  Engine: {localImageEngineStatus.engine || "comfyui"}
+                  Engine: {safeLocalImageEngineStatus.engine || "comfyui"}
                 </p>
                 <p className="text-xs opacity-80">
-                  URL: {localImageEngineStatus.url || "http://localhost:8188"}
+                  URL:{" "}
+                  {safeLocalImageEngineStatus.url || "http://localhost:8188"}
                 </p>
-                {localImageEngineStatus.message && (
+                {safeLocalImageEngineStatus.message && (
                   <p className="text-sm leading-6">
-                    {localImageEngineStatus.message}
+                    {safeLocalImageEngineStatus.message}
                   </p>
                 )}
               </div>
               <button
                 type="button"
-                onClick={checkLocalImageEngine}
+                onClick={safeCheckLocalImageEngine}
                 disabled={isCheckingLocalImageEngine}
                 className="flex items-center justify-center gap-x-2 rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary px-4 py-2 text-sm font-medium text-theme-text-primary transition hover:bg-theme-bg-menu disabled:cursor-not-allowed disabled:opacity-60"
               >
