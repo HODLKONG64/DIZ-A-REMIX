@@ -43,6 +43,10 @@ Section "SWARMSY Desktop" SEC_INSTALL
 SectionEnd
 
 Section "Uninstall"
+  IfFileExists "$INSTDIR\SWARMSY Desktop.exe" 0 uninstall_safety_abort
+  IfFileExists "$INSTDIR\Uninstall SWARMSY Desktop.exe" 0 uninstall_safety_abort
+  IfFileExists "$INSTDIR\resources\app\package.json" 0 uninstall_safety_abort
+
   Delete "$SMPROGRAMS\SWARMSY Desktop\SWARMSY Desktop.lnk"
   Delete "$SMPROGRAMS\SWARMSY Desktop\Uninstall SWARMSY Desktop.lnk"
   RMDir "$SMPROGRAMS\SWARMSY Desktop"
@@ -51,4 +55,11 @@ Section "Uninstall"
   ; files are created outside the install directory and are not removed by
   ; this uninstaller.
   RMDir /r "$INSTDIR"
+  Goto uninstall_done
+
+uninstall_safety_abort:
+  MessageBox MB_ICONSTOP "SWARMSY Desktop uninstall aborted because the selected install directory is missing expected SWARMSY application files. No files were removed from $INSTDIR."
+  Abort
+
+uninstall_done:
 SectionEnd

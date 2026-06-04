@@ -92,6 +92,9 @@ jobs:
       - name: Run desktop diagnostics tests
         run: npx --yes jest@29.7.0 server/__tests__/desktop/desktopDiagnosticsIntegration.test.js --runInBand
 
+      - name: Run desktop installer packaging tests
+        run: npx --yes jest@29.7.0 server/__tests__/desktop/desktopInstallerPackaging.test.js --runInBand
+
       - name: Download Electron runtime
         shell: pwsh
         run: |

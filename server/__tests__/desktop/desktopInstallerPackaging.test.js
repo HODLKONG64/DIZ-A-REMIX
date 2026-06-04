@@ -71,15 +71,48 @@ describe("desktop Windows installer packaging foundation", () => {
     expect(workflow).toContain("run: yarn build");
     expect(workflow).toContain("run: npm run desktop:artifact:package:win");
     expect(workflow).toContain("run: npm run desktop:installer:package:win");
-    expect(workflow).toContain("npx --yes jest@29.7.0");
+    expect(workflow).toContain(
+      "npx --yes jest@29.7.0 server/__tests__/desktop/desktopInstallerPackaging.test.js --runInBand"
+    );
+  });
+
+  it("escapes NSIS define values without breaking Windows paths", () => {
+    const builder = require(installerBuilderPath);
+
+    expect(builder.nsisDefineValue("C:\\a\\repo\\desktop\\artifacts")).toBe(
+      "C:\\a\\repo\\desktop\\artifacts"
+    );
+    expect(builder.nsisDefineValue("C:\\Users\\me\\SWARMSY$Desktop")).toBe(
+      "C:\\Users\\me\\SWARMSY$$Desktop"
+    );
+    expect(() => builder.nsisDefineValue('C:\\bad"path')).toThrow(
+      "NSIS define values cannot contain quotes or newlines"
+    );
+    expect(() => builder.nsisDefineValue("C:\\bad\npath")).toThrow(
+      "NSIS define values cannot contain quotes or newlines"
+    );
   });
 
   it("removes the full installed app tree without touching Local User paths", () => {
     const nsis = fs.readFileSync(nsisInstallerPath, "utf8");
     const uninstallSection = nsis.slice(nsis.indexOf('Section "Uninstall"'));
 
+    expect(uninstallSection).toContain(
+      'IfFileExists "$INSTDIR\\SWARMSY Desktop.exe" 0 uninstall_safety_abort'
+    );
+    expect(uninstallSection).toContain(
+      'IfFileExists "$INSTDIR\\Uninstall SWARMSY Desktop.exe" 0 uninstall_safety_abort'
+    );
+    expect(uninstallSection).toContain(
+      'IfFileExists "$INSTDIR\\resources\\app\\package.json" 0 uninstall_safety_abort'
+    );
+    expect(uninstallSection).toContain(
+      "SWARMSY Desktop uninstall aborted because the selected install directory is missing expected SWARMSY application files."
+    );
     expect(uninstallSection).toContain('RMDir /r "$INSTDIR"');
-    expect(uninstallSection).not.toMatch(/\$APPDATA|\$LOCALAPPDATA|backups|settings/i);
+    expect(uninstallSection).not.toMatch(
+      /\$APPDATA|\$LOCALAPPDATA|backups|settings/i
+    );
     expect(uninstallSection).not.toMatch(/anythingllm-desktop|local-user-data/i);
   });
 

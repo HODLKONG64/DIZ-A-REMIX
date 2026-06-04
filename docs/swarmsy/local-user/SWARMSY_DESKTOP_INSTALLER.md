@@ -78,7 +78,7 @@ The installer workflow validates that:
 - Secret-like files and hardcoded secret-like values are not bundled.
 - Ollama and model directories are not bundled.
 
-Manual validation commands:
+Manual validation commands require NSIS `makensis` on `PATH`, or `MAKENSIS_PATH` set to the `makensis` executable.
 
 ```sh
 npm run desktop:artifact:smoke

@@ -28,7 +28,13 @@ function ensureExists(targetPath, label = targetPath) {
 }
 
 function nsisDefineValue(value) {
-  return String(value).replace(/\\/g, "\\\\").replace(/\"/g, "'\"");
+  const defineValue = String(value);
+  if (/[\r\n"]/.test(defineValue)) {
+    throw new Error(
+      "NSIS define values cannot contain quotes or newlines. Check installer paths."
+    );
+  }
+  return defineValue.replace(/\$/g, "$$$$");
 }
 
 function resolveMakensis() {
