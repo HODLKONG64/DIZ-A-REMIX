@@ -34,6 +34,8 @@ Reachable response:
 
 ```json
 {
+  "success": true,
+  "mode": "local_user",
   "available": true,
   "engine": "comfyui",
   "url": "http://localhost:8188",
@@ -45,6 +47,8 @@ Unreachable response:
 
 ```json
 {
+  "success": true,
+  "mode": "local_user",
   "available": false,
   "engine": "comfyui",
   "url": "http://localhost:8188",
