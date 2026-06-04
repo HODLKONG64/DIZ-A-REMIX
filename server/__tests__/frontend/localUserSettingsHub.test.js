@@ -50,6 +50,8 @@ describe("resolveLocalUserBackupImportModelState", () => {
       restoredModelId: "llama3.1:8b",
       shouldMirrorBrowserModel: false,
       mirrorModelId: "",
+      shouldPersistBrowserModel: true,
+      browserModelIdToPersist: "llama3.1:8b",
     });
   });
 
@@ -65,6 +67,8 @@ describe("resolveLocalUserBackupImportModelState", () => {
       restoredModelId: "phi3:mini",
       shouldMirrorBrowserModel: true,
       mirrorModelId: "phi3:mini",
+      shouldPersistBrowserModel: true,
+      browserModelIdToPersist: "phi3:mini",
     });
   });
 
@@ -80,6 +84,8 @@ describe("resolveLocalUserBackupImportModelState", () => {
       restoredModelId: "llama3.1:8b",
       shouldMirrorBrowserModel: false,
       mirrorModelId: "",
+      shouldPersistBrowserModel: true,
+      browserModelIdToPersist: "llama3.1:8b",
     });
   });
 
@@ -95,6 +101,8 @@ describe("resolveLocalUserBackupImportModelState", () => {
       restoredModelId: "",
       shouldMirrorBrowserModel: true,
       mirrorModelId: "",
+      shouldPersistBrowserModel: true,
+      browserModelIdToPersist: "",
     });
   });
 
@@ -110,6 +118,8 @@ describe("resolveLocalUserBackupImportModelState", () => {
       restoredModelId: "desktop:model",
       shouldMirrorBrowserModel: false,
       mirrorModelId: "",
+      shouldPersistBrowserModel: true,
+      browserModelIdToPersist: "desktop:model",
     });
   });
 
@@ -125,6 +135,44 @@ describe("resolveLocalUserBackupImportModelState", () => {
       restoredModelId: "desktop:model",
       shouldMirrorBrowserModel: false,
       mirrorModelId: "",
+      shouldPersistBrowserModel: true,
+      browserModelIdToPersist: "desktop:model",
     });
   });
+
+  it("does not create a fake model when neither desktop nor browser restored a model", () => {
+    const module = loadSettingsHubModule();
+    const result = module.resolveLocalUserBackupImportModelState({
+      browserModelWasRestored: false,
+      browserRestoredModelId: "stale:browser",
+      desktopRestoredModelId: "",
+    });
+
+    expect(result).toEqual({
+      restoredModelId: "",
+      shouldMirrorBrowserModel: false,
+      mirrorModelId: "",
+      shouldPersistBrowserModel: false,
+      browserModelIdToPersist: "",
+    });
+  });
+
+  it("directs callers to rewrite browser fallback to the desktop-winning model before sync", () => {
+    const module = loadSettingsHubModule();
+    const result = module.resolveLocalUserBackupImportModelState({
+      browserModelWasRestored: true,
+      browserRestoredModelId: "stale:browser",
+      desktopRestoredModelId: "desktop:winner",
+    });
+
+    let browserFallbackModel = "stale:browser";
+    if (result.shouldPersistBrowserModel) {
+      browserFallbackModel = result.browserModelIdToPersist;
+    }
+
+    expect(browserFallbackModel).toBe("desktop:winner");
+    expect(result.restoredModelId).toBe("desktop:winner");
+    expect(result.shouldMirrorBrowserModel).toBe(false);
+  });
+
 });
