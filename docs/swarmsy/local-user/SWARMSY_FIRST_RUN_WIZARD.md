@@ -15,7 +15,7 @@ The wizard is skippable. Skipping records completion so users are not blocked by
 
 ## Readiness checks
 
-The centralized readiness helper lives in `server/utils/swarmsy/desktopReadiness.js` and reports these checks:
+The wizard performs renderer-side readiness checks because the desktop runtime and bridge state are only available inside the trusted desktop renderer. `server/utils/swarmsy/desktopReadiness.js` mirrors the same readiness rules for server-side tests/reference today; wiring the wizard through a dedicated production readiness endpoint is future work once trusted desktop context can be passed without exposing local paths or Hosted/Admin data.
 
 | Check | Ready state | Failure mapping |
 | --- | --- | --- |

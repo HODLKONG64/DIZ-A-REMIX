@@ -300,6 +300,14 @@ export default function SwarmsyDesktopFirstRunWizard() {
     await completeWizard();
   }, [completeWizard]);
 
+  function closeManualWizard() {
+    setVisible(false);
+    setManualLaunch(false);
+    setStepIndex(0);
+  }
+
+  const handleDismissWizard = manualLaunch ? closeManualWizard : skipWizard;
+
   const selectModel = useCallback(async (modelId) => {
     const normalized = String(modelId || "").trim();
     setSelectedModel(normalized);
@@ -333,7 +341,7 @@ export default function SwarmsyDesktopFirstRunWizard() {
           <button
             type="button"
             aria-label="Skip SWARMSY Desktop first-run wizard"
-            onClick={skipWizard}
+            onClick={handleDismissWizard}
             className="rounded-lg border border-theme-sidebar-border p-2 hover:bg-theme-bg-secondary"
           >
             <X size={18} />
@@ -445,7 +453,7 @@ export default function SwarmsyDesktopFirstRunWizard() {
           <div className="flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={skipWizard}
+              onClick={handleDismissWizard}
               className="rounded-lg border border-theme-sidebar-border px-4 py-2 text-sm font-medium hover:bg-theme-bg-secondary"
             >
               {manualLaunch ? "Close" : "Skip for now"}

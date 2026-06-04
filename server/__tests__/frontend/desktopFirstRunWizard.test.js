@@ -65,6 +65,36 @@ describe("SWARMSY Desktop first-run wizard frontend", () => {
     expect(source).toContain("selected_model_missing");
   });
 
+  it("manual relaunch Close and X are close-only and do not persist completion", () => {
+    const source = wizardSource();
+    const closeStart = source.indexOf("function closeManualWizard()");
+    const closeEnd = source.indexOf("const handleDismissWizard", closeStart);
+    const closeBody = source.slice(closeStart, closeEnd);
+
+    expect(closeBody).toContain("setVisible(false)");
+    expect(closeBody).toContain("setManualLaunch(false)");
+    expect(closeBody).toContain("setStepIndex(0)");
+    expect(closeBody).not.toContain("persistDesktopFirstRunCompleted");
+    expect(closeBody).not.toContain("mirrorDesktopLocalUserFirstRunCompleted");
+    expect(source).toContain(
+      "const handleDismissWizard = manualLaunch ? closeManualWizard : skipWizard"
+    );
+    expect(source).toContain("onClick={handleDismissWizard}");
+  });
+
+  it("first-run Skip and Complete still persist completion through completeWizard", () => {
+    const source = wizardSource();
+    const completeStart = source.indexOf("const completeWizard = useCallback");
+    const completeEnd = source.indexOf("const skipWizard", completeStart);
+    const completeBody = source.slice(completeStart, completeEnd);
+    const skipStart = source.indexOf("const skipWizard = useCallback");
+    const skipEnd = source.indexOf("function closeManualWizard", skipStart);
+    const skipBody = source.slice(skipStart, skipEnd);
+
+    expect(completeBody).toContain("mirrorDesktopLocalUserFirstRunCompleted");
+    expect(completeBody).toContain("persistDesktopFirstRunCompleted(true)");
+    expect(skipBody).toContain("await completeWizard()");
+  });
 
   it("does not show no_models_installed or pull guidance until Ollama is reachable", () => {
     const source = wizardSource();

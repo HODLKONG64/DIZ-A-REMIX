@@ -1,5 +1,12 @@
 "use strict";
 
+// Server-side readiness mirror for the desktop wizard rules.
+// The wizard owns renderer-only runtime/bridge/storage collection today; keep
+// these rules aligned with the wizard until a dedicated production readiness
+// endpoint can safely accept trusted desktop context.
+// TODO(desktop-readiness): route wizard checks through this helper once desktop
+// bridge/runtime status can be supplied to a safe server endpoint without
+// exposing local paths or Hosted/Admin data.
 const { detectLocalOllama } = require("./localUserOllama");
 const {
   getDiagnosticForCode,

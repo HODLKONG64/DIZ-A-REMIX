@@ -1,3 +1,6 @@
+const fs = require("fs");
+const path = require("path");
+
 const {
   CHECK_IDS,
   READINESS_LEVELS,
@@ -21,6 +24,27 @@ describe("SWARMSY Desktop readiness engine", () => {
     endpoint: "http://localhost:11434/api/tags",
     models: [{ id: "llama3.1:8b", name: "llama3.1:8b" }],
   };
+
+  it("documents that server readiness mirrors the renderer wizard rules until production wiring lands", () => {
+    const helperSource = fs.readFileSync(
+      path.resolve(__dirname, "../../../utils/swarmsy/desktopReadiness.js"),
+      "utf8"
+    );
+    const wizardSource = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../../frontend/src/components/SwarmsyDesktopFirstRunWizard/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(helperSource).toContain("Server-side readiness mirror");
+    expect(helperSource).toContain("TODO(desktop-readiness)");
+    expect(helperSource).toContain("Models could not be verified");
+    expect(wizardSource).toContain("Models could not be verified");
+    expect(helperSource).toContain("Start or check Ollama");
+    expect(wizardSource).toContain("Start or check Ollama");
+  });
 
   it("returns ready when runtime, storage, bridge, Ollama, and selected model are available", async () => {
     const result = await getDesktopReadiness({
