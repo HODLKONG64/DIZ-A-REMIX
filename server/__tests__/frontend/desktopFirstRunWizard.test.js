@@ -55,14 +55,35 @@ describe("SWARMSY Desktop first-run wizard frontend", () => {
     expect(source).toContain("Skip for now");
   });
 
-  it("runs readiness checks and maps failures to existing diagnostics", () => {
+  it("runs readiness checks and maps failures to existing diagnostics without storing local paths", () => {
     const source = wizardSource();
-    expect(source).toContain("getRuntimeStatus");
-    expect(source).toContain("getStorageContract");
-    expect(source).toContain("localUserOllamaStatus");
+    const readinessStart = source.indexOf("const runReadinessChecks = useCallback");
+    const readinessEnd = source.indexOf("useEffect", readinessStart);
+    const readinessBody = source.slice(readinessStart, readinessEnd);
+
+    expect(readinessBody).toContain("getRuntimeStatus");
+    expect(readinessBody).toContain("getStorageContract");
+    expect(readinessBody).toContain("localUserOllamaStatus");
+    expect(readinessBody).toContain("{ ok: true, mode: \"local_user\" }");
+    expect(readinessBody).not.toContain("layout: storage.layout");
+    expect(readinessBody).not.toContain("layout.root");
     expect(source).toContain("runtime_healthcheck_failed");
     expect(source).toContain("ollama_unreachable");
     expect(source).toContain("selected_model_missing");
+  });
+
+  it("does not recreate readiness checks when model selection changes", () => {
+    const source = wizardSource();
+    const readinessStart = source.indexOf("const runReadinessChecks = useCallback");
+    const readinessEnd = source.indexOf("useEffect", readinessStart);
+    const readinessBody = source.slice(readinessStart, readinessEnd);
+
+    expect(readinessBody).toContain(
+      "const storedModelId = readLocalUserOllamaModelSelection()"
+    );
+    expect(readinessBody).toContain("selectedModelId: storedModelId");
+    expect(readinessBody).toContain("}, [isHostedAdminMode])");
+    expect(readinessBody).not.toContain("[isHostedAdminMode, selectedModel]");
   });
 
   it("manual relaunch Close and X are close-only and do not persist completion", () => {
@@ -134,6 +155,22 @@ describe("SWARMSY Desktop first-run wizard frontend", () => {
     expect(skipBody).toContain("const saved = await completeWizard()");
     expect(skipBody).toContain("if (saved) return");
     expect(skipBody).toContain("setVisible(false)");
+  });
+
+  it("surfaces desktop model mirror failures while keeping browser fallback active", () => {
+    const source = wizardSource();
+    const selectStart = source.indexOf("const selectModel = useCallback");
+    const selectEnd = source.indexOf("if (!visible)", selectStart);
+    const selectBody = source.slice(selectStart, selectEnd);
+
+    expect(selectBody).toContain(
+      "const mirrored = await mirrorDesktopLocalUserOllamaModelSelection"
+    );
+    expect(selectBody).toContain("if (!mirrored?.ok)");
+    expect(selectBody).toContain(
+      "Desktop local settings sync failed. Browser Local User storage remains active."
+    );
+    expect(selectBody).toContain("dispatchSettingsSync(normalized)");
   });
 
   it("shows manual Ollama and model install actions without automatic installs", () => {

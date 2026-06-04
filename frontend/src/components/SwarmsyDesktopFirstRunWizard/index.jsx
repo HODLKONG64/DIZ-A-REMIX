@@ -119,7 +119,7 @@ export default function SwarmsyDesktopFirstRunWizard() {
           : null;
       setStorageStatus(
         storage?.layout?.mode === "local_user"
-          ? { ok: true, layout: storage.layout }
+          ? { ok: true, mode: "local_user" }
           : { ok: false, reason: "storage_contract_invalid" }
       );
 
@@ -128,16 +128,17 @@ export default function SwarmsyDesktopFirstRunWizard() {
       );
       setOllamaStatus(ollama);
 
+      const storedModelId = readLocalUserOllamaModelSelection();
       const resolved = resolveLocalUserOllamaModelSelection({
         models: ollama.models,
-        selectedModelId: selectedModel,
-        storedModelId: readLocalUserOllamaModelSelection(),
+        selectedModelId: storedModelId,
+        storedModelId,
       });
       if (resolved.modelId) setSelectedModel(resolved.modelId);
     } finally {
       setIsChecking(false);
     }
-  }, [isHostedAdminMode, selectedModel]);
+  }, [isHostedAdminMode]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -317,9 +318,18 @@ export default function SwarmsyDesktopFirstRunWizard() {
     const normalized = String(modelId || "").trim();
     setSelectedModel(normalized);
     persistLocalUserOllamaModelSelection(normalized);
-    await mirrorDesktopLocalUserOllamaModelSelection(normalized, {
-      targetWindow: window,
-    });
+    const mirrored = await mirrorDesktopLocalUserOllamaModelSelection(
+      normalized,
+      {
+        targetWindow: window,
+      }
+    );
+    if (!mirrored?.ok) {
+      showToast(
+        "Desktop local settings sync failed. Browser Local User storage remains active.",
+        "warning"
+      );
+    }
     dispatchSettingsSync(normalized);
   }, []);
 
