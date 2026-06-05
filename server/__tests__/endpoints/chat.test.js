@@ -94,7 +94,11 @@ describe("chat endpoint runtime gating", () => {
         chatMode: "chat",
       };
       const response = buildResponse({ isMultiUser: true, workspace });
-      const runtime = { provider: "ollama", mode: "local_user", model: "llama3.1:8b" };
+      const runtime = {
+        provider: "ollama",
+        mode: "local_user",
+        model: "llama3.1:8b",
+      };
 
       mockMultiUserMode.mockReturnValue(true);
       mockUserFromSession.mockResolvedValue({ id: 42 });
@@ -139,6 +143,108 @@ describe("chat endpoint runtime gating", () => {
       );
     });
 
+    it("treats missing useApi as local/default flow", async () => {
+      const workspace = {
+        id: 1,
+        slug: "test-hive",
+        chatProvider: "ollama",
+        chatModel: "llama3.1:8b",
+        chatMode: "chat",
+      };
+      const response = buildResponse({ isMultiUser: false, workspace });
+
+      mockMultiUserMode.mockReturnValue(false);
+      mockUserFromSession.mockResolvedValue({ id: 42 });
+      mockReqBody.mockReturnValue({ message: "hello", attachments: [] });
+      mockApplyRuntimeSelectionToWorkspace.mockReturnValue({
+        workspace,
+        runtimeSelection: null,
+      });
+
+      const routeHandlers = {};
+      const app = {
+        post: jest.fn((path, _mw, handler) => {
+          routeHandlers[path] = handler;
+        }),
+      };
+      chatEndpoints(app);
+
+      await routeHandlers["/workspace/:slug/stream-chat"](
+        buildRequest(),
+        response
+      );
+
+      expect(mockStreamChatWithWorkspace).toHaveBeenCalledWith(
+        response,
+        workspace,
+        "hello",
+        workspace.chatMode,
+        { id: 42 },
+        null,
+        []
+      );
+      expect(mockWriteResponseChunk).not.toHaveBeenCalledWith(
+        response,
+        expect.objectContaining({ mode: "api_requested" })
+      );
+    });
+
+    it("returns a clear missing-key status for explicit Use API intent", async () => {
+      const workspace = {
+        id: 1,
+        slug: "test-hive",
+        chatProvider: "ollama",
+        chatModel: "llama3.1:8b",
+        chatMode: "chat",
+      };
+      const response = buildResponse({ isMultiUser: false, workspace });
+
+      mockMultiUserMode.mockReturnValue(false);
+      mockUserFromSession.mockResolvedValue({ id: 42 });
+      mockReqBody.mockReturnValue({
+        message: "hello",
+        attachments: [],
+        useApi: true,
+      });
+      mockApplyRuntimeSelectionToWorkspace.mockReturnValue({
+        workspace,
+        runtimeSelection: null,
+      });
+
+      const routeHandlers = {};
+      const app = {
+        post: jest.fn((path, _mw, handler) => {
+          routeHandlers[path] = handler;
+        }),
+      };
+      chatEndpoints(app);
+
+      const oldEnv = process.env;
+      process.env = {};
+      try {
+        await routeHandlers["/workspace/:slug/stream-chat"](
+          buildRequest(),
+          response
+        );
+      } finally {
+        process.env = oldEnv;
+      }
+
+      expect(mockStreamChatWithWorkspace).not.toHaveBeenCalled();
+      expect(mockWriteResponseChunk).toHaveBeenCalledWith(
+        response,
+        expect.objectContaining({
+          type: "statusResponse",
+          success: false,
+          mode: "api_requested",
+          status: "needs_user_action",
+          textResponse:
+            "No API key is connected yet. Add one in settings or continue with local AI.",
+        })
+      );
+      expect(response.end).toHaveBeenCalled();
+    });
+
     it("applies runtime override in single-user mode", async () => {
       const workspace = {
         id: 1,
@@ -153,7 +259,11 @@ describe("chat endpoint runtime gating", () => {
         chatModel: "llama3.1:8b",
       };
       const response = buildResponse({ isMultiUser: false, workspace });
-      const runtime = { provider: "ollama", mode: "local_user", model: "llama3.1:8b" };
+      const runtime = {
+        provider: "ollama",
+        mode: "local_user",
+        model: "llama3.1:8b",
+      };
 
       mockMultiUserMode.mockReturnValue(false);
       mockUserFromSession.mockResolvedValue({ id: 42 });
@@ -164,7 +274,11 @@ describe("chat endpoint runtime gating", () => {
       });
       mockApplyRuntimeSelectionToWorkspace.mockReturnValue({
         workspace: runtimeWorkspace,
-        runtimeSelection: { provider: "ollama", mode: "local_user", model: "llama3.1:8b" },
+        runtimeSelection: {
+          provider: "ollama",
+          mode: "local_user",
+          model: "llama3.1:8b",
+        },
       });
 
       const routeHandlers = {};
@@ -215,7 +329,11 @@ describe("chat endpoint runtime gating", () => {
       const thread = { id: 10, name: "thread-1" };
       const response = buildResponse({ isMultiUser: true, workspace });
       response.locals.thread = thread;
-      const runtime = { provider: "ollama", mode: "local_user", model: "llama3.1:8b" };
+      const runtime = {
+        provider: "ollama",
+        mode: "local_user",
+        model: "llama3.1:8b",
+      };
 
       mockMultiUserMode.mockReturnValue(true);
       mockUserFromSession.mockResolvedValue({ id: 42 });
@@ -274,7 +392,11 @@ describe("chat endpoint runtime gating", () => {
       const thread = { id: 10, name: "thread-1" };
       const response = buildResponse({ isMultiUser: false, workspace });
       response.locals.thread = thread;
-      const runtime = { provider: "ollama", mode: "local_user", model: "llama3.1:8b" };
+      const runtime = {
+        provider: "ollama",
+        mode: "local_user",
+        model: "llama3.1:8b",
+      };
 
       mockMultiUserMode.mockReturnValue(false);
       mockUserFromSession.mockResolvedValue({ id: 42 });
@@ -285,7 +407,11 @@ describe("chat endpoint runtime gating", () => {
       });
       mockApplyRuntimeSelectionToWorkspace.mockReturnValue({
         workspace: runtimeWorkspace,
-        runtimeSelection: { provider: "ollama", mode: "local_user", model: "llama3.1:8b" },
+        runtimeSelection: {
+          provider: "ollama",
+          mode: "local_user",
+          model: "llama3.1:8b",
+        },
       });
 
       const routeHandlers = {};

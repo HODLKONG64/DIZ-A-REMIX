@@ -13,6 +13,11 @@ const {
   validWorkspaceSlug,
 } = require("../utils/middleware/validWorkspace");
 const { writeResponseChunk } = require("../utils/helpers/chat/responses");
+const {
+  normalizeUseApiIntent,
+  hasConnectedOnlineProviderConfig,
+  useApiSsePayload,
+} = require("../utils/swarmsy/useApiChat");
 const { WorkspaceThread } = require("../models/workspaceThread");
 const { User } = require("../models/user");
 const { getModelTag } = require("./utils");
@@ -29,7 +34,12 @@ function chatEndpoints(app) {
     async (request, response) => {
       try {
         const user = await userFromSession(request, response);
-        const { message, attachments = [], runtime = null } = reqBody(request);
+        const {
+          message,
+          attachments = [],
+          runtime = null,
+          useApi,
+        } = reqBody(request);
         const workspace = response.locals.workspace;
         const runtimeWorkspace = multiUserMode(response)
           ? workspace
@@ -52,6 +62,18 @@ function chatEndpoints(app) {
         response.setHeader("Access-Control-Allow-Origin", "*");
         response.setHeader("Connection", "keep-alive");
         response.flushHeaders();
+
+        if (normalizeUseApiIntent(useApi)) {
+          writeResponseChunk(
+            response,
+            useApiSsePayload({
+              uuid: uuidv4(),
+              hasProviderConfig: hasConnectedOnlineProviderConfig(),
+            })
+          );
+          response.end();
+          return;
+        }
 
         if (multiUserMode(response) && !(await User.canSendChat(user))) {
           writeResponseChunk(response, {
@@ -121,7 +143,12 @@ function chatEndpoints(app) {
     async (request, response) => {
       try {
         const user = await userFromSession(request, response);
-        const { message, attachments = [], runtime = null } = reqBody(request);
+        const {
+          message,
+          attachments = [],
+          runtime = null,
+          useApi,
+        } = reqBody(request);
         const workspace = response.locals.workspace;
         const thread = response.locals.thread;
         const runtimeWorkspace = multiUserMode(response)
@@ -145,6 +172,18 @@ function chatEndpoints(app) {
         response.setHeader("Access-Control-Allow-Origin", "*");
         response.setHeader("Connection", "keep-alive");
         response.flushHeaders();
+
+        if (normalizeUseApiIntent(useApi)) {
+          writeResponseChunk(
+            response,
+            useApiSsePayload({
+              uuid: uuidv4(),
+              hasProviderConfig: hasConnectedOnlineProviderConfig(),
+            })
+          );
+          response.end();
+          return;
+        }
 
         if (multiUserMode(response) && !(await User.canSendChat(user))) {
           writeResponseChunk(response, {
