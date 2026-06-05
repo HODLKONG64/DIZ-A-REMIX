@@ -16,7 +16,9 @@ const { writeResponseChunk } = require("../utils/helpers/chat/responses");
 const {
   normalizeUseApiIntent,
   hasConnectedOnlineProviderConfig,
+  isOnlineChatProvider,
   useApiSsePayload,
+  localOnlyProviderBlockedSsePayload,
 } = require("../utils/swarmsy/useApiChat");
 const { WorkspaceThread } = require("../models/workspaceThread");
 const { User } = require("../models/user");
@@ -24,6 +26,21 @@ const { getModelTag } = require("./utils");
 const {
   applyRuntimeSelectionToWorkspace,
 } = require("../utils/swarmsy/runtimeSelection");
+
+function chatQuotaAbortPayload(user) {
+  return {
+    id: uuidv4(),
+    type: "abort",
+    textResponse: null,
+    sources: [],
+    close: true,
+    error: `You have met your maximum 24 hour chat quota of ${user.dailyMessageLimit} chats. Try again later.`,
+  };
+}
+
+function effectiveChatProvider(workspace) {
+  return workspace?.chatProvider || process.env.LLM_PROVIDER || "openai";
+}
 
 function chatEndpoints(app) {
   if (!app) return;
@@ -63,6 +80,11 @@ function chatEndpoints(app) {
         response.setHeader("Connection", "keep-alive");
         response.flushHeaders();
 
+        if (multiUserMode(response) && !(await User.canSendChat(user))) {
+          writeResponseChunk(response, chatQuotaAbortPayload(user));
+          return;
+        }
+
         if (normalizeUseApiIntent(useApi)) {
           writeResponseChunk(
             response,
@@ -75,15 +97,12 @@ function chatEndpoints(app) {
           return;
         }
 
-        if (multiUserMode(response) && !(await User.canSendChat(user))) {
-          writeResponseChunk(response, {
-            id: uuidv4(),
-            type: "abort",
-            textResponse: null,
-            sources: [],
-            close: true,
-            error: `You have met your maximum 24 hour chat quota of ${user.dailyMessageLimit} chats. Try again later.`,
-          });
+        if (isOnlineChatProvider(effectiveChatProvider(runtimeWorkspace))) {
+          writeResponseChunk(
+            response,
+            localOnlyProviderBlockedSsePayload({ uuid: uuidv4() })
+          );
+          response.end();
           return;
         }
 
@@ -173,6 +192,11 @@ function chatEndpoints(app) {
         response.setHeader("Connection", "keep-alive");
         response.flushHeaders();
 
+        if (multiUserMode(response) && !(await User.canSendChat(user))) {
+          writeResponseChunk(response, chatQuotaAbortPayload(user));
+          return;
+        }
+
         if (normalizeUseApiIntent(useApi)) {
           writeResponseChunk(
             response,
@@ -185,15 +209,12 @@ function chatEndpoints(app) {
           return;
         }
 
-        if (multiUserMode(response) && !(await User.canSendChat(user))) {
-          writeResponseChunk(response, {
-            id: uuidv4(),
-            type: "abort",
-            textResponse: null,
-            sources: [],
-            close: true,
-            error: `You have met your maximum 24 hour chat quota of ${user.dailyMessageLimit} chats. Try again later.`,
-          });
+        if (isOnlineChatProvider(effectiveChatProvider(runtimeWorkspace))) {
+          writeResponseChunk(
+            response,
+            localOnlyProviderBlockedSsePayload({ uuid: uuidv4() })
+          );
+          response.end();
           return;
         }
 

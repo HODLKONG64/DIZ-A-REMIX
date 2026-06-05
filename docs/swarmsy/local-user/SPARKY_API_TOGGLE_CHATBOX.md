@@ -37,9 +37,10 @@ Local-only is the default chat mode. No online, paid, or web/current-data API sh
 
 When unticked:
 
-- Sparky uses the existing local/default chat flow.
+- Sparky uses the existing local/default chat flow only when the effective provider is local/self-hosted.
 - Local User text can route to local Ollama when selected.
 - Local image work remains separate and routes to local ComfyUI/local tools only.
+- If the effective provider is online (for example OpenAI/OpenRouter/Anthropic/etc.), chat is blocked with `local_only` / `blocked_online_provider` instead of streaming.
 - No paid provider call is allowed.
 - No web/current-data API call is allowed.
 - Missing/undefined `useApi` behaves exactly like `useApi: false`.

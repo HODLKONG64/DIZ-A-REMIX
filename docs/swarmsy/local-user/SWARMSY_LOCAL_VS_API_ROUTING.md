@@ -8,8 +8,9 @@ Define routing rules for local-only, API-enabled, and hybrid SWARMSY operation.
 
 Chat requests now carry explicit per-message API intent:
 
-- `useApi: false` means local/default flow.
+- `useApi: false` means local/default flow only for local/self-hosted providers.
 - Missing/undefined `useApi` behaves as `false`.
+- If `useApi` is false/missing and the effective provider is online, the backend returns `local_only` / `blocked_online_provider` instead of calling that provider.
 - `useApi: true` means the user explicitly requested online provider mode for that message.
 - When `useApi: true` is requested without a connected provider/key, the backend returns `needs_user_action` with: `No API key is connected yet. Add one in settings or continue with local AI.`
 - If a key exists but execution is not wired, the backend must return a clear not-wired/planned status instead of silently routing.
@@ -18,10 +19,11 @@ Chat requests now carry explicit per-message API intent:
 
 When `Use API` is off and no opt-in API workflow is active:
 
-- Text routes to the existing local/default chat flow.
+- Text routes to the existing local/default chat flow when that flow is local/self-hosted.
 - Local User text can route to local Ollama.
 - Images route to local ComfyUI or another connected local image engine.
 - Project data stays in local project storage.
+- Online workspace/system providers are blocked until the user turns `Use API` on for that message.
 - No paid API calls occur.
 - No web/current-data API calls occur.
 - If a local tool is missing, Sparky explains the missing local dependency and asks permission before using online services.
