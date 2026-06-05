@@ -260,6 +260,25 @@ describe("swarmsy endpoints", () => {
     expect(response.json).toHaveBeenCalledWith(result);
   });
 
+  it("returns HTTP 400 when local image generation blocks a non-local URL", async () => {
+    const request = { body: { prompt: "poster", url: "https://example.com" } };
+    const response = responseMock();
+    const result = {
+      success: false,
+      mode: "local_user",
+      engine: "comfyui",
+      status: "blocked",
+      message: "ComfyUI generation is local-only. Configure a local ComfyUI URL.",
+    };
+
+    generateComfyUiImage.mockResolvedValue(result);
+
+    await swarmsyLocalUserImageEngineGenerate(request, response);
+
+    expect(response.status).toHaveBeenCalledWith(400);
+    expect(response.json).toHaveBeenCalledWith(result);
+  });
+
   it("returns unavailable when local ComfyUI generation cannot connect", async () => {
     const request = { body: { prompt: "stencil ape", workflowJson: { 1: {} } } };
     const response = responseMock();

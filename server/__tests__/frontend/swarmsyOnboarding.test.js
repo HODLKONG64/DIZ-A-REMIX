@@ -121,7 +121,6 @@ describe("Swarmsy onboarding model", () => {
     });
   });
 
-
   it("passes local ComfyUI generation abort signals to fetch", async () => {
     const fetchImpl = jest.fn().mockResolvedValue({
       ok: true,

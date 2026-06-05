@@ -5,10 +5,17 @@ const {
   resolveWorkflowPayload,
 } = require("../../../utils/swarmsy/comfyUiGeneration");
 
-function jsonResponse({ ok = true, status = 200, body = {}, headers = {} } = {}) {
+function jsonResponse({
+  ok = true,
+  status = 200,
+  body = {},
+  headers = {},
+  responseBody,
+} = {}) {
   return {
     ok,
     status,
+    body: responseBody,
     headers: { get: (name) => headers[name] || headers[name.toLowerCase()] },
     json: jest.fn().mockResolvedValue(body),
   };
@@ -81,6 +88,7 @@ describe("ComfyUI local generation", () => {
     expect(fetchImpl).toHaveBeenCalledTimes(1);
     expect(fetchImpl).toHaveBeenCalledWith("http://localhost:8188", {
       method: "GET",
+      redirect: "manual",
       signal: expect.any(AbortSignal),
     });
     expect(result).toEqual({
@@ -114,6 +122,25 @@ describe("ComfyUI local generation", () => {
       url: "http://localhost:8188",
       message:
         "ComfyUI returned HTTP 404. Check the configured image engine URL.",
+    });
+  });
+
+
+  it("uses the generic unavailable message when no fetch/readiness detail exists", async () => {
+    const result = await generateComfyUiImage({
+      prompt: "poster art",
+      workflowJson: { "1": { inputs: { text: "{{prompt}}" } } },
+      fetchImpl: null,
+    });
+
+    expect(result).toEqual({
+      success: false,
+      mode: "local_user",
+      engine: "comfyui",
+      status: "unavailable",
+      url: "http://localhost:8188",
+      message:
+        "ComfyUI is not connected. Start your local image engine before image generation.",
     });
   });
 
@@ -232,6 +259,30 @@ describe("ComfyUI local generation", () => {
     });
   });
 
+  it("does not follow ComfyUI redirects during prompt submission", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse())
+      .mockResolvedValueOnce(jsonResponse({ ok: false, status: 302 }));
+
+    const result = await generateComfyUiImage({
+      prompt: "poster art",
+      workflowJson: { "1": { inputs: { text: "{{prompt}}" } } },
+      fetchImpl,
+    });
+
+    expect(fetchImpl).toHaveBeenNthCalledWith(
+      2,
+      "http://localhost:8188/prompt",
+      expect.objectContaining({ redirect: "manual" })
+    );
+    expect(result).toMatchObject({
+      success: false,
+      status: "failed",
+      message: "ComfyUI generation request returned HTTP 302.",
+    });
+  });
+
   it("handles ComfyUI non-OK generation response clearly", async () => {
     const fetchImpl = jest
       .fn()
@@ -267,15 +318,19 @@ describe("ComfyUI local generation", () => {
 
     expect(fetchImpl).toHaveBeenNthCalledWith(1, "http://localhost:8188", {
       method: "GET",
+      redirect: "manual",
       signal: expect.any(AbortSignal),
     });
     expect(fetchImpl).toHaveBeenNthCalledWith(
       2,
       "http://localhost:8188/prompt",
-      expect.objectContaining({
+      {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-      })
+        body: fetchImpl.mock.calls[1][1].body,
+        redirect: "manual",
+        signal: expect.any(AbortSignal),
+      }
     );
     expect(fetchImpl.mock.calls[1][1].body).toContain(
       "high contrast stencil street art"
@@ -284,12 +339,12 @@ describe("ComfyUI local generation", () => {
     expect(fetchImpl).toHaveBeenNthCalledWith(
       3,
       "http://localhost:8188/history/abc-123",
-      expect.objectContaining({ method: "GET" })
+      { method: "GET", redirect: "manual", signal: expect.any(AbortSignal) }
     );
     expect(fetchImpl).toHaveBeenNthCalledWith(
       4,
       "http://localhost:8188/view?filename=swarmsy.png&type=output",
-      expect.objectContaining({ method: "GET" })
+      { method: "GET", redirect: "manual", signal: expect.any(AbortSignal) }
     );
     expect(result).toEqual({
       success: true,
@@ -363,7 +418,6 @@ describe("ComfyUI local generation", () => {
     expect(result.metadata.workflow).toBe("street-art-workflow-v1");
   });
 
-
   it("caps per-poll history request timeout", async () => {
     const setTimeoutSpy = jest.spyOn(global, "setTimeout");
     const fetchImpl = mockSuccessfulComfyUiFetch();
@@ -383,6 +437,83 @@ describe("ComfyUI local generation", () => {
     } finally {
       setTimeoutSpy.mockRestore();
     }
+  });
+
+  it("returns a clear failure when max poll attempts are exhausted", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse())
+      .mockResolvedValueOnce(
+        jsonResponse({ body: { prompt_id: "abc-123", number: 1 } })
+      )
+      .mockResolvedValue(jsonResponse({ body: { "abc-123": { outputs: {} } } }));
+
+    const result = await generateComfyUiImage({
+      prompt: "street poster",
+      workflowJson: { "1": { inputs: { text: "{{prompt}}" } } },
+      fetchImpl,
+      pollIntervalMs: 0,
+      maxPollAttempts: 2,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(4);
+    expect(result).toMatchObject({
+      success: false,
+      status: "failed",
+      message: "ComfyUI generation did not finish before the polling timeout.",
+    });
+  });
+
+  it("cancels the image response body after successful retrieval", async () => {
+    const cancel = jest.fn().mockResolvedValue(undefined);
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValueOnce(jsonResponse())
+      .mockResolvedValueOnce(
+        jsonResponse({ body: { prompt_id: "abc-123", number: 1 } })
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          body: {
+            "abc-123": {
+              outputs: {
+                "9": {
+                  images: [{ filename: "swarmsy.png", type: "output" }],
+                },
+              },
+            },
+          },
+        })
+      )
+      .mockResolvedValueOnce(
+        jsonResponse({
+          headers: { "content-type": "image/png" },
+          responseBody: { cancel },
+        })
+      );
+
+    const result = await generateComfyUiImage({
+      prompt: "street poster",
+      workflowJson: { "1": { inputs: { text: "{{prompt}}" } } },
+      fetchImpl,
+      pollIntervalMs: 0,
+    });
+
+    expect(result.success).toBe(true);
+    expect(cancel).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not require an image response body cancel method", async () => {
+    const fetchImpl = mockSuccessfulComfyUiFetch();
+
+    const result = await generateComfyUiImage({
+      prompt: "street poster",
+      workflowJson: { "1": { inputs: { text: "{{prompt}}" } } },
+      fetchImpl,
+      pollIntervalMs: 0,
+    });
+
+    expect(result.success).toBe(true);
   });
 
   it("blocks non-local image engine URLs so online APIs are not called", async () => {
@@ -412,10 +543,12 @@ describe("ComfyUI local generation", () => {
     expect(isLocalComfyUiUrl("http://172.31.255.255:8188")).toBe(true);
     expect(isLocalComfyUiUrl("http://[::1]:8188")).toBe(true);
     expect(isLocalComfyUiUrl("http://host.docker.internal:8188")).toBe(true);
-    expect(isLocalComfyUiUrl("http://comfy.local:8188")).toBe(true);
+    expect(isLocalComfyUiUrl("http://comfy.local:8188")).toBe(false);
     expect(isLocalComfyUiUrl("https://10.evil.com")).toBe(false);
     expect(isLocalComfyUiUrl("https://192.168.attacker.tld")).toBe(false);
     expect(isLocalComfyUiUrl("https://172.16.evil.com")).toBe(false);
+    expect(isLocalComfyUiUrl("https://example.com")).toBe(false);
+    expect(isLocalComfyUiUrl("https://8.8.8.8:8188")).toBe(false);
     expect(isLocalComfyUiUrl("https://api.openai.com/v1/images")).toBe(false);
   });
 });

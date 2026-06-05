@@ -134,7 +134,6 @@ function isLocalComfyUiUrl(url) {
     const host = normalizeHostname(parsed.hostname);
 
     if (host === "localhost" || host === "host.docker.internal") return true;
-    if (host.endsWith(".local")) return true;
     if (host === "::1") return true;
     return isPrivateIpv4Literal(host);
   } catch {
@@ -142,8 +141,17 @@ function isLocalComfyUiUrl(url) {
   }
 }
 
+function assertLocalComfyUiUrl(url) {
+  if (!isLocalComfyUiUrl(url)) {
+    throw new Error(
+      "ComfyUI generation is local-only. Configure a local ComfyUI URL."
+    );
+  }
+  return url;
+}
+
 function buildUrl(baseUrl, path) {
-  return `${baseUrl}${path}`;
+  return assertLocalComfyUiUrl(`${baseUrl}${path}`);
 }
 
 function buildViewUrl(baseUrl, image = {}) {
@@ -151,7 +159,7 @@ function buildViewUrl(baseUrl, image = {}) {
   params.set("filename", image.filename);
   if (image.subfolder) params.set("subfolder", image.subfolder);
   if (image.type) params.set("type", image.type);
-  return `${baseUrl}/view?${params.toString()}`;
+  return assertLocalComfyUiUrl(`${baseUrl}/view?${params.toString()}`);
 }
 
 function getHeader(response, name) {
@@ -193,8 +201,9 @@ async function fetchJson(
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetchImpl(url, {
+    const response = await fetchImpl(assertLocalComfyUiUrl(url), {
       ...options,
+      redirect: "manual",
       signal: controller.signal,
     });
     const data = await response?.json?.().catch(() => ({}));
@@ -261,14 +270,19 @@ async function pollComfyUiHistory({
   };
 }
 
+async function cancelResponseBody(response) {
+  await response?.body?.cancel?.();
+}
+
 async function retrieveComfyUiImage({ fetchImpl, baseUrl, image, timeoutMs }) {
   const imageUrl = buildViewUrl(baseUrl, image);
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const response = await fetchImpl(imageUrl, {
+    const response = await fetchImpl(assertLocalComfyUiUrl(imageUrl), {
       method: "GET",
+      redirect: "manual",
       signal: controller.signal,
     });
     if (!response?.ok) {
@@ -277,6 +291,8 @@ async function retrieveComfyUiImage({ fetchImpl, baseUrl, image, timeoutMs }) {
         message: `ComfyUI image retrieval returned HTTP ${response?.status ?? "unknown"}.`,
       };
     }
+
+    await cancelResponseBody(response);
 
     return {
       success: true,
@@ -335,9 +351,15 @@ async function generateComfyUiImage({
     };
   }
 
+  const fetchNoRedirect = (targetUrl, options = {}) =>
+    fetchImpl(assertLocalComfyUiUrl(targetUrl), {
+      ...options,
+      redirect: "manual",
+    });
+
   const readiness = await detectLocalImageEngine({
     url: resolvedUrl,
-    fetchImpl,
+    fetchImpl: fetchNoRedirect,
     timeoutMs,
   });
   if (!readiness?.available) {
@@ -470,6 +492,7 @@ module.exports = {
   DEFAULT_POLL_INTERVAL_MS,
   DEFAULT_POLL_REQUEST_TIMEOUT_MS,
   buildViewUrl,
+  cancelResponseBody,
   generateComfyUiImage,
   hydrateWorkflowValue,
   isLocalComfyUiUrl,

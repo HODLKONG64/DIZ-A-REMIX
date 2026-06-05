@@ -210,7 +210,9 @@ async function swarmsyLocalUserOllamaStatus(_request, response) {
 async function swarmsyLocalUserImageEngineGenerate(request, response) {
   try {
     const result = await generateComfyUiImage(request.body || {});
-    const statusCode = result.status === "invalid_request" ? 400 : 200;
+    const statusCode = ["invalid_request", "blocked"].includes(result.status)
+      ? 400
+      : 200;
     return response.status(statusCode).json(result);
   } catch (error) {
     console.error(error);
