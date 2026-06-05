@@ -78,6 +78,28 @@ const SwarmsyOnboarding = {
         };
       });
   },
+
+  localUserImageEngineGenerate: async function (payload = {}) {
+    return await fetch(`${API_BASE}/swarmsy/local-user/image-engine/generate`, {
+      method: "POST",
+      headers: baseHeaders(),
+      body: JSON.stringify(payload),
+    })
+      .then((response) =>
+        parseResponse(
+          response,
+          "Failed to generate an image with the local image engine."
+        )
+      )
+      .catch(() => ({
+        success: false,
+        mode: "local_user",
+        engine: "comfyui",
+        status: "unavailable",
+        message:
+          "ComfyUI is not connected. Start your local image engine before image generation.",
+      }));
+  },
   localUserImageEngineStatus: async function ({ signal } = {}) {
     return await fetch(`${API_BASE}/swarmsy/local-user/image-engine/status`, {
       headers: baseHeaders(),
