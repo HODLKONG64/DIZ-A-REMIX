@@ -79,11 +79,12 @@ const SwarmsyOnboarding = {
       });
   },
 
-  localUserImageEngineGenerate: async function (payload = {}) {
+  localUserImageEngineGenerate: async function (payload = {}, options = {}) {
     return await fetch(`${API_BASE}/swarmsy/local-user/image-engine/generate`, {
       method: "POST",
       headers: baseHeaders(),
       body: JSON.stringify(payload),
+      signal: options.signal,
     })
       .then((response) =>
         parseResponse(
@@ -91,15 +92,18 @@ const SwarmsyOnboarding = {
           "Failed to generate an image with the local image engine."
         )
       )
-      .catch(() => ({
-        success: false,
-        mode: "unknown",
-        engine: "comfyui",
-        status: "unavailable",
-        source: "fallback",
-        message:
-          "ComfyUI is not connected. Start your local image engine before image generation.",
-      }));
+      .catch((error) => {
+        if (error?.name === "AbortError") throw error;
+        return {
+          success: false,
+          mode: "unknown",
+          engine: "comfyui",
+          status: "unavailable",
+          source: "fallback",
+          message:
+            "ComfyUI is not connected. Start your local image engine before image generation.",
+        };
+      });
   },
   localUserImageEngineStatus: async function ({ signal } = {}) {
     return await fetch(`${API_BASE}/swarmsy/local-user/image-engine/status`, {

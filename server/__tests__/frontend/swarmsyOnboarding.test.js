@@ -97,6 +97,7 @@ describe("Swarmsy onboarding model", () => {
         method: "POST",
         headers: {},
         body: JSON.stringify(payload),
+        signal: undefined,
       }
     );
   });
@@ -118,6 +119,38 @@ describe("Swarmsy onboarding model", () => {
       message:
         "ComfyUI is not connected. Start your local image engine before image generation.",
     });
+  });
+
+
+  it("passes local ComfyUI generation abort signals to fetch", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({ success: true }),
+    });
+    const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+    const signal = { aborted: false };
+
+    await onboardingModel.localUserImageEngineGenerate(
+      { prompt: "poster" },
+      { signal }
+    );
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://localhost/api/swarmsy/local-user/image-engine/generate",
+      expect.objectContaining({ signal })
+    );
+  });
+
+  it("rethrows local ComfyUI generation abort errors", async () => {
+    const abortError = Object.assign(new Error("aborted"), {
+      name: "AbortError",
+    });
+    const fetchImpl = jest.fn().mockRejectedValue(abortError);
+    const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+
+    await expect(
+      onboardingModel.localUserImageEngineGenerate({ prompt: "poster" })
+    ).rejects.toBe(abortError);
   });
 
   it("rethrows abort errors so callers can bail out safely", async () => {

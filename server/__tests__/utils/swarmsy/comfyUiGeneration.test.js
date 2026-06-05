@@ -1,5 +1,5 @@
 const {
-  COMFYUI_GENERATION_UNAVAILABLE_MESSAGE,
+  DEFAULT_POLL_REQUEST_TIMEOUT_MS,
   generateComfyUiImage,
   isLocalComfyUiUrl,
   resolveWorkflowPayload,
@@ -89,7 +89,31 @@ describe("ComfyUI local generation", () => {
       engine: "comfyui",
       status: "unavailable",
       url: "http://localhost:8188",
-      message: COMFYUI_GENERATION_UNAVAILABLE_MESSAGE,
+      message:
+        "ComfyUI is not reachable. Start ComfyUI locally before image generation.",
+    });
+  });
+
+  it("preserves specific readiness failure messages during generation", async () => {
+    const fetchImpl = jest
+      .fn()
+      .mockResolvedValue(jsonResponse({ ok: false, status: 404 }));
+
+    const result = await generateComfyUiImage({
+      prompt: "poster art",
+      workflowJson: { "1": { inputs: { text: "{{prompt}}" } } },
+      fetchImpl,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({
+      success: false,
+      mode: "local_user",
+      engine: "comfyui",
+      status: "unavailable",
+      url: "http://localhost:8188",
+      message:
+        "ComfyUI returned HTTP 404. Check the configured image engine URL.",
     });
   });
 
@@ -339,6 +363,28 @@ describe("ComfyUI local generation", () => {
     expect(result.metadata.workflow).toBe("street-art-workflow-v1");
   });
 
+
+  it("caps per-poll history request timeout", async () => {
+    const setTimeoutSpy = jest.spyOn(global, "setTimeout");
+    const fetchImpl = mockSuccessfulComfyUiFetch();
+
+    try {
+      await generateComfyUiImage({
+        prompt: "street poster",
+        workflowJson: { "1": { inputs: { text: "{{prompt}}" } } },
+        fetchImpl,
+        pollIntervalMs: 0,
+        timeoutMs: 10_000,
+      });
+
+      expect(setTimeoutSpy.mock.calls.map(([, delay]) => delay)).toContain(
+        DEFAULT_POLL_REQUEST_TIMEOUT_MS
+      );
+    } finally {
+      setTimeoutSpy.mockRestore();
+    }
+  });
+
   it("blocks non-local image engine URLs so online APIs are not called", async () => {
     const fetchImpl = jest.fn();
 
@@ -359,7 +405,17 @@ describe("ComfyUI local generation", () => {
 
   it("allows only local/private ComfyUI URLs", () => {
     expect(isLocalComfyUiUrl("http://localhost:8188")).toBe(true);
-    expect(isLocalComfyUiUrl("http://192.168.1.10:8188")).toBe(true);
+    expect(isLocalComfyUiUrl("http://127.0.0.1:8188")).toBe(true);
+    expect(isLocalComfyUiUrl("http://10.0.0.2:8188")).toBe(true);
+    expect(isLocalComfyUiUrl("http://192.168.1.50:8188")).toBe(true);
+    expect(isLocalComfyUiUrl("http://172.16.0.5:8188")).toBe(true);
+    expect(isLocalComfyUiUrl("http://172.31.255.255:8188")).toBe(true);
+    expect(isLocalComfyUiUrl("http://[::1]:8188")).toBe(true);
+    expect(isLocalComfyUiUrl("http://host.docker.internal:8188")).toBe(true);
+    expect(isLocalComfyUiUrl("http://comfy.local:8188")).toBe(true);
+    expect(isLocalComfyUiUrl("https://10.evil.com")).toBe(false);
+    expect(isLocalComfyUiUrl("https://192.168.attacker.tld")).toBe(false);
+    expect(isLocalComfyUiUrl("https://172.16.evil.com")).toBe(false);
     expect(isLocalComfyUiUrl("https://api.openai.com/v1/images")).toBe(false);
   });
 });

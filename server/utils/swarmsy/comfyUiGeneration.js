@@ -1,3 +1,5 @@
+const net = require("net");
+
 const {
   DEFAULT_LOCAL_IMAGE_ENGINE_URL,
   detectLocalImageEngine,
@@ -9,6 +11,7 @@ const COMFYUI_GENERATION_UNAVAILABLE_MESSAGE =
 const DEFAULT_GENERATION_TIMEOUT_MS = 10_000;
 const DEFAULT_POLL_INTERVAL_MS = 500;
 const DEFAULT_MAX_POLL_ATTEMPTS = 120;
+const DEFAULT_POLL_REQUEST_TIMEOUT_MS = 2_500;
 const DEFAULT_WORKFLOW_NAME = "user_supplied";
 const TOKEN_PATTERN =
   /{{prompt}}|{{negativePrompt}}|{{seed}}|{{width}}|{{height}}/g;
@@ -103,23 +106,37 @@ function resolveWorkflowPayload({
   return { workflow: hydrateWorkflowValue(sourceWorkflow, replacements) };
 }
 
+function normalizeHostname(hostname = "") {
+  return String(hostname || "")
+    .trim()
+    .toLowerCase()
+    .replace(/^\[/, "")
+    .replace(/\]$/, "");
+}
+
+function isPrivateIpv4Literal(host) {
+  if (net.isIP(host) !== 4) return false;
+
+  const [first, second] = host.split(".").map((octet) => Number(octet));
+  return (
+    first === 127 ||
+    first === 10 ||
+    (first === 192 && second === 168) ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    host === "0.0.0.0"
+  );
+}
+
 function isLocalComfyUiUrl(url) {
   try {
     const parsed = new URL(url);
     if (!["http:", "https:"].includes(parsed.protocol)) return false;
-    const host = parsed.hostname.toLowerCase();
-    return (
-      host === "localhost" ||
-      host === "127.0.0.1" ||
-      host === "0.0.0.0" ||
-      host === "::1" ||
-      host === "[::1]" ||
-      host === "host.docker.internal" ||
-      host.endsWith(".local") ||
-      host.startsWith("10.") ||
-      host.startsWith("192.168.") ||
-      /^172\.(1[6-9]|2\d|3[0-1])\./.test(host)
-    );
+    const host = normalizeHostname(parsed.hostname);
+
+    if (host === "localhost" || host === "host.docker.internal") return true;
+    if (host.endsWith(".local")) return true;
+    if (host === "::1") return true;
+    return isPrivateIpv4Literal(host);
   } catch {
     return false;
   }
@@ -219,7 +236,10 @@ async function pollComfyUiHistory({
       fetchImpl,
       buildUrl(baseUrl, `/history/${encodeURIComponent(promptId)}`),
       { method: "GET" },
-      timeoutMs
+      Math.min(
+        timeoutMs || DEFAULT_GENERATION_TIMEOUT_MS,
+        DEFAULT_POLL_REQUEST_TIMEOUT_MS
+      )
     );
 
     if (!response?.ok) {
@@ -320,7 +340,12 @@ async function generateComfyUiImage({
     fetchImpl,
     timeoutMs,
   });
-  if (!readiness?.available) return unavailableGenerationResult(resolvedUrl);
+  if (!readiness?.available) {
+    return {
+      ...unavailableGenerationResult(resolvedUrl),
+      message: readiness?.message || COMFYUI_GENERATION_UNAVAILABLE_MESSAGE,
+    };
+  }
 
   const workflowPayload = resolveWorkflowPayload({
     workflow,
@@ -443,6 +468,7 @@ module.exports = {
   DEFAULT_GENERATION_TIMEOUT_MS,
   DEFAULT_MAX_POLL_ATTEMPTS,
   DEFAULT_POLL_INTERVAL_MS,
+  DEFAULT_POLL_REQUEST_TIMEOUT_MS,
   buildViewUrl,
   generateComfyUiImage,
   hydrateWorkflowValue,
