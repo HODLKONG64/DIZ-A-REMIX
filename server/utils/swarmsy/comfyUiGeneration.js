@@ -10,6 +10,8 @@ const DEFAULT_GENERATION_TIMEOUT_MS = 10_000;
 const DEFAULT_POLL_INTERVAL_MS = 500;
 const DEFAULT_MAX_POLL_ATTEMPTS = 120;
 const DEFAULT_WORKFLOW_NAME = "user_supplied";
+const TOKEN_PATTERN =
+  /{{prompt}}|{{negativePrompt}}|{{seed}}|{{width}}|{{height}}/g;
 
 function unavailableGenerationResult(url = DEFAULT_LOCAL_IMAGE_ENGINE_URL) {
   return {
@@ -43,6 +45,31 @@ function workflowLabel(workflow) {
   return DEFAULT_WORKFLOW_NAME;
 }
 
+function hydrateWorkflowValue(value, replacements) {
+  if (Array.isArray(value)) {
+    return value.map((item) => hydrateWorkflowValue(item, replacements));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, child]) => [
+        key,
+        hydrateWorkflowValue(child, replacements),
+      ])
+    );
+  }
+
+  if (typeof value !== "string") return value;
+
+  if (Object.prototype.hasOwnProperty.call(replacements, value)) {
+    return replacements[value];
+  }
+
+  return value.replace(TOKEN_PATTERN, (token) =>
+    String(replacements[token] ?? "")
+  );
+}
+
 function resolveWorkflowPayload({
   workflow,
   workflowJson,
@@ -73,13 +100,7 @@ function resolveWorkflowPayload({
     "{{height}}": height,
   };
 
-  const workflowText = JSON.stringify(sourceWorkflow);
-  const hydratedText = Object.entries(replacements).reduce(
-    (text, [token, value]) => text.split(token).join(String(value)),
-    workflowText
-  );
-
-  return { workflow: JSON.parse(hydratedText) };
+  return { workflow: hydrateWorkflowValue(sourceWorkflow, replacements) };
 }
 
 function isLocalComfyUiUrl(url) {
@@ -257,7 +278,7 @@ async function generateComfyUiImage({
   negativePrompt = "",
   size = "1024x1024",
   seed = null,
-  workflow = "default",
+  workflow = null,
   workflowJson = null,
   url,
   fetchImpl = global.fetch,
@@ -424,6 +445,7 @@ module.exports = {
   DEFAULT_POLL_INTERVAL_MS,
   buildViewUrl,
   generateComfyUiImage,
+  hydrateWorkflowValue,
   isLocalComfyUiUrl,
   resolveWorkflowPayload,
 };

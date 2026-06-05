@@ -2,6 +2,7 @@ const {
   COMFYUI_GENERATION_UNAVAILABLE_MESSAGE,
   generateComfyUiImage,
   isLocalComfyUiUrl,
+  resolveWorkflowPayload,
 } = require("../../../utils/swarmsy/comfyUiGeneration");
 
 function jsonResponse({ ok = true, status = 200, body = {}, headers = {} } = {}) {
@@ -11,6 +12,41 @@ function jsonResponse({ ok = true, status = 200, body = {}, headers = {} } = {})
     headers: { get: (name) => headers[name] || headers[name.toLowerCase()] },
     json: jest.fn().mockResolvedValue(body),
   };
+}
+
+function mockSuccessfulComfyUiFetch() {
+  return jest
+    .fn()
+    .mockResolvedValueOnce(jsonResponse())
+    .mockResolvedValueOnce(
+      jsonResponse({ body: { prompt_id: "abc-123", number: 1 } })
+    )
+    .mockResolvedValueOnce(
+      jsonResponse({
+        body: {
+          "abc-123": {
+            outputs: {
+              "9": {
+                images: [
+                  {
+                    filename: "swarmsy.png",
+                    subfolder: "",
+                    type: "output",
+                  },
+                ],
+              },
+            },
+          },
+        },
+      })
+    )
+    .mockResolvedValueOnce(
+      jsonResponse({ headers: { "content-type": "image/png" } })
+    );
+}
+
+function submittedWorkflow(fetchImpl) {
+  return JSON.parse(fetchImpl.mock.calls[1][1].body).prompt;
 }
 
 describe("ComfyUI local generation", () => {
@@ -79,6 +115,99 @@ describe("ComfyUI local generation", () => {
     });
   });
 
+  it("hydrates workflow string leaves safely without reparsing JSON text", () => {
+    const workflowJson = {
+      "1": {
+        inputs: {
+          text: "{{prompt}}",
+          negative: "{{negativePrompt}}",
+          width: "{{width}}",
+          height: "{{height}}",
+          seed: "{{seed}}",
+          label: "poster {{width}}x{{height}} seed {{seed}}: {{prompt}}",
+          unchangedNumber: 7,
+          unchangedBoolean: true,
+          unchangedNull: null,
+          array: ["{{prompt}}", "keep me", 99],
+        },
+      },
+    };
+
+    const result = resolveWorkflowPayload({
+      workflowJson,
+      prompt: 'a sign reading "HIVE" with \\slashes\nnew line and literal {{seed}} graffiti',
+      negativePrompt: 'bad "letters"\nlow quality',
+      seed: 123456,
+      size: "768x512",
+    });
+
+    expect(result.error).toBeUndefined();
+    expect(result.workflow["1"].inputs).toEqual({
+      text: 'a sign reading "HIVE" with \\slashes\nnew line and literal {{seed}} graffiti',
+      negative: 'bad "letters"\nlow quality',
+      width: 768,
+      height: 512,
+      seed: 123456,
+      label:
+        'poster 768x512 seed 123456: a sign reading "HIVE" with \\slashes\nnew line and literal {{seed}} graffiti',
+      unchangedNumber: 7,
+      unchangedBoolean: true,
+      unchangedNull: null,
+      array: [
+        'a sign reading "HIVE" with \\slashes\nnew line and literal {{seed}} graffiti',
+        "keep me",
+        99,
+      ],
+    });
+  });
+
+  it("keeps whole width height and seed placeholders numeric", () => {
+    const result = resolveWorkflowPayload({
+      workflowJson: {
+        inputs: {
+          width: "{{width}}",
+          height: "{{height}}",
+          seed: "{{seed}}",
+        },
+      },
+      prompt: "poster",
+      negativePrompt: "",
+      seed: 42,
+      size: "640x384",
+    });
+
+    expect(result.workflow.inputs).toEqual({
+      width: 640,
+      height: 384,
+      seed: 42,
+    });
+    expect(typeof result.workflow.inputs.width).toBe("number");
+    expect(typeof result.workflow.inputs.height).toBe("number");
+    expect(typeof result.workflow.inputs.seed).toBe("number");
+  });
+
+  it("returns invalid_request for non-object workflowJson", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue(jsonResponse());
+
+    const result = await generateComfyUiImage({
+      prompt: "poster art",
+      workflowJson: ["not", "an", "object"],
+      fetchImpl,
+    });
+
+    expect(fetchImpl).toHaveBeenCalledTimes(1);
+    expect(fetchImpl).not.toHaveBeenCalledWith(
+      expect.stringContaining("/prompt"),
+      expect.any(Object)
+    );
+    expect(result).toMatchObject({
+      success: false,
+      status: "invalid_request",
+      message:
+        "ComfyUI generation requires a user-provided workflow JSON object for this MVP.",
+    });
+  });
+
   it("handles ComfyUI non-OK generation response clearly", async () => {
     const fetchImpl = jest
       .fn()
@@ -99,34 +228,7 @@ describe("ComfyUI local generation", () => {
   });
 
   it("returns normalized image metadata after mocked ComfyUI generation succeeds", async () => {
-    const fetchImpl = jest
-      .fn()
-      .mockResolvedValueOnce(jsonResponse())
-      .mockResolvedValueOnce(
-        jsonResponse({ body: { prompt_id: "abc-123", number: 1 } })
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({
-          body: {
-            "abc-123": {
-              outputs: {
-                "9": {
-                  images: [
-                    {
-                      filename: "swarmsy.png",
-                      subfolder: "",
-                      type: "output",
-                    },
-                  ],
-                },
-              },
-            },
-          },
-        })
-      )
-      .mockResolvedValueOnce(
-        jsonResponse({ headers: { "content-type": "image/png" } })
-      );
+    const fetchImpl = mockSuccessfulComfyUiFetch();
 
     const result = await generateComfyUiImage({
       prompt: "high contrast stencil street art",
@@ -187,6 +289,54 @@ describe("ComfyUI local generation", () => {
         createdAt: "2026-06-05T00:00:00.000Z",
       },
     });
+  });
+
+  it("reports user_supplied metadata when workflowJson has no explicit label", async () => {
+    const fetchImpl = mockSuccessfulComfyUiFetch();
+
+    const result = await generateComfyUiImage({
+      prompt: 'a sign reading "HIVE"',
+      workflowJson: {
+        "1": {
+          inputs: {
+            text: "{{prompt}}",
+            width: "{{width}}",
+            height: "{{height}}",
+            seed: "{{seed}}",
+          },
+        },
+      },
+      seed: 999,
+      size: "512x512",
+      fetchImpl,
+      pollIntervalMs: 0,
+      now: () => new Date("2026-06-05T00:00:00.000Z"),
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.metadata.workflow).toBe("user_supplied");
+    expect(submittedWorkflow(fetchImpl)["1"].inputs).toEqual({
+      text: 'a sign reading "HIVE"',
+      width: 512,
+      height: 512,
+      seed: 999,
+    });
+  });
+
+  it("keeps explicit workflow labels in success metadata", async () => {
+    const fetchImpl = mockSuccessfulComfyUiFetch();
+
+    const result = await generateComfyUiImage({
+      prompt: "street poster",
+      workflow: "street-art-workflow-v1",
+      workflowJson: { "1": { inputs: { text: "{{prompt}}" } } },
+      fetchImpl,
+      pollIntervalMs: 0,
+      now: () => new Date("2026-06-05T00:00:00.000Z"),
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.metadata.workflow).toBe("street-art-workflow-v1");
   });
 
   it("blocks non-local image engine URLs so online APIs are not called", async () => {

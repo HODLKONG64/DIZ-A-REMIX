@@ -111,9 +111,10 @@ describe("Swarmsy onboarding model", () => {
 
     expect(response).toEqual({
       success: false,
-      mode: "local_user",
+      mode: "unknown",
       engine: "comfyui",
       status: "unavailable",
+      source: "fallback",
       message:
         "ComfyUI is not connected. Start your local image engine before image generation.",
     });
