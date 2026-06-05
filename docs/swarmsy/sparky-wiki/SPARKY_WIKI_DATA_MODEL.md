@@ -61,7 +61,7 @@ Status labels help Sparky avoid treating old, planned, private, or unwired mater
 {
   "title": "Hidden Identity Visual Rules",
   "slug": "hidden-identity-visual-rules",
-  "category": "artwork prompts",
+  "category": "Artwork prompts",
   "source": "user project note",
   "status_label": "Working",
   "workspace_scope": "current workspace only",
