@@ -246,6 +246,139 @@ describe("chat endpoint runtime gating", () => {
       expect(response.end).toHaveBeenCalled();
     });
 
+    it("routes explicit Use API through a configured workspace online provider without mutating workspace", async () => {
+      const workspace = {
+        id: 1,
+        slug: "test-hive",
+        chatProvider: "openai",
+        chatModel: "gpt-4o-mini",
+        chatMode: "chat",
+      };
+      const response = buildResponse({ isMultiUser: false, workspace });
+
+      mockMultiUserMode.mockReturnValue(false);
+      mockUserFromSession.mockResolvedValue({ id: 42 });
+      mockReqBody.mockReturnValue({
+        message: "hello",
+        attachments: [],
+        useApi: true,
+      });
+      mockApplyRuntimeSelectionToWorkspace.mockReturnValue({
+        workspace,
+        runtimeSelection: null,
+      });
+
+      const routeHandlers = {};
+      const app = {
+        post: jest.fn((path, _mw, handler) => {
+          routeHandlers[path] = handler;
+        }),
+      };
+      chatEndpoints(app);
+
+      const oldEnv = process.env;
+      process.env = { OPEN_AI_KEY: "secret-do-not-return" };
+      try {
+        await routeHandlers["/workspace/:slug/stream-chat"](
+          buildRequest(),
+          response
+        );
+      } finally {
+        process.env = oldEnv;
+      }
+
+      expect(mockStreamChatWithWorkspace).toHaveBeenCalledWith(
+        response,
+        expect.objectContaining({
+          chatProvider: "openai",
+          chatModel: "gpt-4o-mini",
+        }),
+        "hello",
+        workspace.chatMode,
+        { id: 42 },
+        null,
+        []
+      );
+      expect(workspace).toEqual({
+        id: 1,
+        slug: "test-hive",
+        chatProvider: "openai",
+        chatModel: "gpt-4o-mini",
+        chatMode: "chat",
+      });
+      expect(mockWriteResponseChunk).toHaveBeenCalledWith(
+        response,
+        expect.objectContaining({
+          type: "statusResponse",
+          mode: "api_requested",
+          status: "provider_selected",
+          provider: "openai",
+        })
+      );
+      expect(JSON.stringify(mockWriteResponseChunk.mock.calls)).not.toContain(
+        "secret-do-not-return"
+      );
+    });
+
+    it("returns safe Use API routing failure without leaking provider errors", async () => {
+      const workspace = {
+        id: 1,
+        slug: "test-hive",
+        chatProvider: "openai",
+        chatModel: "gpt-4o-mini",
+        chatMode: "chat",
+      };
+      const response = buildResponse({ isMultiUser: false, workspace });
+
+      mockMultiUserMode.mockReturnValue(false);
+      mockUserFromSession.mockResolvedValue({ id: 42 });
+      mockReqBody.mockReturnValue({
+        message: "hello",
+        attachments: [],
+        useApi: true,
+      });
+      mockApplyRuntimeSelectionToWorkspace.mockReturnValue({
+        workspace,
+        runtimeSelection: null,
+      });
+      mockStreamChatWithWorkspace.mockRejectedValueOnce(
+        new Error("provider failed with secret-do-not-return")
+      );
+
+      const routeHandlers = {};
+      const app = {
+        post: jest.fn((path, _mw, handler) => {
+          routeHandlers[path] = handler;
+        }),
+      };
+      chatEndpoints(app);
+
+      const oldEnv = process.env;
+      process.env = { OPEN_AI_KEY: "secret-do-not-return" };
+      try {
+        await routeHandlers["/workspace/:slug/stream-chat"](
+          buildRequest(),
+          response
+        );
+      } finally {
+        process.env = oldEnv;
+      }
+
+      expect(mockWriteResponseChunk).toHaveBeenCalledWith(
+        response,
+        expect.objectContaining({
+          type: "statusResponse",
+          mode: "api_requested",
+          status: "routing_failed",
+          textResponse:
+            "Use API provider routing failed. Check your provider settings and try again, or continue with local AI.",
+        })
+      );
+      expect(JSON.stringify(mockWriteResponseChunk.mock.calls)).not.toContain(
+        "secret-do-not-return"
+      );
+    });
+
     it("blocks missing useApi when the system default provider is online", async () => {
       const workspace = {
         id: 1,
@@ -570,6 +703,69 @@ describe("chat endpoint runtime gating", () => {
           status: "blocked_online_provider",
         })
       );
+    });
+
+    it("routes explicit Use API through configured system provider on thread chat", async () => {
+      const workspace = {
+        id: 1,
+        slug: "test-hive",
+        chatProvider: "ollama",
+        chatModel: "llama3.1:8b",
+        chatMode: "chat",
+      };
+      const thread = { id: 10, name: "thread-1" };
+      const response = buildResponse({ isMultiUser: true, workspace });
+      response.locals.thread = thread;
+
+      mockMultiUserMode.mockReturnValue(true);
+      mockUserFromSession.mockResolvedValue({ id: 42 });
+      User.canSendChat.mockResolvedValueOnce(true);
+      mockReqBody.mockReturnValue({
+        message: "hello",
+        attachments: [],
+        useApi: true,
+      });
+
+      const routeHandlers = {};
+      const app = {
+        post: jest.fn((path, _mw, handler) => {
+          routeHandlers[path] = handler;
+        }),
+      };
+      chatEndpoints(app);
+
+      const oldEnv = process.env;
+      process.env = { LLM_PROVIDER: "anthropic", ANTHROPIC_API_KEY: "secret" };
+      try {
+        await routeHandlers["/workspace/:slug/thread/:threadSlug/stream-chat"](
+          buildRequest(),
+          response
+        );
+      } finally {
+        process.env = oldEnv;
+      }
+
+      expect(mockStreamChatWithWorkspace).toHaveBeenCalledWith(
+        response,
+        expect.objectContaining({
+          chatProvider: "anthropic",
+          chatModel: null,
+        }),
+        "hello",
+        workspace.chatMode,
+        { id: 42 },
+        thread,
+        []
+      );
+      expect(mockWriteResponseChunk).toHaveBeenCalledWith(
+        response,
+        expect.objectContaining({
+          mode: "api_requested",
+          status: "provider_selected",
+          provider: "anthropic",
+        })
+      );
+      expect(workspace.chatProvider).toBe("ollama");
     });
 
     it("returns explicit Use API status on thread chat after quota passes", async () => {

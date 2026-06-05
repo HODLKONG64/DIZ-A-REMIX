@@ -1,11 +1,16 @@
 const {
   NO_API_KEY_CONNECTED_MESSAGE,
-  API_PROVIDER_NOT_WIRED_MESSAGE,
+  API_PROVIDER_ROUTING_FAILED_MESSAGE,
   normalizeUseApiIntent,
   hasConnectedOnlineProviderConfig,
   buildUseApiGuardResponse,
   useApiSsePayload,
   isOnlineChatProvider,
+  hasProviderKeyConfig,
+  firstConfiguredUseApiProvider,
+  buildUseApiRuntimeWorkspace,
+  useApiProviderSelectedSsePayload,
+  useApiRoutingFailedSsePayload,
   localOnlyProviderBlockedSsePayload,
 } = require("../../../utils/swarmsy/useApiChat");
 
@@ -61,15 +66,119 @@ describe("SWARMSY Use API chat guard", () => {
     expect(JSON.stringify(novitaPayload)).not.toContain(novitaSecret);
   });
 
-  it("returns not-wired status without exposing key values when a key exists", () => {
+  it("returns routing-failed status without exposing key values when a key exists", () => {
     const secret = "sk-test-secret-do-not-return";
     expect(hasConnectedOnlineProviderConfig({ OPEN_AI_KEY: secret })).toBe(
       true
     );
     const result = buildUseApiGuardResponse({ hasProviderConfig: true });
-    expect(result.status).toBe("not_wired");
-    expect(result.message).toBe(API_PROVIDER_NOT_WIRED_MESSAGE);
+    expect(result.status).toBe("routing_failed");
+    expect(result.message).toBe(API_PROVIDER_ROUTING_FAILED_MESSAGE);
     expect(JSON.stringify(result)).not.toContain(secret);
+  });
+
+  it("detects provider-specific keys without returning key names or values", () => {
+    const secret = "secret-do-not-return";
+
+    expect(
+      hasProviderKeyConfig("fireworksAi", { FIREWORKS_AI_LLM_API_KEY: secret })
+    ).toBe(true);
+    expect(hasProviderKeyConfig("novita", { NOVITA_LLM_API_KEY: secret })).toBe(
+      true
+    );
+    expect(
+      hasProviderKeyConfig("openrouter", { OPEN_ROUTER_API_KEY: secret })
+    ).toBe(true);
+    expect(
+      hasProviderKeyConfig("openrouter", { OPENROUTER_API_KEY: secret })
+    ).toBe(true);
+    expect(hasProviderKeyConfig("openai", { OPEN_AI_KEY: secret })).toBe(true);
+
+    const selected = firstConfiguredUseApiProvider({
+      workspace: { chatProvider: "fireworksAi" },
+      env: { FIREWORKS_AI_LLM_API_KEY: secret },
+    });
+
+    expect(selected).toEqual({ provider: "fireworksAi", source: "workspace" });
+    expect(JSON.stringify(selected)).not.toContain(secret);
+    expect(JSON.stringify(selected)).not.toContain("FIREWORKS_AI_LLM_API_KEY");
+  });
+
+  it("selects workspace, then system, then SWARMSY provider without mutating workspace", () => {
+    const workspace = {
+      id: 1,
+      chatProvider: "ollama",
+      chatModel: "llama3.1:8b",
+    };
+    const runtime = buildUseApiRuntimeWorkspace({
+      workspace,
+      env: { LLM_PROVIDER: "anthropic", ANTHROPIC_API_KEY: "secret" },
+    });
+
+    expect(runtime.provider).toBe("anthropic");
+    expect(runtime.source).toBe("system");
+    expect(runtime.workspace).toEqual({
+      ...workspace,
+      chatProvider: "anthropic",
+      chatModel: null,
+    });
+    expect(workspace).toEqual({
+      id: 1,
+      chatProvider: "ollama",
+      chatModel: "llama3.1:8b",
+    });
+
+    const swarmsyRuntime = buildUseApiRuntimeWorkspace({
+      workspace,
+      env: { SWARMSY_API_CHAT_PROVIDER: "groq", GROQ_API_KEY: "secret" },
+    });
+    expect(swarmsyRuntime.provider).toBe("groq");
+    expect(swarmsyRuntime.source).toBe("swarmsy");
+  });
+
+  it("returns needs_user_action when no configured online provider has a key", () => {
+    const runtime = buildUseApiRuntimeWorkspace({
+      workspace: { chatProvider: "ollama" },
+      env: { LLM_PROVIDER: "ollama" },
+    });
+
+    expect(runtime.workspace).toBeNull();
+    expect(runtime.status).toEqual({
+      success: false,
+      mode: "api_requested",
+      status: "needs_user_action",
+      message: NO_API_KEY_CONNECTED_MESSAGE,
+    });
+  });
+
+  it("builds safe provider selected and routing failed payloads", () => {
+    const secret = "secret-do-not-return";
+    const selectedPayload = useApiProviderSelectedSsePayload({
+      uuid: "message-3",
+      provider: "openai",
+      source: "workspace",
+    });
+    const failedPayload = useApiRoutingFailedSsePayload({ uuid: "message-4" });
+
+    expect(selectedPayload).toEqual(
+      expect.objectContaining({
+        type: "statusResponse",
+        mode: "api_requested",
+        status: "provider_selected",
+        provider: "openai",
+        close: false,
+      })
+    );
+    expect(failedPayload).toEqual(
+      expect.objectContaining({
+        type: "statusResponse",
+        mode: "api_requested",
+        status: "routing_failed",
+        close: true,
+      })
+    );
+    expect(JSON.stringify(selectedPayload)).not.toContain(secret);
+    expect(JSON.stringify(failedPayload)).not.toContain(secret);
   });
 
   it("builds a user-facing SSE payload without API key values", () => {
@@ -87,7 +196,7 @@ describe("SWARMSY Use API chat guard", () => {
         type: "statusResponse",
         success: false,
         mode: "api_requested",
-        status: "not_wired",
+        status: "routing_failed",
         close: true,
       })
     );

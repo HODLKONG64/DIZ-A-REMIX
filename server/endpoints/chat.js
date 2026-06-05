@@ -15,10 +15,12 @@ const {
 const { writeResponseChunk } = require("../utils/helpers/chat/responses");
 const {
   normalizeUseApiIntent,
-  hasConnectedOnlineProviderConfig,
   isOnlineChatProvider,
   useApiSsePayload,
+  useApiProviderSelectedSsePayload,
+  useApiRoutingFailedSsePayload,
   localOnlyProviderBlockedSsePayload,
+  buildUseApiRuntimeWorkspace,
 } = require("../utils/swarmsy/useApiChat");
 const { WorkspaceThread } = require("../models/workspaceThread");
 const { User } = require("../models/user");
@@ -86,12 +88,72 @@ function chatEndpoints(app) {
         }
 
         if (normalizeUseApiIntent(useApi)) {
+          const apiRuntime = buildUseApiRuntimeWorkspace({ workspace });
+          if (apiRuntime.status) {
+            writeResponseChunk(
+              response,
+              useApiSsePayload({
+                uuid: uuidv4(),
+                hasProviderConfig: false,
+              })
+            );
+            response.end();
+            return;
+          }
+
           writeResponseChunk(
             response,
-            useApiSsePayload({
+            useApiProviderSelectedSsePayload({
               uuid: uuidv4(),
-              hasProviderConfig: hasConnectedOnlineProviderConfig(),
+              provider: apiRuntime.provider,
+              source: apiRuntime.source,
             })
+          );
+
+          let apiStreamFailed = false;
+          try {
+            await streamChatWithWorkspace(
+              response,
+              apiRuntime.workspace,
+              message,
+              apiRuntime.workspace?.chatMode,
+              user,
+              null,
+              attachments
+            );
+          } catch {
+            apiStreamFailed = true;
+            writeResponseChunk(
+              response,
+              useApiRoutingFailedSsePayload({ uuid: uuidv4() })
+            );
+          }
+
+          if (apiStreamFailed) {
+            response.end();
+            return;
+          }
+
+          await Telemetry.sendTelemetry("sent_chat", {
+            multiUserMode: multiUserMode(response),
+            LLMSelection: apiRuntime.provider,
+            Embedder: process.env.EMBEDDING_ENGINE || "inherit",
+            VectorDbSelection: process.env.VECTOR_DB || "lancedb",
+            multiModal: Array.isArray(attachments) && attachments?.length !== 0,
+            TTSSelection: process.env.TTS_PROVIDER || "native",
+            LLMModel: apiRuntime.workspace?.chatModel || getModelTag(),
+            useApi: true,
+          });
+
+          await EventLogs.logEvent(
+            "sent_chat",
+            {
+              workspaceName: workspace?.name,
+              chatModel: apiRuntime.workspace?.chatModel || "System Default",
+              useApi: true,
+              provider: apiRuntime.provider,
+            },
+            user?.id
           );
           response.end();
           return;
@@ -198,12 +260,73 @@ function chatEndpoints(app) {
         }
 
         if (normalizeUseApiIntent(useApi)) {
+          const apiRuntime = buildUseApiRuntimeWorkspace({ workspace });
+          if (apiRuntime.status) {
+            writeResponseChunk(
+              response,
+              useApiSsePayload({
+                uuid: uuidv4(),
+                hasProviderConfig: false,
+              })
+            );
+            response.end();
+            return;
+          }
+
           writeResponseChunk(
             response,
-            useApiSsePayload({
+            useApiProviderSelectedSsePayload({
               uuid: uuidv4(),
-              hasProviderConfig: hasConnectedOnlineProviderConfig(),
+              provider: apiRuntime.provider,
+              source: apiRuntime.source,
             })
+          );
+
+          let apiStreamFailed = false;
+          try {
+            await streamChatWithWorkspace(
+              response,
+              apiRuntime.workspace,
+              message,
+              apiRuntime.workspace?.chatMode,
+              user,
+              thread,
+              attachments
+            );
+          } catch {
+            apiStreamFailed = true;
+            writeResponseChunk(
+              response,
+              useApiRoutingFailedSsePayload({ uuid: uuidv4() })
+            );
+          }
+
+          if (apiStreamFailed) {
+            response.end();
+            return;
+          }
+
+          await Telemetry.sendTelemetry("sent_chat", {
+            multiUserMode: multiUserMode(response),
+            LLMSelection: apiRuntime.provider,
+            Embedder: process.env.EMBEDDING_ENGINE || "inherit",
+            VectorDbSelection: process.env.VECTOR_DB || "lancedb",
+            multiModal: Array.isArray(attachments) && attachments?.length !== 0,
+            TTSSelection: process.env.TTS_PROVIDER || "native",
+            LLMModel: apiRuntime.workspace?.chatModel || getModelTag(),
+            useApi: true,
+          });
+
+          await EventLogs.logEvent(
+            "sent_chat",
+            {
+              workspaceName: workspace?.name,
+              thread: thread.name,
+              chatModel: apiRuntime.workspace?.chatModel || "System Default",
+              useApi: true,
+              provider: apiRuntime.provider,
+            },
+            user?.id
           );
           response.end();
           return;
