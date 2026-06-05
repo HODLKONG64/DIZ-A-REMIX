@@ -119,11 +119,10 @@ function isPrivateIpv4Literal(host) {
 
   const [first, second] = host.split(".").map((octet) => Number(octet));
   return (
-    first === 127 ||
+    host === "127.0.0.1" ||
     first === 10 ||
     (first === 192 && second === 168) ||
-    (first === 172 && second >= 16 && second <= 31) ||
-    host === "0.0.0.0"
+    (first === 172 && second >= 16 && second <= 31)
   );
 }
 

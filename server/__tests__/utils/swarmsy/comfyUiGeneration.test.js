@@ -544,6 +544,8 @@ describe("ComfyUI local generation", () => {
     expect(isLocalComfyUiUrl("http://[::1]:8188")).toBe(true);
     expect(isLocalComfyUiUrl("http://host.docker.internal:8188")).toBe(true);
     expect(isLocalComfyUiUrl("http://comfy.local:8188")).toBe(false);
+    expect(isLocalComfyUiUrl("http://0.0.0.0:8188")).toBe(false);
+    expect(isLocalComfyUiUrl("http://127.0.0.2:8188")).toBe(false);
     expect(isLocalComfyUiUrl("https://10.evil.com")).toBe(false);
     expect(isLocalComfyUiUrl("https://192.168.attacker.tld")).toBe(false);
     expect(isLocalComfyUiUrl("https://172.16.evil.com")).toBe(false);
