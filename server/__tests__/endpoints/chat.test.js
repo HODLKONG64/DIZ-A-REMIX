@@ -61,6 +61,7 @@ jest.mock("../../endpoints/utils", () => ({
 
 const { chatEndpoints } = require("../../endpoints/chat");
 const { Telemetry } = require("../../models/telemetry");
+const { EventLogs } = require("../../models/eventLogs");
 const { User } = require("../../models/user");
 
 function buildResponse({ isMultiUser = false, workspace = null } = {}) {
@@ -70,6 +71,7 @@ function buildResponse({ isMultiUser = false, workspace = null } = {}) {
     json: jest.fn(),
     setHeader: jest.fn(),
     flushHeaders: jest.fn(),
+    write: jest.fn(() => true),
     end: jest.fn(),
   };
   return res;
@@ -153,6 +155,7 @@ describe("chat endpoint runtime gating", () => {
         chatMode: "chat",
       };
       const response = buildResponse({ isMultiUser: false, workspace });
+      const consoleError = jest.spyOn(console, "error").mockImplementation();
 
       mockMultiUserMode.mockReturnValue(false);
       mockUserFromSession.mockResolvedValue({ id: 42 });
@@ -329,6 +332,7 @@ describe("chat endpoint runtime gating", () => {
         chatMode: "chat",
       };
       const response = buildResponse({ isMultiUser: false, workspace });
+      const consoleError = jest.spyOn(console, "error").mockImplementation();
 
       mockMultiUserMode.mockReturnValue(false);
       mockUserFromSession.mockResolvedValue({ id: 42 });
@@ -376,6 +380,202 @@ describe("chat endpoint runtime gating", () => {
       );
       expect(JSON.stringify(mockWriteResponseChunk.mock.calls)).not.toContain(
         "secret-do-not-return"
+      );
+      consoleError.mockRestore();
+    });
+
+    it("treats Use API stream abort chunks as safe routing failures", async () => {
+      const workspace = {
+        id: 1,
+        slug: "test-hive",
+        chatProvider: "azure",
+        chatModel: null,
+        chatMode: "chat",
+      };
+      const response = buildResponse({ isMultiUser: false, workspace });
+      const consoleError = jest.spyOn(console, "error").mockImplementation();
+
+      mockMultiUserMode.mockReturnValue(false);
+      mockUserFromSession.mockResolvedValue({ id: 42 });
+      mockReqBody.mockReturnValue({
+        message: "hello",
+        attachments: [],
+        useApi: true,
+      });
+      mockApplyRuntimeSelectionToWorkspace.mockReturnValue({
+        workspace,
+        runtimeSelection: null,
+      });
+      mockStreamChatWithWorkspace.mockImplementationOnce(async (res) => {
+        res.write(
+          'data: {"type":"abort","error":"Azure endpoint missing secret-do-not-return","close":true}\n\n'
+        );
+      });
+
+      const routeHandlers = {};
+      const app = {
+        post: jest.fn((path, _mw, handler) => {
+          routeHandlers[path] = handler;
+        }),
+      };
+      chatEndpoints(app);
+
+      const oldEnv = process.env;
+      process.env = {
+        AZURE_OPENAI_KEY: "secret-do-not-return",
+        AZURE_OPENAI_MODEL_PREF: "gpt-4o-azure",
+      };
+      try {
+        await routeHandlers["/workspace/:slug/stream-chat"](
+          buildRequest(),
+          response
+        );
+      } finally {
+        process.env = oldEnv;
+      }
+
+      expect(Telemetry.sendTelemetry).not.toHaveBeenCalled();
+      expect(EventLogs.logEvent).not.toHaveBeenCalled();
+      expect(response.write).not.toHaveBeenCalledWith(
+        expect.stringContaining("secret-do-not-return")
+      );
+      expect(mockWriteResponseChunk).toHaveBeenCalledWith(
+        response,
+        expect.objectContaining({
+          type: "statusResponse",
+          mode: "api_requested",
+          status: "routing_failed",
+          textResponse:
+            "Use API provider routing failed. Check your provider settings and try again, or continue with local AI.",
+        })
+      );
+      expect(JSON.stringify(mockWriteResponseChunk.mock.calls)).not.toContain(
+        "Azure endpoint missing"
+      );
+      expect(JSON.stringify(mockWriteResponseChunk.mock.calls)).not.toContain(
+        "secret-do-not-return"
+      );
+      expect(JSON.stringify(consoleError.mock.calls)).not.toContain(
+        "secret-do-not-return"
+      );
+      expect(JSON.stringify(consoleError.mock.calls)).not.toContain(
+        "Azure endpoint missing"
+      );
+      consoleError.mockRestore();
+    });
+
+    it("logs thrown Use API routing failures with sanitized details only", async () => {
+      const workspace = {
+        id: 1,
+        slug: "test-hive",
+        chatProvider: "openai",
+        chatModel: "gpt-4o-mini",
+        chatMode: "chat",
+      };
+      const response = buildResponse({ isMultiUser: false, workspace });
+      const consoleError = jest.spyOn(console, "error").mockImplementation();
+
+      mockMultiUserMode.mockReturnValue(false);
+      mockUserFromSession.mockResolvedValue({ id: 42 });
+      mockReqBody.mockReturnValue({
+        message: "hello",
+        attachments: [],
+        useApi: true,
+      });
+      mockApplyRuntimeSelectionToWorkspace.mockReturnValue({
+        workspace,
+        runtimeSelection: null,
+      });
+      const providerError = new TypeError(
+        "secret-do-not-return provider failed"
+      );
+      mockStreamChatWithWorkspace.mockRejectedValueOnce(providerError);
+
+      const routeHandlers = {};
+      const app = {
+        post: jest.fn((path, _mw, handler) => {
+          routeHandlers[path] = handler;
+        }),
+      };
+      chatEndpoints(app);
+
+      const oldEnv = process.env;
+      process.env = { OPEN_AI_KEY: "secret-do-not-return" };
+      try {
+        await routeHandlers["/workspace/:slug/stream-chat"](
+          buildRequest(),
+          response
+        );
+      } finally {
+        process.env = oldEnv;
+      }
+
+      expect(Telemetry.sendTelemetry).not.toHaveBeenCalled();
+      expect(EventLogs.logEvent).not.toHaveBeenCalled();
+      expect(consoleError).toHaveBeenCalledWith("Use API chat routing failed", {
+        provider: "openai",
+        source: "workspace",
+        name: "TypeError",
+      });
+      expect(JSON.stringify(consoleError.mock.calls)).not.toContain(
+        "secret-do-not-return"
+      );
+      consoleError.mockRestore();
+    });
+
+    it("uses the selected Use API provider model fallback for telemetry", async () => {
+      const workspace = {
+        id: 1,
+        slug: "test-hive",
+        chatProvider: "openai",
+        chatModel: null,
+        chatMode: "chat",
+      };
+      const response = buildResponse({ isMultiUser: false, workspace });
+
+      mockMultiUserMode.mockReturnValue(false);
+      mockUserFromSession.mockResolvedValue({ id: 42 });
+      mockReqBody.mockReturnValue({
+        message: "hello",
+        attachments: [],
+        useApi: true,
+      });
+      mockApplyRuntimeSelectionToWorkspace.mockReturnValue({
+        workspace,
+        runtimeSelection: null,
+      });
+
+      const routeHandlers = {};
+      const app = {
+        post: jest.fn((path, _mw, handler) => {
+          routeHandlers[path] = handler;
+        }),
+      };
+      chatEndpoints(app);
+
+      const oldEnv = process.env;
+      process.env = {
+        LLM_PROVIDER: "ollama",
+        OPEN_AI_KEY: "secret-do-not-return",
+        OPEN_MODEL_PREF: "gpt-4o-mini-selected",
+        OLLAMA_MODEL_PREF: "llama3.1:8b",
+      };
+      try {
+        await routeHandlers["/workspace/:slug/stream-chat"](
+          buildRequest(),
+          response
+        );
+      } finally {
+        process.env = oldEnv;
+      }
+
+      expect(Telemetry.sendTelemetry).toHaveBeenCalledWith(
+        "sent_chat",
+        expect.objectContaining({
+          LLMSelection: "openai",
+          LLMModel: "gpt-4o-mini-selected",
+          useApi: true,
+        })
       );
     });
 
@@ -766,6 +966,125 @@ describe("chat endpoint runtime gating", () => {
         })
       );
       expect(workspace.chatProvider).toBe("ollama");
+    });
+
+    it("treats Use API stream abort chunks as safe routing failures on thread chat", async () => {
+      const workspace = {
+        id: 1,
+        slug: "test-hive",
+        chatProvider: "azure",
+        chatModel: null,
+        chatMode: "chat",
+      };
+      const thread = { id: 10, name: "thread-1" };
+      const response = buildResponse({ isMultiUser: true, workspace });
+      response.locals.thread = thread;
+      const consoleError = jest.spyOn(console, "error").mockImplementation();
+
+      mockMultiUserMode.mockReturnValue(true);
+      mockUserFromSession.mockResolvedValue({ id: 42 });
+      User.canSendChat.mockResolvedValueOnce(true);
+      mockReqBody.mockReturnValue({
+        message: "hello",
+        attachments: [],
+        useApi: true,
+      });
+      mockStreamChatWithWorkspace.mockImplementationOnce(async (res) => {
+        res.write(
+          'data: {"type":"abort","error":"Azure endpoint missing secret-do-not-return","close":true}\n\n'
+        );
+      });
+
+      const routeHandlers = {};
+      const app = {
+        post: jest.fn((path, _mw, handler) => {
+          routeHandlers[path] = handler;
+        }),
+      };
+      chatEndpoints(app);
+
+      const oldEnv = process.env;
+      process.env = { AZURE_OPENAI_KEY: "secret-do-not-return" };
+      try {
+        await routeHandlers["/workspace/:slug/thread/:threadSlug/stream-chat"](
+          buildRequest(),
+          response
+        );
+      } finally {
+        process.env = oldEnv;
+      }
+
+      expect(Telemetry.sendTelemetry).not.toHaveBeenCalled();
+      expect(EventLogs.logEvent).not.toHaveBeenCalled();
+      expect(mockWriteResponseChunk).toHaveBeenCalledWith(
+        response,
+        expect.objectContaining({
+          mode: "api_requested",
+          status: "routing_failed",
+        })
+      );
+      expect(JSON.stringify(mockWriteResponseChunk.mock.calls)).not.toContain(
+        "secret-do-not-return"
+      );
+      expect(JSON.stringify(consoleError.mock.calls)).not.toContain(
+        "Azure endpoint missing"
+      );
+      consoleError.mockRestore();
+    });
+
+    it("uses selected provider model fallback for Use API telemetry on thread chat", async () => {
+      const workspace = {
+        id: 1,
+        slug: "test-hive",
+        chatProvider: "ollama",
+        chatModel: "llama3.1:8b",
+        chatMode: "chat",
+      };
+      const thread = { id: 10, name: "thread-1" };
+      const response = buildResponse({ isMultiUser: true, workspace });
+      response.locals.thread = thread;
+
+      mockMultiUserMode.mockReturnValue(true);
+      mockUserFromSession.mockResolvedValue({ id: 42 });
+      User.canSendChat.mockResolvedValueOnce(true);
+      mockReqBody.mockReturnValue({
+        message: "hello",
+        attachments: [],
+        useApi: true,
+      });
+
+      const routeHandlers = {};
+      const app = {
+        post: jest.fn((path, _mw, handler) => {
+          routeHandlers[path] = handler;
+        }),
+      };
+      chatEndpoints(app);
+
+      const oldEnv = process.env;
+      process.env = {
+        LLM_PROVIDER: "anthropic",
+        ANTHROPIC_API_KEY: "secret",
+        ANTHROPIC_MODEL_PREF: "claude-selected",
+        OLLAMA_MODEL_PREF: "llama3.1:8b",
+      };
+      try {
+        await routeHandlers["/workspace/:slug/thread/:threadSlug/stream-chat"](
+          buildRequest(),
+          response
+        );
+      } finally {
+        process.env = oldEnv;
+      }
+
+      expect(Telemetry.sendTelemetry).toHaveBeenCalledWith(
+        "sent_chat",
+        expect.objectContaining({
+          LLMSelection: "anthropic",
+          LLMModel: "claude-selected",
+          useApi: true,
+        })
+      );
     });
 
     it("returns explicit Use API status on thread chat after quota passes", async () => {

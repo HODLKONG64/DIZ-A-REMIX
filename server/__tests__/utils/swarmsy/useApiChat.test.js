@@ -3,10 +3,12 @@ const {
   API_PROVIDER_ROUTING_FAILED_MESSAGE,
   normalizeUseApiIntent,
   hasConnectedOnlineProviderConfig,
+  canonicalProviderId,
   buildUseApiGuardResponse,
   useApiSsePayload,
   isOnlineChatProvider,
   hasProviderKeyConfig,
+  hasBedrockProviderConfig,
   firstConfiguredUseApiProvider,
   buildUseApiRuntimeWorkspace,
   useApiProviderSelectedSsePayload,
@@ -99,7 +101,7 @@ describe("SWARMSY Use API chat guard", () => {
       env: { FIREWORKS_AI_LLM_API_KEY: secret },
     });
 
-    expect(selected).toEqual({ provider: "fireworksAi", source: "workspace" });
+    expect(selected).toEqual({ provider: "fireworksai", source: "workspace" });
     expect(JSON.stringify(selected)).not.toContain(secret);
     expect(JSON.stringify(selected)).not.toContain("FIREWORKS_AI_LLM_API_KEY");
   });
@@ -134,6 +136,76 @@ describe("SWARMSY Use API chat guard", () => {
     });
     expect(swarmsyRuntime.provider).toBe("groq");
     expect(swarmsyRuntime.source).toBe("swarmsy");
+  });
+
+  it("canonicalizes selected provider IDs for downstream provider switches", () => {
+    expect(canonicalProviderId("OpenAI")).toBe("openai");
+    expect(canonicalProviderId("openAi")).toBe("openai");
+    expect(canonicalProviderId("FIREWORKSAI")).toBe("fireworksai");
+    expect(canonicalProviderId("generic-openai")).toBe("generic-openai");
+    expect(canonicalProviderId("genericOpenAI")).toBe("generic-openai");
+    expect(canonicalProviderId("openRouter")).toBe("openrouter");
+
+    const runtime = buildUseApiRuntimeWorkspace({
+      workspace: { chatProvider: "OpenAI" },
+      env: { OPEN_AI_KEY: "secret" },
+    });
+
+    expect(runtime.provider).toBe("openai");
+    expect(runtime.workspace.chatProvider).toBe("openai");
+  });
+
+  it("detects Bedrock required config and keeps secrets out of selection responses", () => {
+    const bedrockEnv = {
+      LLM_PROVIDER: "bedrock",
+      AWS_BEDROCK_LLM_ACCESS_KEY_ID: "access-key-id",
+      AWS_BEDROCK_LLM_ACCESS_KEY: "secret-access-key",
+      AWS_BEDROCK_LLM_REGION: "us-east-1",
+      AWS_BEDROCK_LLM_MODEL_PREFERENCE: "anthropic.claude-3-haiku",
+    };
+
+    expect(hasBedrockProviderConfig(bedrockEnv)).toBe(true);
+    expect(hasProviderKeyConfig("bedrock", bedrockEnv)).toBe(true);
+
+    const selected = firstConfiguredUseApiProvider({
+      workspace: { chatProvider: "ollama" },
+      env: bedrockEnv,
+    });
+
+    expect(selected).toEqual({ provider: "bedrock", source: "system" });
+    expect(JSON.stringify(selected)).not.toContain("secret-access-key");
+    expect(JSON.stringify(selected)).not.toContain(
+      "AWS_BEDROCK_LLM_ACCESS_KEY"
+    );
+  });
+
+  it("requires Bedrock auth-specific required env config", () => {
+    expect(
+      hasProviderKeyConfig("bedrock", {
+        AWS_BEDROCK_LLM_ACCESS_KEY_ID: "access-key-id",
+        AWS_BEDROCK_LLM_REGION: "us-east-1",
+        AWS_BEDROCK_LLM_MODEL_PREFERENCE: "anthropic.claude-3-haiku",
+      })
+    ).toBe(false);
+
+    expect(
+      hasProviderKeyConfig("bedrock", {
+        AWS_BEDROCK_LLM_CONNECTION_METHOD: "apiKey",
+        AWS_BEDROCK_LLM_API_KEY: "api-key",
+        AWS_BEDROCK_LLM_REGION: "us-east-1",
+        AWS_BEDROCK_LLM_MODEL_PREFERENCE: "anthropic.claude-3-haiku",
+      })
+    ).toBe(true);
+
+    expect(
+      hasProviderKeyConfig("bedrock", {
+        AWS_BEDROCK_LLM_CONNECTION_METHOD: "sessionToken",
+        AWS_BEDROCK_LLM_ACCESS_KEY_ID: "access-key-id",
+        AWS_BEDROCK_LLM_ACCESS_KEY: "secret-access-key",
+        AWS_BEDROCK_LLM_REGION: "us-east-1",
+        AWS_BEDROCK_LLM_MODEL_PREFERENCE: "anthropic.claude-3-haiku",
+      })
+    ).toBe(false);
   });
 
   it("returns needs_user_action when no configured online provider has a key", () => {

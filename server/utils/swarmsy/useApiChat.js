@@ -34,6 +34,10 @@ const ONLINE_PROVIDER_KEY_ENV_VARS = [
   "MINIMAX_API_KEY",
   "COMETAPI_LLM_API_KEY",
   "DEEPSEEK_API_KEY",
+  "AWS_BEDROCK_LLM_ACCESS_KEY_ID",
+  "AWS_BEDROCK_LLM_ACCESS_KEY",
+  "AWS_BEDROCK_LLM_SESSION_TOKEN",
+  "AWS_BEDROCK_LLM_API_KEY",
 ];
 
 const ONLINE_CHAT_PROVIDER_IDS = new Set([
@@ -79,11 +83,59 @@ const LOCAL_CHAT_PROVIDER_IDS = new Set([
   "textgenwebui",
 ]);
 
+const CANONICAL_CHAT_PROVIDER_IDS = {
+  anthropic: "anthropic",
+  apipie: "apipie",
+  azure: "azure",
+  azureopenai: "azure",
+  bedrock: "bedrock",
+  cohere: "cohere",
+  cometapi: "cometapi",
+  deepseek: "deepseek",
+  fireworksai: "fireworksai",
+  foundry: "foundry",
+  gemini: "gemini",
+  genericopenai: "generic-openai",
+  giteeai: "giteeai",
+  groq: "groq",
+  huggingface: "huggingface",
+  lemonade: "lemonade",
+  litellm: "litellm",
+  minimax: "minimax",
+  mistral: "mistral",
+  moonshotai: "moonshotai",
+  novita: "novita",
+  nvidianim: "nvidia-nim",
+  openai: "openai",
+  openrouter: "openrouter",
+  perplexity: "perplexity",
+  ppio: "ppio",
+  sambanova: "sambanova",
+  togetherai: "togetherai",
+  xai: "xai",
+  zai: "zai",
+  dockermodelrunner: "docker-model-runner",
+  koboldcpp: "koboldcpp",
+  lmstudio: "lmstudio",
+  localai: "localai",
+  ollama: "ollama",
+  privatemode: "privatemode",
+  textgenwebui: "textgenwebui",
+};
+
 const PROVIDER_KEY_ENV_VARS = {
   anthropic: ["ANTHROPIC_API_KEY"],
   apipie: ["APIPIE_LLM_API_KEY"],
   azure: ["AZURE_OPENAI_KEY"],
   azureopenai: ["AZURE_OPENAI_KEY"],
+  bedrock: [
+    "AWS_BEDROCK_LLM_ACCESS_KEY_ID",
+    "AWS_BEDROCK_LLM_ACCESS_KEY",
+    "AWS_BEDROCK_LLM_SESSION_TOKEN",
+    "AWS_BEDROCK_LLM_API_KEY",
+    "AWS_BEDROCK_LLM_REGION",
+    "AWS_BEDROCK_LLM_MODEL_PREFERENCE",
+  ],
   cohere: ["COHERE_API_KEY"],
   cometapi: ["COMETAPI_LLM_API_KEY"],
   deepseek: ["DEEPSEEK_API_KEY"],
@@ -116,6 +168,10 @@ function normalizeProviderId(provider = "") {
     .replace(/[^a-z0-9]/g, "");
 }
 
+function canonicalProviderId(provider = "") {
+  return CANONICAL_CHAT_PROVIDER_IDS[normalizeProviderId(provider)] || null;
+}
+
 function normalizeUseApiIntent(useApi) {
   return useApi === true;
 }
@@ -130,10 +186,44 @@ function hasConnectedOnlineProviderConfig(env = process.env) {
 }
 
 function providerKeyEnvVars(provider = "") {
-  return PROVIDER_KEY_ENV_VARS[normalizeProviderId(provider)] || [];
+  const canonicalProvider = canonicalProviderId(provider);
+  return PROVIDER_KEY_ENV_VARS[normalizeProviderId(canonicalProvider)] || [];
+}
+
+function hasBedrockProviderConfig(env = process.env) {
+  const authMethod = env?.AWS_BEDROCK_LLM_CONNECTION_METHOD || "iam";
+  const commonRequired = [
+    "AWS_BEDROCK_LLM_REGION",
+    "AWS_BEDROCK_LLM_MODEL_PREFERENCE",
+  ];
+
+  const credentialRequired = (() => {
+    switch (authMethod) {
+      case "iam_role":
+        return [];
+      case "apiKey":
+        return ["AWS_BEDROCK_LLM_API_KEY"];
+      case "sessionToken":
+        return [
+          "AWS_BEDROCK_LLM_ACCESS_KEY_ID",
+          "AWS_BEDROCK_LLM_ACCESS_KEY",
+          "AWS_BEDROCK_LLM_SESSION_TOKEN",
+        ];
+      case "iam":
+      default:
+        return ["AWS_BEDROCK_LLM_ACCESS_KEY_ID", "AWS_BEDROCK_LLM_ACCESS_KEY"];
+    }
+  })();
+
+  return [...commonRequired, ...credentialRequired].every((key) =>
+    hasEnvValue(env, key)
+  );
 }
 
 function hasProviderKeyConfig(provider = "", env = process.env) {
+  const canonicalProvider = canonicalProviderId(provider);
+  if (canonicalProvider === "bedrock") return hasBedrockProviderConfig(env);
+
   const keys = providerKeyEnvVars(provider);
   if (!keys.length) return false;
   return keys.some((key) => hasEnvValue(env, key));
@@ -153,7 +243,7 @@ function isOnlineChatProvider(provider = "") {
 function configuredOnlineProvider(provider = "", env = process.env) {
   if (!isOnlineChatProvider(provider)) return null;
   if (!hasProviderKeyConfig(provider, env)) return null;
-  return provider;
+  return canonicalProviderId(provider);
 }
 
 function firstConfiguredUseApiProvider({ workspace, env = process.env } = {}) {
@@ -304,10 +394,13 @@ module.exports = {
   ONLINE_CHAT_PROVIDER_IDS,
   LOCAL_CHAT_PROVIDER_IDS,
   PROVIDER_KEY_ENV_VARS,
+  CANONICAL_CHAT_PROVIDER_IDS,
   normalizeProviderId,
+  canonicalProviderId,
   normalizeUseApiIntent,
   hasConnectedOnlineProviderConfig,
   providerKeyEnvVars,
+  hasBedrockProviderConfig,
   hasProviderKeyConfig,
   isLocalChatProvider,
   isOnlineChatProvider,
