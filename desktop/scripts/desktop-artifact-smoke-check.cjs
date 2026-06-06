@@ -74,7 +74,7 @@ const hardcodedSecretValuePatterns = [
   /\bAuthorization\b\s*[:=]\s*["']?Bearer\s+[A-Za-z0-9._~+/-]{32,}={0,2}["']?/i,
   /\bAWS_ACCESS_KEY_ID\b\s*[:=]\s*["']?AKIA[0-9A-Z]{16}["']?/,
   /\bAWS_SECRET_ACCESS_KEY\b\s*[:=]\s*["']?[A-Za-z0-9/+=]{40}["']?/,
-  /\b(?:OPENAI|ANTHROPIC|GEMINI|GROQ|AZURE|PINECONE|QDRANT|MILVUS|WEAVIATE|POSTHOG)[A-Z0-9_]*(?:API[_-]?KEY|TOKEN|SECRET|CREDENTIAL)[A-Z0-9_]*\b\s*[:=]\s*["']?(?:sk-(?!my|123|example|xxxx|cp-\.\.\.)(?:proj-)?[A-Za-z0-9_-]{12,}|[A-Za-z0-9._~+/-]{32,}={0,2})["']?/i,
+  /\b(?:OPENAI|ANTHROPIC|GEMINI|GROQ|AZURE|PINECONE|QDRANT|MILVUS|WEAVIATE|POSTHOG)[A-Z0-9_]*(?:API[_-]?KEY|TOKEN|SECRET|CREDENTIAL)[A-Z0-9_]*\b\s*[:=]\s*(?:["']?sk-(?!my|123|example|xxxx|cp-\.\.\.)(?:proj-)?[A-Za-z0-9_-]{12,}["']?|["'][A-Za-z0-9._~+/-]{32,}={0,2}["'])/i,
   /\b(?:apiKey|api[_-]?key|authToken|auth[_-]?token|accessToken|access[_-]?token|refreshToken|refresh[_-]?token|sessionToken|session[_-]?token|token|secret|credential)\b\s*[:=]\s*["'](?:sk-(?!my|123|example|xxxx|cp-\.\.\.)(?:proj-)?[A-Za-z0-9_-]{12,}|gh[pousr]_[A-Za-z0-9_]{20,}|[A-Za-z0-9._~+/-]{40,}={0,2})["']/i,
 ];
 

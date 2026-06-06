@@ -98,6 +98,30 @@ describe("desktop artifact smoke validation", () => {
 
 
 
+
+  it("allows systemSettings-style source field names without secret values", () => {
+    const fixture = createArtifactFixture();
+    try {
+      writeFile(
+        path.join(fixture.packageRoot, "resources/app/server/models/systemSettings.js"),
+        `module.exports = {
+          currentSettings() {
+            return {
+              AzureOpenAiTokenLimit: process.env.AZURE_OPENAI_TOKEN_LIMIT,
+              VoyageAiApiKey: !!process.env.VOYAGEAI_API_KEY,
+              JWTSecret: !!process.env.JWT_SECRET,
+              hub_api_key: (apiKey) => String(apiKey || ""),
+            };
+          },
+        };`
+      );
+
+      expect(() => validateArtifact(fixture)).not.toThrow();
+    } finally {
+      fs.rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+
   it("allows harmless dependency type filenames under node_modules", () => {
     const fixture = createArtifactFixture();
     try {

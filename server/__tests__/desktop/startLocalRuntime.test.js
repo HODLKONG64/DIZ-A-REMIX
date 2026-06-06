@@ -58,6 +58,49 @@ describe("packaged desktop local runtime entrypoint", () => {
     );
   });
 
+  it("runs PowerShell Prisma shims through powershell.exe", () => {
+    const { run } = require(runtimePath);
+    const spawnSyncImpl = jest.fn(() => ({ status: 0 }));
+
+    const prismaPs1 = path.win32.join("C:\\app", "node_modules", ".bin", "prisma.ps1");
+    run(prismaPs1, ["migrate", "deploy"], {
+      platform: "win32",
+      spawnSyncImpl,
+      cwd: "C:\\app",
+    });
+
+    expect(spawnSyncImpl).toHaveBeenCalledWith(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        prismaPs1,
+        "migrate",
+        "deploy",
+      ],
+      expect.objectContaining({ shell: false, cwd: "C:\\app" })
+    );
+  });
+
+  it("runs Windows cmd Prisma shims through cmd shell", () => {
+    const { run } = require(runtimePath);
+    const spawnSyncImpl = jest.fn(() => ({ status: 0 }));
+
+    const prismaCmd = path.win32.join("C:\\app", "node_modules", ".bin", "prisma.cmd");
+    run(prismaCmd, ["db", "seed"], {
+      platform: "win32",
+      spawnSyncImpl,
+    });
+
+    expect(spawnSyncImpl).toHaveBeenCalledWith(
+      prismaCmd,
+      ["db", "seed"],
+      expect.objectContaining({ shell: true })
+    );
+  });
+
   it("initializes local storage and preserves secrets outside app code", () => {
     const { initializeLocalRuntime } = require(runtimePath);
     const serverRoot = fs.mkdtempSync(path.join(os.tmpdir(), "swarmsy-server-"));
@@ -72,10 +115,16 @@ describe("packaged desktop local runtime entrypoint", () => {
     const firstJwt = fs.readFileSync(jwtPath, "utf8");
 
     expect(env.STORAGE_DIR).toBe(runtimeRoot);
+    expect(env.DATABASE_URL).toBe(
+      `file:${path.join(runtimeRoot, "anythingllm.db").replace(/\\/g, "/")}`
+    );
     expect(fs.existsSync(path.join(runtimeRoot, "documents"))).toBe(true);
     expect(fs.existsSync(path.join(runtimeRoot, "vector-cache"))).toBe(true);
     expect(fs.existsSync(path.join(runtimeRoot, "assets"))).toBe(true);
     expect(fs.existsSync(path.join(serverRoot, "storage"))).toBe(false);
+    expect(env.DATABASE_URL.includes(serverRoot.replace(/\\/g, "/"))).toBe(
+      false
+    );
 
     initializeLocalRuntime(serverRoot, { env });
     expect(fs.readFileSync(jwtPath, "utf8")).toBe(firstJwt);

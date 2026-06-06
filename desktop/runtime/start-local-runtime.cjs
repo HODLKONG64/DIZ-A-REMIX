@@ -16,16 +16,31 @@ function ensureLocalSecret(file) {
 }
 
 function run(command, args, options = {}) {
-  const result = spawnSync(command, args, {
+  const {
+    platform = process.platform,
+    spawnSyncImpl = spawnSync,
+    ...spawnOptions
+  } = options;
+  const isPowerShellScript =
+    platform === "win32" &&
+    String(command || "")
+      .toLowerCase()
+      .endsWith(".ps1");
+  const actualCommand = isPowerShellScript ? "powershell.exe" : command;
+  const actualArgs = isPowerShellScript
+    ? ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", command, ...args]
+    : args;
+
+  const result = spawnSyncImpl(actualCommand, actualArgs, {
     stdio: "inherit",
-    shell: process.platform === "win32",
+    shell: platform === "win32" && !isPowerShellScript,
     windowsHide: true,
-    ...options,
+    ...spawnOptions,
   });
   if (result.error) throw result.error;
   if (result.status !== 0) {
     throw new Error(
-      `${command} ${args.join(" ")} exited with ${result.status}`
+      `${actualCommand} ${actualArgs.join(" ")} exited with ${result.status}`
     );
   }
 }
@@ -59,6 +74,10 @@ function resolvePrismaBin(serverRoot, { platform = process.platform } = {}) {
   return "";
 }
 
+function sqliteFileUrl(filePath) {
+  return `file:${String(filePath || "").replace(/\\/g, "/")}`;
+}
+
 function initializeLocalRuntime(serverRoot, { env = process.env } = {}) {
   const storageRoot = resolveRuntimeDataRoot(serverRoot, { env });
   ensureDir(storageRoot);
@@ -69,6 +88,7 @@ function initializeLocalRuntime(serverRoot, { env = process.env } = {}) {
   env.NODE_ENV = "production";
   env.SERVER_PORT = env.SERVER_PORT || "3000";
   env.STORAGE_DIR = storageRoot;
+  env.DATABASE_URL = sqliteFileUrl(path.join(storageRoot, "anythingllm.db"));
   env.JWT_SECRET =
     env.JWT_SECRET ||
     ensureLocalSecret(path.join(storageRoot, "local-runtime.jwt"));
@@ -116,4 +136,5 @@ module.exports = {
   resolvePrismaBin,
   resolveRuntimeDataRoot,
   run,
+  sqliteFileUrl,
 };

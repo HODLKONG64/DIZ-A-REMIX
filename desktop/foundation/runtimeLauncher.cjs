@@ -314,7 +314,8 @@ async function launchDesktopLocalRuntime({
   const args = packagedRuntimeEntry
     ? [packagedRuntimeEntry]
     : ["run", scriptResult.scriptName];
-  const spawnEnv = packagedRuntimeEntry
+  const isPackagedRuntimeLaunch = Boolean(packagedRuntimeEntry);
+  const spawnEnv = isPackagedRuntimeLaunch
     ? {
         ...env,
         ELECTRON_RUN_AS_NODE: "1",
@@ -328,7 +329,7 @@ async function launchDesktopLocalRuntime({
     child = spawnImpl(command, args, {
       cwd: rootDir,
       env: spawnEnv,
-      shell: platform === "win32",
+      shell: isPackagedRuntimeLaunch ? false : platform === "win32",
       detached: platform !== "win32",
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,

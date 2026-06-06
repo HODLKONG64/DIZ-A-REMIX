@@ -403,7 +403,7 @@ describe("desktop runtime launcher foundation", () => {
         ),
       ],
       expect.objectContaining({
-        shell: true,
+        shell: false,
         env: expect.objectContaining({ ELECTRON_RUN_AS_NODE: "1" }),
       })
     );
