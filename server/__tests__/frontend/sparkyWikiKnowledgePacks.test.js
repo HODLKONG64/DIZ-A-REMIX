@@ -103,4 +103,36 @@ describe("SPARKY Wiki knowledge pack frontend flow", () => {
       "Choose a seed pack before starting intake"
     );
   });
+
+  it("surfaces partial status for direct SPARKY Wiki seed-pack imports", () => {
+    const onboardingSource = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(onboardingSource).toContain('const status = result?.status || "added"');
+    expect(onboardingSource).toContain('status === "partial" ? "warning" : "success"');
+    expect(onboardingSource).toContain(
+      "SPARKY Identity Empire knowledge was partially added. Review failed files."
+    );
+  });
+
+  it("surfaces partial status from required-doc ingestion seed-pack imports", () => {
+    const onboardingSource = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(onboardingSource).toContain(
+      'const seedPackStatus = result.seedPackImport.status || "added"'
+    );
+    expect(onboardingSource).toContain("setSparkyWikiPackStatus(seedPackStatus)");
+    expect(onboardingSource).toContain('if (seedPackStatus === "partial") {');
+  });
 });

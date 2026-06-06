@@ -22,6 +22,7 @@ jest.mock("../../utils/swarmsy/localUserOllama", () => ({
 jest.mock("../../models/workspace", () => ({
   Workspace: {
     get: jest.fn(),
+    getWithUser: jest.fn(),
   },
 }));
 
@@ -46,6 +47,8 @@ jest.mock("../../utils/middleware/validatedRequest", () => ({
 jest.mock("../../utils/middleware/multiUserProtected", () => ({
   ROLES: {
     all: "<all>",
+    admin: "admin",
+    manager: "manager",
   },
   flexUserRoleValid: jest.fn(() => mockRoleMiddleware),
   isSingleUserMode: jest.fn(),
@@ -731,14 +734,14 @@ describe("swarmsy endpoints", () => {
     });
   });
 
-  it("imports a seed pack into the requested current workspace", async () => {
+  it("imports a seed pack into the requested current workspace for non-admin users", async () => {
     const request = {
       headers: {},
       params: { packId: "identity-empire" },
       body: { workspaceSlug: "current-hive" },
     };
     const response = responseMock();
-    const user = { id: 12 };
+    const user = { id: 12, role: "default" };
     const workspace = { id: 9, slug: "current-hive", name: "Current HIVE" };
     const result = {
       success: true,
@@ -748,12 +751,15 @@ describe("swarmsy endpoints", () => {
     };
 
     userFromSession.mockResolvedValue(user);
-    Workspace.get.mockResolvedValue(workspace);
+    Workspace.getWithUser.mockResolvedValue(workspace);
     importSparkyWikiSeedPack.mockResolvedValue(result);
 
     await swarmsySparkyWikiSeedPackImport(request, response);
 
-    expect(Workspace.get).toHaveBeenCalledWith({ slug: "current-hive" });
+    expect(Workspace.getWithUser).toHaveBeenCalledWith(user, {
+      slug: "current-hive",
+    });
+    expect(Workspace.get).not.toHaveBeenCalled();
     expect(importSparkyWikiSeedPack).toHaveBeenCalledWith({
       workspace,
       packId: "identity-empire",
@@ -761,5 +767,77 @@ describe("swarmsy endpoints", () => {
     });
     expect(response.status).toHaveBeenCalledWith(200);
     expect(response.json).toHaveBeenCalledWith(result);
+  });
+
+  it("rejects non-admin import when workspace slug is not user-accessible", async () => {
+    const request = {
+      headers: {},
+      params: { packId: "identity-empire" },
+      body: { workspaceSlug: "other-users-hive" },
+    };
+    const response = responseMock();
+    const user = { id: 12, role: "default" };
+
+    userFromSession.mockResolvedValue(user);
+    Workspace.getWithUser.mockResolvedValue(null);
+
+    await swarmsySparkyWikiSeedPackImport(request, response);
+
+    expect(Workspace.getWithUser).toHaveBeenCalledWith(user, {
+      slug: "other-users-hive",
+    });
+    expect(importSparkyWikiSeedPack).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(404);
+    expect(response.json).toHaveBeenCalledWith({
+      success: false,
+      workspace: { exists: false },
+      message: "No current workspace exists for SPARKY Wiki seed pack import.",
+    });
+  });
+
+  it("allows privileged users to resolve workspace slug directly", async () => {
+    const request = {
+      headers: {},
+      params: { packId: "identity-empire" },
+      body: { workspaceSlug: "target-hive" },
+    };
+    const response = responseMock();
+    const user = { id: 2, role: "manager" };
+    const workspace = { id: 3, slug: "target-hive" };
+    const result = { success: true, status: "already_added" };
+
+    userFromSession.mockResolvedValue(user);
+    Workspace.get.mockResolvedValue(workspace);
+    importSparkyWikiSeedPack.mockResolvedValue(result);
+
+    await swarmsySparkyWikiSeedPackImport(request, response);
+
+    expect(Workspace.get).toHaveBeenCalledWith({ slug: "target-hive" });
+    expect(Workspace.getWithUser).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(200);
+  });
+
+  it("fails safely when requested workspace slug does not exist for privileged users", async () => {
+    const request = {
+      headers: {},
+      params: { packId: "identity-empire" },
+      body: { workspaceSlug: "unknown-hive" },
+    };
+    const response = responseMock();
+    const user = { id: 1, role: "admin" };
+
+    userFromSession.mockResolvedValue(user);
+    Workspace.get.mockResolvedValue(null);
+
+    await swarmsySparkyWikiSeedPackImport(request, response);
+
+    expect(Workspace.get).toHaveBeenCalledWith({ slug: "unknown-hive" });
+    expect(importSparkyWikiSeedPack).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(404);
+    expect(response.json).toHaveBeenCalledWith({
+      success: false,
+      workspace: { exists: false },
+      message: "No current workspace exists for SPARKY Wiki seed pack import.",
+    });
   });
 });

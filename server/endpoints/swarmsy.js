@@ -202,7 +202,12 @@ async function resolveSeedPackWorkspace(request, response) {
   const user = await userFromSession(request, response);
   const { workspaceSlug = null } = reqBody(request);
   if (workspaceSlug) {
-    const workspace = await Workspace.get({ slug: String(workspaceSlug) });
+    const slug = String(workspaceSlug).trim();
+    const isPrivileged =
+      !user || [ROLES.admin, ROLES.manager].includes(user?.role);
+    const workspace = isPrivileged
+      ? await Workspace.get({ slug })
+      : await Workspace.getWithUser(user, { slug });
     return { user, workspace };
   }
   const workspace = await findUserSwarmsyHiveWorkspace(user);

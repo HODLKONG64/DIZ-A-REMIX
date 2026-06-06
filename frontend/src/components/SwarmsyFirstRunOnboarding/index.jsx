@@ -883,17 +883,20 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
 
     setLastActionResult({ kind: "sparky-wiki-import", ...result });
     if (result?.success) {
-      const status =
-        result?.status === "already_added" ? "already_added" : "added";
+      const status = result?.status || "added";
       setSparkyWikiPackStatus(status);
       setSparkyWikiPackMessage(
         result?.message ||
-          "SPARKY Identity Empire knowledge added to this workspace."
+          (status === "partial"
+            ? "SPARKY Identity Empire knowledge was partially added. Review failed files."
+            : "SPARKY Identity Empire knowledge added to this workspace.")
       );
       showToast(
         result?.message ||
-          "SPARKY Identity Empire knowledge added to this workspace.",
-        "success"
+          (status === "partial"
+            ? "SPARKY Identity Empire knowledge was partially added."
+            : "SPARKY Identity Empire knowledge added to this workspace."),
+        status === "partial" ? "warning" : "success"
       );
     } else {
       setSparkyWikiPackStatus("failed");
@@ -929,19 +932,35 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     const result = await SwarmsyOnboarding.ingestRequiredDocs();
     setLastActionResult({ kind: "ingest-docs", ...result });
     if (result?.success && !result?.partial) {
+      let ingestionMessage =
+        result?.message || "SWARMSY required docs ingested successfully.";
+      let ingestionToastType = "success";
       if (result?.seedPackImport?.success) {
-        setSparkyWikiPackStatus(
-          result.seedPackImport.status === "already_added"
-            ? "already_added"
-            : "added"
-        );
-        setSparkyWikiPackMessage(result.seedPackImport.message);
+        const seedPackStatus = result.seedPackImport.status || "added";
+        setSparkyWikiPackStatus(seedPackStatus);
+        const seedPackMessage =
+          result.seedPackImport.message ||
+          (seedPackStatus === "partial"
+            ? "SPARKY Identity Empire knowledge was partially added. Review failed files."
+            : "SPARKY Identity Empire knowledge added to this workspace.");
+        setSparkyWikiPackMessage(seedPackMessage);
+        if (seedPackStatus === "partial") {
+          ingestionMessage = seedPackMessage;
+          ingestionToastType = "warning";
+        }
       }
-      showToast(
-        result?.message || "SWARMSY required docs ingested successfully.",
-        "success"
-      );
+      showToast(ingestionMessage, ingestionToastType);
     } else if (result?.success && result?.partial) {
+      if (result?.seedPackImport?.success) {
+        const seedPackStatus = result.seedPackImport.status || "added";
+        setSparkyWikiPackStatus(seedPackStatus);
+        setSparkyWikiPackMessage(
+          result.seedPackImport.message ||
+            (seedPackStatus === "partial"
+              ? "SPARKY Identity Empire knowledge was partially added. Review failed files."
+              : "SPARKY Identity Empire knowledge added to this workspace.")
+        );
+      }
       showToast("Some doctrine docs could not be loaded.", "warning");
     } else {
       showToast(
