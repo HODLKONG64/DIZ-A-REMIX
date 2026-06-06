@@ -95,8 +95,12 @@ describe("desktop release integrity manifest", () => {
         requiredFiles: expect.arrayContaining([
           "resources/app/desktop/runtime/start-local-runtime.cjs",
           "resources/app/server/index.js",
-          "resources/app/server/node_modules/.bin/prisma",
           "resources/app/server/public/_index.html",
+        ]),
+        prismaShimCandidates: expect.arrayContaining([
+          "resources/app/server/node_modules/.bin/prisma.cmd",
+          "resources/app/server/node_modules/.bin/prisma.ps1",
+          "resources/app/server/node_modules/.bin/prisma",
         ]),
       })
     );

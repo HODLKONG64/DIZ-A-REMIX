@@ -61,9 +61,12 @@ function renderFailurePage(failure) {
   const manualStartCommand = String(
     failure?.manualStartCommand || "yarn desktop:runtime:dev"
   );
-  const retryUrl = escapeHtml(
-    process.env.SWARMSY_DESKTOP_START_URL || "http://127.0.0.1:3000"
-  );
+  const configuredRetryTarget =
+    process.env.SWARMSY_DESKTOP_START_URL || "http://127.0.0.1:3000";
+  const safeRetryTarget = isTrustedDesktopOrigin(configuredRetryTarget)
+    ? configuredRetryTarget
+    : "http://127.0.0.1:3000";
+  const retryUrl = escapeHtml(safeRetryTarget);
   const autoStartHint =
     failure?.reason === "runtime_auto_start_disabled"
       ? `<p>Desktop dev mode did not auto-start the local runtime because <code>SWARMSY_DESKTOP_AUTO_START_RUNTIME=true</code> was not set.</p>`

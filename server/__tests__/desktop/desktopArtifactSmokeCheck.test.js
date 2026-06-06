@@ -96,6 +96,34 @@ describe("desktop artifact smoke validation", () => {
     }
   });
 
+
+
+  it("allows harmless dependency type filenames under node_modules", () => {
+    const fixture = createArtifactFixture();
+    try {
+      writeFile(
+        path.join(
+          fixture.packageRoot,
+          "resources/app/server/node_modules/jose/dist/types/key/generate_secret.d.ts"
+        ),
+        "export type GenerateSecretOptions = {};"
+      );
+
+      expect(() => validateArtifact(fixture)).not.toThrow();
+    } finally {
+      fs.rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+
+  it("still fails for secret-like filenames outside dependency internals", () => {
+    expectSmokeFailure((packageRoot) => {
+      writeFile(
+        path.join(packageRoot, "resources/app/desktop/runtime/api-secret.json"),
+        "{}"
+      );
+    }, /Forbidden secret\/local-data-like file included/);
+  });
+
   it("fails when an env file is included", () => {
     expectSmokeFailure((packageRoot) => {
       writeFile(

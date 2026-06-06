@@ -21,13 +21,20 @@ const requiredPaths = [
   "resources/app/server/package.json",
   "resources/app/server/prisma/schema.prisma",
   "resources/app/server/prisma/migrations/migration_lock.toml",
-  "resources/app/server/node_modules/.bin/prisma",
   "resources/app/server/node_modules/@prisma/client/package.json",
   "resources/app/server/utils/swarmsy/localUserStorageContract.js",
   "resources/app/desktop/foundation/localBackupStore.cjs",
   "resources/app/desktop/foundation/localSettingsStore.cjs",
   "resources/app/frontend/dist/_index.html",
   "resources/app/server/public/_index.html",
+];
+
+const requiredAnyPaths = [
+  [
+    "resources/app/server/node_modules/.bin/prisma.cmd",
+    "resources/app/server/node_modules/.bin/prisma.ps1",
+    "resources/app/server/node_modules/.bin/prisma",
+  ],
 ];
 
 const forbiddenPathFragments = [
@@ -42,10 +49,13 @@ const forbiddenPathFragments = [
   "comfyui/models",
 ];
 
-const forbiddenBasenamePatterns = [
-  /^\.env(?:\..*)?$/i,
-  /\.local$/i,
+const forbiddenEnvBasenamePatterns = [/^\.env(?:\..*)?$/i, /\.local$/i];
+const forbiddenSecretBasenamePatterns = [
   /(?:^|[-_.])(secret|credential|api[-_]?key|access[-_]?token|refresh[-_]?token)(?:[-_.]|$)/i,
+];
+const forbiddenBasenamePatterns = [
+  ...forbiddenEnvBasenamePatterns,
+  ...forbiddenSecretBasenamePatterns,
 ];
 
 const textExtensions = new Set([
@@ -83,6 +93,20 @@ function assertExists(packageRoot, relativePath) {
   }
 }
 
+function assertAnyExists(packageRoot, relativePaths) {
+  if (
+    !relativePaths.some((relativePath) =>
+      fs.existsSync(path.join(packageRoot, relativePath))
+    )
+  ) {
+    fail(
+      `Missing one of expected desktop artifact paths: ${relativePaths.join(
+        ", "
+      )}`
+    );
+  }
+}
+
 function walk(directory, files = []) {
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const absolute = path.join(directory, entry.name);
@@ -95,9 +119,37 @@ function walk(directory, files = []) {
   return files;
 }
 
+function isNodeModulesSourceFile(relativePortable) {
+  if (!relativePortable.includes("/node_modules/")) return false;
+  return /\.(?:c|m)?(?:d\.)?ts$|\.(?:c|m)?js$|\.map$/i.test(
+    relativePortable
+  );
+}
+
+function hasForbiddenBasename(file, packageRoot) {
+  const basename = path.basename(file);
+  const relativePortable = path
+    .relative(packageRoot, file)
+    .replace(/\\/g, "/")
+    .toLowerCase();
+
+  if (forbiddenEnvBasenamePatterns.some((pattern) => pattern.test(basename))) {
+    return true;
+  }
+
+  if (isNodeModulesSourceFile(relativePortable)) return false;
+
+  return forbiddenSecretBasenamePatterns.some((pattern) =>
+    pattern.test(basename)
+  );
+}
+
 function assertNoForbiddenPaths(files, packageRoot) {
   for (const file of files) {
-    const relativePortable = path.relative(packageRoot, file).replace(/\\/g, "/").toLowerCase();
+    const relativePortable = path
+      .relative(packageRoot, file)
+      .replace(/\\/g, "/")
+      .toLowerCase();
     for (const fragment of forbiddenPathFragments) {
       if (relativePortable.includes(fragment)) {
         fail(
@@ -109,8 +161,7 @@ function assertNoForbiddenPaths(files, packageRoot) {
       }
     }
 
-    const basename = path.basename(file);
-    if (forbiddenBasenamePatterns.some((pattern) => pattern.test(basename))) {
+    if (hasForbiddenBasename(file, packageRoot)) {
       fail(
         `Forbidden secret/local-data-like file included: ${displayPath(
           packageRoot,
@@ -153,6 +204,9 @@ function validateArtifact({
     fail(`Artifact archive is missing: ${archivePath}`);
   }
   for (const relativePath of requiredPaths) assertExists(packageRoot, relativePath);
+  for (const relativePaths of requiredAnyPaths) {
+    assertAnyExists(packageRoot, relativePaths);
+  }
 
   const files = walk(packageRoot);
   if (
@@ -183,7 +237,12 @@ if (require.main === module) main();
 module.exports = {
   hardcodedSecretValuePatterns,
   forbiddenBasenamePatterns,
+  forbiddenEnvBasenamePatterns,
   forbiddenPathFragments,
+  forbiddenSecretBasenamePatterns,
+  hasForbiddenBasename,
+  isNodeModulesSourceFile,
+  requiredAnyPaths,
   requiredPaths,
   validateArtifact,
 };

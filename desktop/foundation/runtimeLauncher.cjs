@@ -55,6 +55,39 @@ function resolveManagedRuntimeRoot({ env = process.env } = {}) {
   return path.join(repoRoot, ".swarmsy-desktop", "managed-local-runtime");
 }
 
+function assertSafeManagedRuntimePath(managedRoot, managedAppRoot) {
+  const resolvedManagedRoot = path.resolve(String(managedRoot || "").trim());
+  const resolvedManagedAppRoot = path.resolve(
+    String(managedAppRoot || "").trim()
+  );
+  const managedRootFsRoot = path.parse(resolvedManagedRoot).root;
+
+  if (
+    !String(managedRoot || "").trim() ||
+    resolvedManagedRoot === managedRootFsRoot ||
+    resolvedManagedRoot.length < managedRootFsRoot.length + 8
+  ) {
+    throw new Error(`Refusing to clear managed runtime root: ${managedRoot}`);
+  }
+
+  if (resolvedManagedAppRoot !== path.join(resolvedManagedRoot, "app")) {
+    throw new Error(
+      `Refusing to clear unexpected managed app root: ${managedAppRoot}`
+    );
+  }
+
+  if (resolvedManagedAppRoot === resolvedManagedRoot) {
+    throw new Error(
+      `Refusing to clear managed app root equal to managed root: ${managedAppRoot}`
+    );
+  }
+
+  return {
+    managedRoot: resolvedManagedRoot,
+    managedAppRoot: resolvedManagedAppRoot,
+  };
+}
+
 function readPackageVersion({ rootDir = repoRoot } = {}) {
   try {
     const pkg = JSON.parse(
@@ -104,6 +137,7 @@ function preparePackagedRuntimeRoot({
   const version = readPackageVersion({ rootDir });
   const managedRoot = resolveManagedRuntimeRoot({ env });
   const managedAppRoot = path.join(managedRoot, "app");
+  assertSafeManagedRuntimePath(managedRoot, managedAppRoot);
   const manifestPath = path.join(managedRoot, "runtime-manifest.json");
   let currentManifest = null;
   try {
@@ -254,6 +288,16 @@ async function launchDesktopLocalRuntime({
   const packagedRuntimeEntry = packagedRuntime
     ? preparePackagedRuntimeRoot({ rootDir, env })
     : "";
+
+  if (packagedRuntime && !packagedRuntimeEntry) {
+    return {
+      ok: false,
+      reason: "packaged_runtime_missing",
+      message:
+        "Packaged SWARMSY runtime entrypoint is missing from the desktop artifact.",
+    };
+  }
+
   const scriptResult = packagedRuntimeEntry
     ? { ok: true, scriptName: "desktop:runtime:packaged" }
     : resolveRuntimeLaunchScript({
@@ -271,7 +315,13 @@ async function launchDesktopLocalRuntime({
     ? [packagedRuntimeEntry]
     : ["run", scriptResult.scriptName];
   const spawnEnv = packagedRuntimeEntry
-    ? { ...env, ELECTRON_RUN_AS_NODE: "1" }
+    ? {
+        ...env,
+        ELECTRON_RUN_AS_NODE: "1",
+        SWARMSY_DESKTOP_MANAGED_RUNTIME_DIR:
+          env.SWARMSY_DESKTOP_MANAGED_RUNTIME_DIR ||
+          resolveManagedRuntimeRoot({ env }),
+      }
     : env;
   let child;
   try {
@@ -543,6 +593,7 @@ module.exports = {
   isDesktopRuntimeAutoStartEnabled,
   resolvePackagedRuntimeEntry,
   resolveManagedRuntimeRoot,
+  assertSafeManagedRuntimePath,
   preparePackagedRuntimeRoot,
   shouldExcludeRuntimeCopy,
   shouldAutoStartDesktopRuntime,
