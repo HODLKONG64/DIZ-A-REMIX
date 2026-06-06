@@ -317,6 +317,10 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   const [selectedLocalOllamaModel, setSelectedLocalOllamaModel] = useState("");
   const [localOllamaSelectionMessage, setLocalOllamaSelectionMessage] =
     useState(null);
+  const [sparkyWikiPackStatus, setSparkyWikiPackStatus] = useState("not_added");
+  const [sparkyWikiPackMessage, setSparkyWikiPackMessage] = useState(
+    "SPARKY uses local wiki packs automatically when they fit your task. You can open the Wiki to read the deeper playbooks."
+  );
   const localOllamaRefreshControllerRef = useRef(null);
   const localImageEngineRefreshControllerRef = useRef(null);
   const hasConfirmedLocalUserModeRef = useRef(false);
@@ -860,6 +864,52 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     }
   }
 
+  async function importIdentityEmpireSeedPack() {
+    const workspaceSlug = activeStatus?.workspace?.slug || null;
+    if (!workspaceSlug) {
+      showToast(
+        "Create or open a workspace before adding SPARKY Wiki knowledge.",
+        "warning"
+      );
+      return;
+    }
+
+    setBusyAction("sparky-wiki-import");
+    setSparkyWikiPackStatus("importing");
+    const result = await SwarmsyOnboarding.importSparkyWikiSeedPack(
+      "identity-empire",
+      workspaceSlug
+    );
+
+    setLastActionResult({ kind: "sparky-wiki-import", ...result });
+    if (result?.success) {
+      const status =
+        result?.status === "already_added" ? "already_added" : "added";
+      setSparkyWikiPackStatus(status);
+      setSparkyWikiPackMessage(
+        result?.message ||
+          "SPARKY Identity Empire knowledge added to this workspace."
+      );
+      showToast(
+        result?.message ||
+          "SPARKY Identity Empire knowledge added to this workspace.",
+        "success"
+      );
+    } else {
+      setSparkyWikiPackStatus("failed");
+      setSparkyWikiPackMessage(
+        result?.message || "Failed to add SPARKY Identity Empire knowledge."
+      );
+      showToast(
+        result?.message || "Failed to add SPARKY Identity Empire knowledge.",
+        "error"
+      );
+    }
+
+    await loadStatus();
+    setBusyAction(null);
+  }
+
   async function createHive() {
     setBusyAction("create-hive");
     setLastActionResult(null);
@@ -879,6 +929,14 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     const result = await SwarmsyOnboarding.ingestRequiredDocs();
     setLastActionResult({ kind: "ingest-docs", ...result });
     if (result?.success && !result?.partial) {
+      if (result?.seedPackImport?.success) {
+        setSparkyWikiPackStatus(
+          result.seedPackImport.status === "already_added"
+            ? "already_added"
+            : "added"
+        );
+        setSparkyWikiPackMessage(result.seedPackImport.message);
+      }
       showToast(
         result?.message || "SWARMSY required docs ingested successfully.",
         "success"
@@ -1285,6 +1343,10 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
               },
               exportBackupToFile,
               importBackupFromText,
+              sparkyWikiPackStatus,
+              sparkyWikiPackMessage,
+              importIdentityEmpireSeedPack,
+              isImportingSparkyWikiPack: busyAction === "sparky-wiki-import",
             }}
           />
         )}
