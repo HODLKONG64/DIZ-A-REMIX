@@ -99,24 +99,39 @@ function readPackageVersion({ rootDir = repoRoot } = {}) {
   }
 }
 
+function toPortableLower(filePath) {
+  return String(filePath || "").replace(/\\/g, "/").toLowerCase();
+}
+
+function portablePathIncludes(portablePath, fragment) {
+  return (
+    portablePath.includes(`${fragment}/`) || portablePath.endsWith(fragment)
+  );
+}
+
+function isUnderNodeModules(source) {
+  return portablePathIncludes(toPortableLower(source), "/node_modules");
+}
+
 function shouldExcludeRuntimeCopy(source) {
   const base = path.basename(source).toLowerCase();
-  const segments = source
-    .split(path.sep)
-    .map((segment) => segment.toLowerCase());
+  const portable = toPortableLower(source);
   if (base.startsWith(".env") || base.endsWith(".local")) return true;
-  return segments.some((segment) =>
-    [
-      ".yarn",
-      ".yarnrc.yml",
-      "__tests__",
-      "storage",
-      "documents",
-      "vector-cache",
-      "hotdir",
-      "session-store",
-    ].includes(segment)
-  );
+  if (
+    portablePathIncludes(portable, "/.yarn") ||
+    portablePathIncludes(portable, "/.yarnrc.yml") ||
+    portablePathIncludes(portable, "/__tests__")
+  ) {
+    return true;
+  }
+  if (isUnderNodeModules(source)) return false;
+  return [
+    "/server/storage",
+    "/server/documents",
+    "/server/vector-cache",
+    "/collector/hotdir",
+    "/session-store",
+  ].some((fragment) => portablePathIncludes(portable, fragment));
 }
 
 function copyRuntimeTree(from, to) {
@@ -597,6 +612,8 @@ module.exports = {
   assertSafeManagedRuntimePath,
   preparePackagedRuntimeRoot,
   shouldExcludeRuntimeCopy,
+  toPortableLower,
+  isUnderNodeModules,
   shouldAutoStartDesktopRuntime,
   resolveNodeRuntimeBinary,
   getAllowlistedRuntimeScripts,

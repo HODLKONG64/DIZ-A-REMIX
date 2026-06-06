@@ -16,6 +16,10 @@ const artifactSmokePath = path.join(
   repoRoot,
   "desktop/scripts/desktop-artifact-smoke-check.cjs"
 );
+const artifactPackagerPath = path.join(
+  repoRoot,
+  "desktop/scripts/package-windows-artifact.cjs"
+);
 const installerWorkflowPath = path.join(
   repoRoot,
   ".github/workflows/desktop-installer-build.yml"
@@ -129,6 +133,93 @@ describe("desktop Windows installer packaging foundation", () => {
     expect(() => builder.nsisDefineValue("C:\\bad\npath")).toThrow(
       "NSIS define values cannot contain quotes or newlines"
     );
+  });
+
+  it("preserves dependency internals while excluding app-owned runtime data during artifact copy", () => {
+    const artifactPackager = require(artifactPackagerPath);
+    const sourceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-artifact-copy-source-")
+    );
+    const targetRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-artifact-copy-target-")
+    );
+
+    try {
+      fs.mkdirSync(path.join(sourceRoot, "server/storage"), { recursive: true });
+      fs.mkdirSync(path.join(sourceRoot, "server/documents"), { recursive: true });
+      fs.mkdirSync(path.join(sourceRoot, "server/vector-cache"), {
+        recursive: true,
+      });
+      fs.mkdirSync(
+        path.join(sourceRoot, "server/node_modules/multer/storage"),
+        { recursive: true }
+      );
+      fs.mkdirSync(
+        path.join(sourceRoot, "server/node_modules/somepkg/documents"),
+        { recursive: true }
+      );
+      fs.writeFileSync(
+        path.join(sourceRoot, "server/index.js"),
+        "module.exports = {};\n"
+      );
+      fs.writeFileSync(
+        path.join(sourceRoot, "server/storage/anythingllm.db"),
+        "db"
+      );
+      fs.writeFileSync(
+        path.join(sourceRoot, "server/documents/private.txt"),
+        "doc"
+      );
+      fs.writeFileSync(
+        path.join(sourceRoot, "server/vector-cache/cache.json"),
+        "cache"
+      );
+      fs.writeFileSync(
+        path.join(sourceRoot, "server/node_modules/multer/storage/disk.js"),
+        "module.exports = {};\n"
+      );
+      fs.writeFileSync(
+        path.join(sourceRoot, "server/node_modules/somepkg/documents/index.js"),
+        "module.exports = {};\n"
+      );
+      fs.writeFileSync(path.join(sourceRoot, "server/.env"), "SECRET=1");
+
+      expect(
+        artifactPackager.shouldExcludeRuntimeCopy(
+          path.join(sourceRoot, "session-store", "session.json")
+        )
+      ).toBe(true);
+
+      artifactPackager.copyDirectory(
+        path.join(sourceRoot, "server"),
+        path.join(targetRoot, "server")
+      );
+
+      expect(fs.existsSync(path.join(targetRoot, "server/index.js"))).toBe(true);
+      expect(
+        fs.existsSync(path.join(targetRoot, "server/storage/anythingllm.db"))
+      ).toBe(false);
+      expect(
+        fs.existsSync(path.join(targetRoot, "server/documents/private.txt"))
+      ).toBe(false);
+      expect(
+        fs.existsSync(path.join(targetRoot, "server/vector-cache/cache.json"))
+      ).toBe(false);
+      expect(fs.existsSync(path.join(targetRoot, "server/.env"))).toBe(false);
+      expect(
+        fs.existsSync(
+          path.join(targetRoot, "server/node_modules/multer/storage/disk.js")
+        )
+      ).toBe(true);
+      expect(
+        fs.existsSync(
+          path.join(targetRoot, "server/node_modules/somepkg/documents/index.js")
+        )
+      ).toBe(true);
+    } finally {
+      fs.rmSync(sourceRoot, { recursive: true, force: true });
+      fs.rmSync(targetRoot, { recursive: true, force: true });
+    }
   });
 
   it("removes the full installed app tree without touching Local User paths", () => {

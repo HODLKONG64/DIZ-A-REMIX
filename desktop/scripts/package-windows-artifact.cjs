@@ -37,26 +37,48 @@ function removeIfExists(targetPath) {
   }
 }
 
+function toPortableLower(filePath) {
+  return String(filePath || "").replace(/\\/g, "/").toLowerCase();
+}
+
+function portablePathIncludes(portablePath, fragment) {
+  return (
+    portablePath.includes(`${fragment}/`) || portablePath.endsWith(fragment)
+  );
+}
+
+function isUnderNodeModules(source) {
+  return portablePathIncludes(toPortableLower(source), "/node_modules");
+}
+
+function shouldExcludeRuntimeCopy(source) {
+  const base = path.basename(source).toLowerCase();
+  const portable = toPortableLower(source);
+
+  if (base.startsWith(".env") || base.endsWith(".local")) return true;
+  if (
+    portablePathIncludes(portable, "/.yarn") ||
+    portablePathIncludes(portable, "/.yarnrc.yml") ||
+    portablePathIncludes(portable, "/__tests__")
+  ) {
+    return true;
+  }
+  if (isUnderNodeModules(source)) return false;
+  return [
+    "/server/storage",
+    "/server/documents",
+    "/server/vector-cache",
+    "/collector/hotdir",
+    "/session-store",
+  ].some((fragment) => portablePathIncludes(portable, fragment));
+}
+
 function copyDirectory(from, to) {
   ensureExists(from);
   fs.mkdirSync(path.dirname(to), { recursive: true });
   fs.cpSync(from, to, {
     recursive: true,
-    filter: (source) => {
-      const base = path.basename(source).toLowerCase();
-      return (
-        !base.startsWith(".env") &&
-        !base.endsWith(".local") &&
-        base !== ".yarn" &&
-        base !== ".yarnrc.yml" &&
-        base !== "__tests__" &&
-        base !== "storage" &&
-        base !== "documents" &&
-        base !== "vector-cache" &&
-        base !== "hotdir" &&
-        base !== "session-store"
-      );
-    },
+    filter: (source) => !shouldExcludeRuntimeCopy(source),
   });
 }
 
@@ -153,4 +175,15 @@ function main() {
   );
 }
 
-main();
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  copyDirectory,
+  copyEntries,
+  isUnderNodeModules,
+  main,
+  shouldExcludeRuntimeCopy,
+  toPortableLower,
+};

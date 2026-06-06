@@ -198,6 +198,57 @@ describe("desktop runtime launcher foundation", () => {
     });
   });
 
+  it("only excludes app-owned runtime data paths and keeps vendored internals", () => {
+    const { shouldExcludeRuntimeCopy } = require(launcherPath);
+
+    expect(
+      shouldExcludeRuntimeCopy(path.join(repoRoot, "server", "storage"))
+    ).toBe(true);
+    expect(
+      shouldExcludeRuntimeCopy(path.join(repoRoot, "server", "documents"))
+    ).toBe(true);
+    expect(
+      shouldExcludeRuntimeCopy(path.join(repoRoot, "server", "vector-cache"))
+    ).toBe(true);
+    expect(
+      shouldExcludeRuntimeCopy(path.join(repoRoot, "collector", "hotdir"))
+    ).toBe(true);
+    expect(
+      shouldExcludeRuntimeCopy(
+        path.join(
+          repoRoot,
+          "server",
+          "node_modules",
+          "multer",
+          "storage",
+          "disk.js"
+        )
+      )
+    ).toBe(false);
+    expect(
+      shouldExcludeRuntimeCopy(
+        path.join(
+          repoRoot,
+          "server",
+          "node_modules",
+          "somepkg",
+          "documents",
+          "index.js"
+        )
+      )
+    ).toBe(false);
+    expect(
+      shouldExcludeRuntimeCopy(
+        path.join(repoRoot, "server", "node_modules", "pkg", ".env")
+      )
+    ).toBe(true);
+    expect(
+      shouldExcludeRuntimeCopy(
+        path.join(repoRoot, "server", "node_modules", "pkg", "config.local")
+      )
+    ).toBe(true);
+  });
+
   it("replaces managed app code on version changes while preserving runtime data", () => {
     const fs = require("fs");
     const os = require("os");
@@ -290,7 +341,7 @@ describe("desktop runtime launcher foundation", () => {
     expect(spawnImpl).not.toHaveBeenCalled();
   });
 
-  it("prepares packaged runtime in Local User data without copying local storage", () => {
+  it("prepares packaged runtime in Local User data without copying app-owned runtime data", () => {
     const fs = require("fs");
     const os = require("os");
     const {
@@ -305,9 +356,21 @@ describe("desktop runtime launcher foundation", () => {
     );
     fs.mkdirSync(path.join(sourceRoot, "desktop/runtime"), { recursive: true });
     fs.mkdirSync(path.join(sourceRoot, "server/storage"), { recursive: true });
+    fs.mkdirSync(path.join(sourceRoot, "server/documents"), { recursive: true });
+    fs.mkdirSync(path.join(sourceRoot, "server/vector-cache"), {
+      recursive: true,
+    });
     fs.mkdirSync(path.join(sourceRoot, "server/prisma/migrations"), {
       recursive: true,
     });
+    fs.mkdirSync(
+      path.join(sourceRoot, "server/node_modules/multer/storage"),
+      { recursive: true }
+    );
+    fs.mkdirSync(
+      path.join(sourceRoot, "server/node_modules/somepkg/documents"),
+      { recursive: true }
+    );
     fs.writeFileSync(
       path.join(sourceRoot, "package.json"),
       JSON.stringify({ version: "9.9.9" })
@@ -321,6 +384,16 @@ describe("desktop runtime launcher foundation", () => {
       "module.exports = {};\n"
     );
     fs.writeFileSync(path.join(sourceRoot, "server/storage/anythingllm.db"), "hosted-db");
+    fs.writeFileSync(path.join(sourceRoot, "server/documents/private.txt"), "doc");
+    fs.writeFileSync(path.join(sourceRoot, "server/vector-cache/cache.json"), "cache");
+    fs.writeFileSync(
+      path.join(sourceRoot, "server/node_modules/multer/storage/disk.js"),
+      "module.exports = {};\n"
+    );
+    fs.writeFileSync(
+      path.join(sourceRoot, "server/node_modules/somepkg/documents/index.js"),
+      "module.exports = {};\n"
+    );
     fs.writeFileSync(path.join(sourceRoot, "server/.env"), "SECRET=1");
 
     const entry = preparePackagedRuntimeRoot({
@@ -341,8 +414,37 @@ describe("desktop runtime launcher foundation", () => {
       )
     ).toBe(false);
     expect(
+      fs.existsSync(
+        path.join(userData, "managed-local-runtime/app/server/documents/private.txt")
+      )
+    ).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(
+          userData,
+          "managed-local-runtime/app/server/vector-cache/cache.json"
+        )
+      )
+    ).toBe(false);
+    expect(
       fs.existsSync(path.join(userData, "managed-local-runtime/app/server/.env"))
     ).toBe(false);
+    expect(
+      fs.existsSync(
+        path.join(
+          userData,
+          "managed-local-runtime/app/server/node_modules/multer/storage/disk.js"
+        )
+      )
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(
+          userData,
+          "managed-local-runtime/app/server/node_modules/somepkg/documents/index.js"
+        )
+      )
+    ).toBe(true);
   });
 
   it("launcher starts packaged runtime without requiring the dev auto-start env flag", async () => {
