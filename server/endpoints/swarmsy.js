@@ -178,7 +178,7 @@ async function swarmsyOnboardingIngestRequiredDocs(request, response) {
 
     const result = await ingestSwarmsyRequiredDocs({
       workspace,
-      userId: user?.id ? Number(user.id) : (response.locals?.user?.id ?? null),
+      userId: user?.id ? Number(user.id) : response.locals?.user?.id ?? null,
     });
 
     if (result.errorCode === "COLLECTOR_OFFLINE") {
