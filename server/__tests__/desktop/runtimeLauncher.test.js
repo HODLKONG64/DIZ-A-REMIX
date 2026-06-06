@@ -171,6 +171,126 @@ describe("desktop runtime launcher foundation", () => {
     );
   });
 
+
+  it("prepares packaged runtime in Local User data without copying local storage", () => {
+    const fs = require("fs");
+    const os = require("os");
+    const {
+      preparePackagedRuntimeRoot,
+      PACKAGED_RUNTIME_ENTRY,
+    } = require(launcherPath);
+    const sourceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-runtime-source-")
+    );
+    const userData = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-runtime-user-")
+    );
+    fs.mkdirSync(path.join(sourceRoot, "desktop/runtime"), { recursive: true });
+    fs.mkdirSync(path.join(sourceRoot, "server/storage"), { recursive: true });
+    fs.mkdirSync(path.join(sourceRoot, "server/prisma/migrations"), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(sourceRoot, "package.json"),
+      JSON.stringify({ version: "9.9.9" })
+    );
+    fs.writeFileSync(
+      path.join(sourceRoot, "desktop/runtime/start-local-runtime.cjs"),
+      "module.exports = {};\n"
+    );
+    fs.writeFileSync(
+      path.join(sourceRoot, "server/index.js"),
+      "module.exports = {};\n"
+    );
+    fs.writeFileSync(path.join(sourceRoot, "server/storage/anythingllm.db"), "hosted-db");
+    fs.writeFileSync(path.join(sourceRoot, "server/.env"), "SECRET=1");
+
+    const entry = preparePackagedRuntimeRoot({
+      rootDir: sourceRoot,
+      env: { SWARMSY_DESKTOP_USER_DATA_DIR: userData },
+    });
+
+    expect(entry).toBe(
+      path.join(userData, "managed-local-runtime", "app", PACKAGED_RUNTIME_ENTRY)
+    );
+    expect(fs.existsSync(entry)).toBe(true);
+    expect(
+      fs.existsSync(path.join(userData, "managed-local-runtime/app/server/index.js"))
+    ).toBe(true);
+    expect(
+      fs.existsSync(
+        path.join(userData, "managed-local-runtime/app/server/storage/anythingllm.db")
+      )
+    ).toBe(false);
+    expect(
+      fs.existsSync(path.join(userData, "managed-local-runtime/app/server/.env"))
+    ).toBe(false);
+  });
+
+  it("launcher starts packaged runtime without requiring the dev auto-start env flag", async () => {
+    const fs = require("fs");
+    const os = require("os");
+    const { launchDesktopLocalRuntime } = require(launcherPath);
+    const sourceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-runtime-launch-")
+    );
+    const userData = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-runtime-launch-user-")
+    );
+    fs.mkdirSync(path.join(sourceRoot, "desktop/runtime"), { recursive: true });
+    fs.mkdirSync(path.join(sourceRoot, "server"), { recursive: true });
+    fs.writeFileSync(
+      path.join(sourceRoot, "package.json"),
+      JSON.stringify({ version: "1.2.3" })
+    );
+    fs.writeFileSync(
+      path.join(sourceRoot, "desktop/runtime/start-local-runtime.cjs"),
+      "module.exports = {};\n"
+    );
+    fs.writeFileSync(
+      path.join(sourceRoot, "server/index.js"),
+      "module.exports = {};\n"
+    );
+
+    const child = createMockChild({ pid: 7777 });
+    const spawnImpl = jest.fn(() => {
+      setImmediate(() => child.emit("spawn"));
+      return child;
+    });
+
+    const result = await launchDesktopLocalRuntime({
+      rootDir: sourceRoot,
+      env: { SWARMSY_DESKTOP_USER_DATA_DIR: userData },
+      spawnImpl,
+      platform: "win32",
+      packagedRuntime: true,
+      execPath: "C:\\Program Files\\SWARMSY Desktop\\SWARMSY Desktop.exe",
+    });
+
+    expect(result).toEqual(
+      expect.objectContaining({
+        ok: true,
+        pid: 7777,
+        scriptName: "desktop:runtime:packaged",
+      })
+    );
+    expect(spawnImpl).toHaveBeenCalledWith(
+      "C:\\Program Files\\SWARMSY Desktop\\SWARMSY Desktop.exe",
+      [
+        path.join(
+          userData,
+          "managed-local-runtime",
+          "app",
+          "desktop/runtime/start-local-runtime.cjs"
+        ),
+      ],
+      expect.objectContaining({
+        shell: true,
+        env: expect.objectContaining({ ELECTRON_RUN_AS_NODE: "1" }),
+      })
+    );
+  });
+
   it("launcher returns structured failure on spawn error", async () => {
     const { launchDesktopLocalRuntime } = require(launcherPath);
     const child = createMockChild({ pid: 6789 });

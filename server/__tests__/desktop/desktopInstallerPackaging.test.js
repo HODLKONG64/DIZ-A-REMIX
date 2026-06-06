@@ -38,8 +38,12 @@ describe("desktop Windows installer packaging foundation", () => {
         "desktop executable",
         "desktop/electron",
         "desktop/foundation",
+        "desktop/runtime",
         "frontend/dist",
-        "server/utils/swarmsy/localUserStorageContract.js",
+        "server runtime",
+        "server/node_modules runtime dependencies",
+        "server/prisma migrations",
+        "server/public frontend bundle",
       ])
     );
     expect(smoke.prohibitedInstallerContents).toEqual(
@@ -223,6 +227,21 @@ describe("desktop Windows installer packaging foundation", () => {
         "module.exports = {};"
       );
     }
+    fs.mkdirSync(path.join(packageRoot, "resources/app/desktop/runtime"), { recursive: true });
+    fs.mkdirSync(path.join(packageRoot, "resources/app/server/prisma/migrations"), { recursive: true });
+    fs.mkdirSync(path.join(packageRoot, "resources/app/server/node_modules/.bin"), { recursive: true });
+    fs.mkdirSync(path.join(packageRoot, "resources/app/server/node_modules/@prisma/client"), { recursive: true });
+    fs.mkdirSync(path.join(packageRoot, "resources/app/server/public"), { recursive: true });
+    fs.writeFileSync(
+      path.join(packageRoot, "resources/app/desktop/runtime/start-local-runtime.cjs"),
+      "module.exports = {};"
+    );
+    fs.writeFileSync(path.join(packageRoot, "resources/app/server/index.js"), "module.exports = {};");
+    fs.writeFileSync(path.join(packageRoot, "resources/app/server/package.json"), "{}");
+    fs.writeFileSync(path.join(packageRoot, "resources/app/server/prisma/schema.prisma"), "datasource db {}");
+    fs.writeFileSync(path.join(packageRoot, "resources/app/server/prisma/migrations/migration_lock.toml"), "");
+    fs.writeFileSync(path.join(packageRoot, "resources/app/server/node_modules/.bin/prisma"), "");
+    fs.writeFileSync(path.join(packageRoot, "resources/app/server/node_modules/@prisma/client/package.json"), "{}");
     fs.writeFileSync(
       path.join(
         packageRoot,
@@ -232,6 +251,10 @@ describe("desktop Windows installer packaging foundation", () => {
     );
     fs.writeFileSync(
       path.join(packageRoot, "resources/app/frontend/dist/_index.html"),
+      "<html></html>"
+    );
+    fs.writeFileSync(
+      path.join(packageRoot, "resources/app/server/public/_index.html"),
       "<html></html>"
     );
     fs.writeFileSync(
@@ -275,8 +298,8 @@ describe("desktop Windows installer packaging foundation", () => {
   it("keeps installer smoke validation aligned with artifact safety checks", () => {
     const artifactSmoke = require(artifactSmokePath);
 
-    expect(Array.from(artifactSmoke.forbiddenPathSegments)).toEqual(
-      expect.arrayContaining(["models", "ollama", "local-user-data"])
+    expect(Array.from(artifactSmoke.forbiddenPathFragments)).toEqual(
+      expect.arrayContaining(["server/storage", "ollama/models", "local-user-data"])
     );
     expect(
       artifactSmoke.forbiddenBasenamePatterns.some((pattern) =>

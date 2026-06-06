@@ -37,6 +37,13 @@ function createArtifactFixture() {
   writeFile(
     path.join(packageRoot, "resources/app/desktop/foundation/localSettingsStore.cjs")
   );
+  writeFile(path.join(packageRoot, "resources/app/desktop/runtime/start-local-runtime.cjs"));
+  writeFile(path.join(packageRoot, "resources/app/server/index.js"));
+  writeFile(path.join(packageRoot, "resources/app/server/package.json"), "{}");
+  writeFile(path.join(packageRoot, "resources/app/server/prisma/schema.prisma"));
+  writeFile(path.join(packageRoot, "resources/app/server/prisma/migrations/migration_lock.toml"));
+  writeFile(path.join(packageRoot, "resources/app/server/node_modules/.bin/prisma"));
+  writeFile(path.join(packageRoot, "resources/app/server/node_modules/@prisma/client/package.json"));
   writeFile(
     path.join(
       packageRoot,
@@ -44,6 +51,7 @@ function createArtifactFixture() {
     )
   );
   writeFile(path.join(packageRoot, "resources/app/frontend/dist/_index.html"));
+  writeFile(path.join(packageRoot, "resources/app/server/public/_index.html"));
   writeFile(path.join(archivePath), "zip");
 
   return { root, packageRoot, archivePath };

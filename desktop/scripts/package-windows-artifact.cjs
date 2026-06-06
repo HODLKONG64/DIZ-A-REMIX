@@ -20,11 +20,9 @@ const electronDistPath = process.env.ELECTRON_DIST_PATH
 const copyEntries = [
   { from: "desktop/electron", to: "desktop/electron" },
   { from: "desktop/foundation", to: "desktop/foundation" },
+  { from: "desktop/runtime", to: "desktop/runtime" },
   { from: "frontend/dist", to: "frontend/dist" },
-  {
-    from: "server/utils/swarmsy/localUserStorageContract.js",
-    to: "server/utils/swarmsy/localUserStorageContract.js",
-  },
+  { from: "server", to: "server" },
 ];
 
 function ensureExists(targetPath, label = targetPath) {
@@ -49,7 +47,14 @@ function copyDirectory(from, to) {
       return (
         !base.startsWith(".env") &&
         !base.endsWith(".local") &&
-        base !== "node_modules"
+        base !== ".yarn" &&
+        base !== ".yarnrc.yml" &&
+        base !== "__tests__" &&
+        base !== "storage" &&
+        base !== "documents" &&
+        base !== "vector-cache" &&
+        base !== "hotdir" &&
+        base !== "session-store"
       );
     },
   });
@@ -102,6 +107,10 @@ function packageAppResources() {
       path.join(appResourcesRoot, entry.to)
     );
   }
+  copyDirectory(
+    path.join(repoRoot, "frontend", "dist"),
+    path.join(appResourcesRoot, "server", "public")
+  );
   writeDesktopPackageJson();
 }
 
