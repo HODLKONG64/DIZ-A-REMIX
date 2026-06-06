@@ -156,6 +156,26 @@ AWS_SECRET_ACCESS_KEY=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN
     }
   });
 
+  it("allows vendored node_modules implementation files with secret-like internals", () => {
+    const fixture = createArtifactFixture();
+    try {
+      writeFile(
+        path.join(
+          fixture.packageRoot,
+          "resources/app/server/node_modules/jose/dist/webapi/key/import.js"
+        ),
+        `export async function importJWK(jwk) {
+          const secret = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890";
+          return { jwk, secret };
+        }`
+      );
+
+      expect(() => validateArtifact(fixture)).not.toThrow();
+    } finally {
+      fs.rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+
   it("still fails for secret-like filenames outside dependency internals", () => {
     expectSmokeFailure((packageRoot) => {
       writeFile(
@@ -183,6 +203,15 @@ AWS_SECRET_ACCESS_KEY=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN
     }, /Hardcoded secret-like value found/);
   });
 
+  it("fails when app-owned server config hardcodes an API key", () => {
+    expectSmokeFailure((packageRoot) => {
+      writeFile(
+        path.join(packageRoot, "resources/app/server/config/leaked.js"),
+        'module.exports = { OPENAI_API_KEY: "sk-liveRealSecretValue1234567890" };'
+      );
+    }, /Hardcoded secret-like value found/);
+  });
+
   it("fails when an Authorization bearer token is hardcoded", () => {
     expectSmokeFailure((packageRoot) => {
       writeFile(
@@ -199,5 +228,17 @@ AWS_SECRET_ACCESS_KEY=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN
         "-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----"
       );
     }, /Hardcoded secret-like value found/);
+  });
+
+  it.each([
+    "resources/app/server/storage/anythingllm.db",
+    "resources/app/server/documents/private.txt",
+    "resources/app/server/vector-cache/cache.json",
+    "resources/app/session-store/session.json",
+    "resources/app/local-user-data/runtime/anythingllm.db",
+  ])("fails when forbidden local data path is included: %s", (relativePath) => {
+    expectSmokeFailure((packageRoot) => {
+      writeFile(path.join(packageRoot, relativePath), "local-data");
+    }, /Forbidden local\/runtime path included/);
   });
 });

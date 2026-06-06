@@ -174,19 +174,8 @@ function assertNoForbiddenPaths(files, packageRoot) {
   }
 }
 
-function isNodeModulesDocumentationFile(relativePortable) {
-  if (!relativePortable.includes("/node_modules/")) return false;
-  return (
-    /\.(?:md|markdown|txt|rst)$/i.test(relativePortable) ||
-    relativePortable.includes("/docs/") ||
-    relativePortable.includes("/doc/") ||
-    relativePortable.includes("/examples/") ||
-    relativePortable.includes("/example/") ||
-    relativePortable.includes("/demo/") ||
-    relativePortable.includes("/demos/") ||
-    relativePortable.includes("/test/") ||
-    relativePortable.includes("/tests/")
-  );
+function isNodeModulesFile(relativePortable) {
+  return relativePortable.includes("/node_modules/");
 }
 
 function assertNoSecretValues(files, packageRoot) {
@@ -195,7 +184,7 @@ function assertNoSecretValues(files, packageRoot) {
       .relative(packageRoot, file)
       .replace(/\\/g, "/")
       .toLowerCase();
-    if (isNodeModulesDocumentationFile(relativePortable)) continue;
+    if (isNodeModulesFile(relativePortable)) continue;
     if (!textExtensions.has(path.extname(file).toLowerCase())) continue;
     const stat = fs.statSync(file);
     if (stat.size > 2 * 1024 * 1024) continue;
@@ -263,7 +252,7 @@ module.exports = {
   forbiddenPathFragments,
   forbiddenSecretBasenamePatterns,
   hasForbiddenBasename,
-  isNodeModulesDocumentationFile,
+  isNodeModulesFile,
   isNodeModulesSourceFile,
   requiredAnyPaths,
   requiredPaths,
