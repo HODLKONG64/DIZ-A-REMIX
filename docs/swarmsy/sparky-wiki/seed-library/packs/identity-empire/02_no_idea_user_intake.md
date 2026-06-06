@@ -68,7 +68,7 @@ Then ask:
 
 ## Deep 50-question version
 
-1. What is your legal name?
+1. Should this run under your real name or a pseudonym/brand name?
 2. What alias, handle, or street name feels alive?
 3. What names do people already call you?
 4. Where are you based?

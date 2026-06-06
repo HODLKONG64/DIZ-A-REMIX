@@ -74,7 +74,7 @@ Seed-library files are not required doctrine. They do not require a special load
 
 Future Local User builds can bundle the seed-library as local data so users can opt into useful knowledge packs without sending that data to hosted/admin workspaces or making it globally mandatory.
 
-## Pre-installed Identity Empire seed pack
+## Identity Empire seed pack (seed-library)
 
 The seed library now includes `packs/identity-empire/`, a local-first SPARKY knowledge pack for building identity, story, brand, offer ladders, launch plans, PR angles, campaign systems, content calendars, lawful physical visibility, digital wall distribution, swarm coordination, and next actions before any web/API lookup.
 
