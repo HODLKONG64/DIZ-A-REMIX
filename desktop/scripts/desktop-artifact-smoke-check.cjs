@@ -66,6 +66,8 @@ const textExtensions = new Set([
   ".css",
   ".txt",
   ".md",
+  ".markdown",
+  ".rst",
 ]);
 
 const hardcodedSecretValuePatterns = [
@@ -172,8 +174,28 @@ function assertNoForbiddenPaths(files, packageRoot) {
   }
 }
 
+function isNodeModulesDocumentationFile(relativePortable) {
+  if (!relativePortable.includes("/node_modules/")) return false;
+  return (
+    /\.(?:md|markdown|txt|rst)$/i.test(relativePortable) ||
+    relativePortable.includes("/docs/") ||
+    relativePortable.includes("/doc/") ||
+    relativePortable.includes("/examples/") ||
+    relativePortable.includes("/example/") ||
+    relativePortable.includes("/demo/") ||
+    relativePortable.includes("/demos/") ||
+    relativePortable.includes("/test/") ||
+    relativePortable.includes("/tests/")
+  );
+}
+
 function assertNoSecretValues(files, packageRoot) {
   for (const file of files) {
+    const relativePortable = path
+      .relative(packageRoot, file)
+      .replace(/\\/g, "/")
+      .toLowerCase();
+    if (isNodeModulesDocumentationFile(relativePortable)) continue;
     if (!textExtensions.has(path.extname(file).toLowerCase())) continue;
     const stat = fs.statSync(file);
     if (stat.size > 2 * 1024 * 1024) continue;
@@ -241,6 +263,7 @@ module.exports = {
   forbiddenPathFragments,
   forbiddenSecretBasenamePatterns,
   hasForbiddenBasename,
+  isNodeModulesDocumentationFile,
   isNodeModulesSourceFile,
   requiredAnyPaths,
   requiredPaths,

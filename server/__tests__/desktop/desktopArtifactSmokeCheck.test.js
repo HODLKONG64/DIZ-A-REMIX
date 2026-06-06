@@ -96,9 +96,6 @@ describe("desktop artifact smoke validation", () => {
     }
   });
 
-
-
-
   it("allows systemSettings-style source field names without secret values", () => {
     const fixture = createArtifactFixture();
     try {
@@ -114,6 +111,26 @@ describe("desktop artifact smoke validation", () => {
             };
           },
         };`
+      );
+
+      expect(() => validateArtifact(fixture)).not.toThrow();
+    } finally {
+      fs.rmSync(fixture.root, { recursive: true, force: true });
+    }
+  });
+
+  it("allows vendored node_modules documentation with example secrets", () => {
+    const fixture = createArtifactFixture();
+    try {
+      writeFile(
+        path.join(
+          fixture.packageRoot,
+          "resources/app/server/node_modules/dotenv/README-es.md"
+        ),
+        `# dotenv examples
+OPENAI_API_KEY=sk-exampleDocumentationKey1234567890
+AWS_SECRET_ACCESS_KEY=abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMN
+`
       );
 
       expect(() => validateArtifact(fixture)).not.toThrow();
