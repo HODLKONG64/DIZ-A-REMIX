@@ -4,6 +4,9 @@ const { WorkspaceChats } = require("../../models/workspaceChats");
 const { getVectorDbClass, resolveProviderConnector } = require("../helpers");
 const { writeResponseChunk } = require("../helpers/chat/responses");
 const {
+  buildIdentityEmpireRetrievalPlan,
+} = require("../swarmsy/identityEmpireRetrieval");
+const {
   chatPrompt,
   sourceIdentifier,
   recentChatHistory,
@@ -317,11 +320,18 @@ async function chatSync({
     }
   });
 
+  const identityEmpireRetrievalPlan = await buildIdentityEmpireRetrievalPlan({
+    workspace,
+    prompt: message,
+  });
+  const vectorSearchInput =
+    identityEmpireRetrievalPlan.retrievalInput || message;
+
   const vectorSearchResults =
     embeddingsCount !== 0
       ? await VectorDb.performSimilaritySearch({
           namespace: workspace.slug,
-          input: message,
+          input: vectorSearchInput,
           LLMConnector,
           similarityThreshold: workspace?.similarityThreshold,
           topN: workspace?.topN,
@@ -693,11 +703,18 @@ async function streamChat({
     }
   });
 
+  const identityEmpireRetrievalPlan = await buildIdentityEmpireRetrievalPlan({
+    workspace,
+    prompt: message,
+  });
+  const vectorSearchInput =
+    identityEmpireRetrievalPlan.retrievalInput || message;
+
   const vectorSearchResults =
     embeddingsCount !== 0
       ? await VectorDb.performSimilaritySearch({
           namespace: workspace.slug,
-          input: message,
+          input: vectorSearchInput,
           LLMConnector,
           similarityThreshold: workspace?.similarityThreshold,
           topN: workspace?.topN,
