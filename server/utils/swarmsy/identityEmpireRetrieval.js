@@ -1,6 +1,8 @@
 const { Document } = require("../../models/documents");
 const {
   discoverRelevantIdentityEmpireSections,
+  discoverRelevantOptionalSeedPackSections,
+  getWorkspaceSeedPackFiles,
 } = require("./sparkyWikiSeedPacks");
 
 const IDENTITY_EMPIRE_PACK_ID = "identity-empire";
@@ -136,6 +138,14 @@ async function buildIdentityEmpireRetrievalPlan({
     prompt,
     mode: resolvedMode,
   }).filter((section) => workspaceFiles.has(section.file));
+  const optionalPackFiles = await getWorkspaceSeedPackFiles(workspace, [
+    "cultural-protocols",
+    "campaign-case-studies",
+  ]);
+  const supportingSections = discoverRelevantOptionalSeedPackSections({
+    prompt,
+    packFiles: optionalPackFiles,
+  });
 
   if (!isIdentityEmpirePrompt(prompt)) {
     return {
@@ -143,6 +153,7 @@ async function buildIdentityEmpireRetrievalPlan({
       status: "Identity Empire knowledge available",
       mode: resolvedMode,
       sections: discoveredSections,
+      supportingSections,
       filesInWorkspace: [...workspaceFiles],
       retrievalInput: prompt,
     };
@@ -159,6 +170,11 @@ async function buildIdentityEmpireRetrievalPlan({
     `Relevant local Identity Empire sections: ${discoveredSections
       .map((section) => section.file)
       .join(", ")}`,
+    supportingSections.length
+      ? `Optional campaign/protocol supporting context: ${supportingSections
+          .map((section) => `${section.packId}/${section.file}`)
+          .join(", ")}`
+      : "Optional campaign/protocol supporting context: none imported for this workspace",
   ].join("\n");
 
   return {
@@ -166,6 +182,7 @@ async function buildIdentityEmpireRetrievalPlan({
     status: "Using local wiki knowledge",
     mode: resolvedMode,
     sections: discoveredSections,
+    supportingSections,
     filesInWorkspace: [...workspaceFiles],
     retrievalInput,
   };

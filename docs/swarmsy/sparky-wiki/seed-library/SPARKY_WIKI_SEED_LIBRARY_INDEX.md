@@ -37,6 +37,54 @@ This index lists the starter SPARKY Wiki seed files. They are optional reference
 - `packs/identity-empire/17_sparky_prompt_recipes.md`
 - `packs/identity-empire/18_identity_empire_templates.md`
 
+### Offline Wiki Ledger Standards pack
+
+- `packs/offline-wiki-ledger-standards/README.md`
+- `packs/offline-wiki-ledger-standards/INGESTION_PLAN.md`
+- `packs/offline-wiki-ledger-standards/PACK_SCHEMA.md`
+- `packs/offline-wiki-ledger-standards/READINESS_SCORECARD.md`
+- `packs/offline-wiki-ledger-standards/SOURCE_GOVERNANCE.md`
+- `packs/offline-wiki-ledger-standards/MISSING_DATA_REGISTRY.md`
+- `packs/offline-wiki-ledger-standards/CANONICAL_QUESTIONS_STANDARD.md`
+- `packs/offline-wiki-ledger-standards/CLAIM_MAP_STANDARD.md`
+- `packs/offline-wiki-ledger-standards/PACK_READINESS_GATE.md`
+- `packs/offline-wiki-ledger-standards/SOURCE_CARD_SCHEMA.json`
+- `packs/offline-wiki-ledger-standards/SUBJECT_EXPANSION_QUEUE.md`
+- `packs/offline-wiki-ledger-standards/INDUSTRY_COVERAGE_MAP.md`
+- `packs/offline-wiki-ledger-standards/RELEASE_READY_PACKS.md`
+
+### Cultural Protocols pack
+
+- `packs/cultural-protocols/BANKSY_STYLE_PUBLIC_SIGNAL_PROTOCOL.md`
+- `packs/cultural-protocols/SUPREME_DROP_SCARCITY_PROTOCOL.md`
+- `packs/cultural-protocols/RED_BULL_SPECTACLE_PROTOCOL.md`
+- `packs/cultural-protocols/NIKE_IDENTITY_COMPRESSION_PROTOCOL.md`
+- `packs/cultural-protocols/APPLE_1984_CATEGORY_DISRUPTION_PROTOCOL.md`
+- `packs/cultural-protocols/BERNAYS_PUBLIC_OPINION_PROTOCOL.md`
+- `packs/cultural-protocols/MEME_CULTURE_VIRAL_LOOP_PROTOCOL.md`
+- `packs/cultural-protocols/ARG_MYSTERY_TRAIL_PROTOCOL.md`
+- `packs/cultural-protocols/CONTROLLED_REBELLION_REGENERATION_PROTOCOL.md`
+- `packs/cultural-protocols/SYNTHETIC_MOMENTUM_AND_MANUFACTURED_AUTHENTICITY_PROTOCOL.md`
+
+### Campaign Case Studies pack
+
+- `packs/campaign-case-studies/MASTER_MARKETERS_OVERVIEW.md`
+- `packs/campaign-case-studies/OGILVY.md`
+- `packs/campaign-case-studies/EDWARD_BERNAYS.md`
+- `packs/campaign-case-studies/APPLE_1984.md`
+- `packs/campaign-case-studies/NIKE_JUST_DO_IT.md`
+- `packs/campaign-case-studies/RED_BULL_STRATOS.md`
+- `packs/campaign-case-studies/SUPREME_DROP_CULTURE.md`
+- `packs/campaign-case-studies/BANKSY_PUBLIC_SIGNAL.md`
+
+### Wiki Depth and Provenance pack
+
+- `packs/wiki-depth-and-provenance/APP_BRAIN_KNOWLEDGE_INDEX.md`
+- `packs/wiki-depth-and-provenance/BRAIN_INDEX.md`
+- `packs/wiki-depth-and-provenance/AUTHORITY_AND_PROVENANCE_LAYER.md`
+- `packs/wiki-depth-and-provenance/WIKI_DEPTH_TREE_DOCTRINE.md`
+- `packs/wiki-depth-and-provenance/MULTI_LAYER_CONVERSATIONAL_DEPTH_ENGINE.md`
+
 ### Core doctrine reference
 
 - `core-doctrine/SWARMSY_IDENTITY_OPERATING_SYSTEM.md`

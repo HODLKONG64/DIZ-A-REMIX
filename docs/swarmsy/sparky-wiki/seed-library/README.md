@@ -31,6 +31,10 @@ Future Local User builds can bundle these files as local data for easy import wi
 - [`workspace-operations/`](./workspace-operations/) — Current workspace scoping, anti-leakage, next action, and non-technical user mode.
 
 - [`packs/identity-empire/`](./packs/identity-empire/) — Local-first SPARKY Identity Empire pack for brand, story, offer, campaign, PR, lawful physical visibility, digital wall distribution, swarm coordination, and launch planning.
+- [`packs/offline-wiki-ledger-standards/`](./packs/offline-wiki-ledger-standards/) — Draft-importable docs/spec pack for source governance, pack schemas, readiness scoring, claim maps, and lawful reuse gates.
+- [`packs/cultural-protocols/`](./packs/cultural-protocols/) — Importable reference pack for lawful cultural/campaign mechanics from public evidence.
+- [`packs/campaign-case-studies/`](./packs/campaign-case-studies/) — Importable reference pack of named campaign examples to reduce generic brand advice.
+- [`packs/wiki-depth-and-provenance/`](./packs/wiki-depth-and-provenance/) — Draft-importable docs/spec pack for source labels, depth-tree rules, citation indexes, disputed labels, and retrieval priority.
 
 ## Non-goals
 

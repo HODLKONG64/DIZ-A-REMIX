@@ -29,6 +29,53 @@ const IDENTITY_EMPIRE_FILES = Object.freeze([
   "18_identity_empire_templates.md",
 ]);
 
+const OFFLINE_WIKI_LEDGER_STANDARDS_FILES = Object.freeze([
+  "README.md",
+  "INGESTION_PLAN.md",
+  "PACK_SCHEMA.md",
+  "READINESS_SCORECARD.md",
+  "SOURCE_GOVERNANCE.md",
+  "MISSING_DATA_REGISTRY.md",
+  "CANONICAL_QUESTIONS_STANDARD.md",
+  "CLAIM_MAP_STANDARD.md",
+  "PACK_READINESS_GATE.md",
+  "SOURCE_CARD_SCHEMA.json",
+  "SUBJECT_EXPANSION_QUEUE.md",
+  "INDUSTRY_COVERAGE_MAP.md",
+  "RELEASE_READY_PACKS.md",
+]);
+const CULTURAL_PROTOCOLS_FILES = Object.freeze([
+  "BANKSY_STYLE_PUBLIC_SIGNAL_PROTOCOL.md",
+  "SUPREME_DROP_SCARCITY_PROTOCOL.md",
+  "RED_BULL_SPECTACLE_PROTOCOL.md",
+  "NIKE_IDENTITY_COMPRESSION_PROTOCOL.md",
+  "APPLE_1984_CATEGORY_DISRUPTION_PROTOCOL.md",
+  "BERNAYS_PUBLIC_OPINION_PROTOCOL.md",
+  "MEME_CULTURE_VIRAL_LOOP_PROTOCOL.md",
+  "ARG_MYSTERY_TRAIL_PROTOCOL.md",
+  "CONTROLLED_REBELLION_REGENERATION_PROTOCOL.md",
+  "SYNTHETIC_MOMENTUM_AND_MANUFACTURED_AUTHENTICITY_PROTOCOL.md",
+]);
+const CAMPAIGN_CASE_STUDIES_FILES = Object.freeze([
+  "MASTER_MARKETERS_OVERVIEW.md",
+  "OGILVY.md",
+  "EDWARD_BERNAYS.md",
+  "APPLE_1984.md",
+  "NIKE_JUST_DO_IT.md",
+  "RED_BULL_STRATOS.md",
+  "SUPREME_DROP_CULTURE.md",
+  "BANKSY_PUBLIC_SIGNAL.md",
+]);
+const WIKI_DEPTH_AND_PROVENANCE_FILES = Object.freeze([
+  "APP_BRAIN_KNOWLEDGE_INDEX.md",
+  "BRAIN_INDEX.md",
+  "AUTHORITY_AND_PROVENANCE_LAYER.md",
+  "WIKI_DEPTH_TREE_DOCTRINE.md",
+  "MULTI_LAYER_CONVERSATIONAL_DEPTH_ENGINE.md",
+]);
+
+const seedPackPath = (packId) => `${SEED_PACK_SOURCE_ROOT}/${packId}`;
+
 const SAFETY_BOUNDARIES = Object.freeze([
   "Local-first reference knowledge only; not required doctrine.",
   "No autonomous runtime agents are created by importing this pack.",
@@ -52,6 +99,70 @@ const PACKS = Object.freeze([
     recommendedWorkspaceUseCase:
       "Attach to the current SWARMSY workspace so Sparky can automatically retrieve deep local playbooks during Face Identity Mode, Hidden Identity Mode, Existing Project rebuilds, Memory Lock continuations, and direct identity-building prompts.",
     importable: true,
+  }),
+  Object.freeze({
+    id: "offline-wiki-ledger-standards",
+    title: "Offline Wiki Ledger Standards",
+    shortDescription:
+      "Docs/spec-only standards for future book-grade wiki pack structure, scoring, sourcing, readiness gates, claim maps, and lawful reuse.",
+    category: "offline wiki ledger standards",
+    status:
+      "docs/spec-only source, draft-importable workspace reference knowledge",
+    docsSpecOnly: true,
+    sourcePath: seedPackPath("offline-wiki-ledger-standards"),
+    includedFiles: OFFLINE_WIKI_LEDGER_STANDARDS_FILES,
+    safetyBoundaries: SAFETY_BOUNDARIES,
+    recommendedWorkspaceUseCase:
+      "Attach when designing or auditing future local wiki packs. Use as optional source-governance reference only; never as current app truth or runtime policy.",
+    importable: true,
+    draftImportable: true,
+  }),
+  Object.freeze({
+    id: "cultural-protocols",
+    title: "Cultural Protocols",
+    shortDescription:
+      "Reference protocols for lawful cultural and campaign mechanics: public signals, scarcity, spectacle, identity compression, memes, ARG trails, and risk handling.",
+    category: "cultural protocols",
+    status: "reference knowledge, importable workspace reference knowledge",
+    docsSpecOnly: true,
+    sourcePath: seedPackPath("cultural-protocols"),
+    includedFiles: CULTURAL_PROTOCOLS_FILES,
+    safetyBoundaries: SAFETY_BOUNDARIES,
+    recommendedWorkspaceUseCase:
+      "Attach when Sparky needs public-evidence cultural mechanics for lawful campaign strategy, ethics, consequence mapping, and post-campaign analysis.",
+    importable: true,
+  }),
+  Object.freeze({
+    id: "campaign-case-studies",
+    title: "Campaign Case Studies",
+    shortDescription:
+      "Deep reference examples from Ogilvy, Bernays, Apple 1984, Nike Just Do It, Red Bull Stratos, Supreme drops, and Banksy public signals.",
+    category: "campaign case studies",
+    status: "reference knowledge, importable workspace reference knowledge",
+    docsSpecOnly: true,
+    sourcePath: seedPackPath("campaign-case-studies"),
+    includedFiles: CAMPAIGN_CASE_STUDIES_FILES,
+    safetyBoundaries: SAFETY_BOUNDARIES,
+    recommendedWorkspaceUseCase:
+      "Attach when Sparky should ground campaign advice in named case studies instead of generic brand advice.",
+    importable: true,
+  }),
+  Object.freeze({
+    id: "wiki-depth-and-provenance",
+    title: "Wiki Depth and Provenance",
+    shortDescription:
+      "Governance layer for source labels, claim maps, citation indexes, depth-tree rules, disputed labels, and retrieval priority.",
+    category: "wiki depth and provenance",
+    status:
+      "docs/spec-only source, draft-importable workspace reference knowledge",
+    docsSpecOnly: true,
+    sourcePath: seedPackPath("wiki-depth-and-provenance"),
+    includedFiles: WIKI_DEPTH_AND_PROVENANCE_FILES,
+    safetyBoundaries: SAFETY_BOUNDARIES,
+    recommendedWorkspaceUseCase:
+      "Attach when auditing provenance, disputed claims, citation trees, or retrieval priority for local SPARKY Wiki reference packs.",
+    importable: true,
+    draftImportable: true,
   }),
 ]);
 
@@ -103,6 +214,22 @@ function getSeedPackAbsoluteFilePath(pack, fileName) {
   return absolutePath;
 }
 
+function parseJsonMetadata(raw = "") {
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed?.metadata || null;
+  } catch {
+    return null;
+  }
+}
+
+function parseSeedPackMetadata(raw = "", fileName = "") {
+  if (String(fileName).toLowerCase().endsWith(".json")) {
+    return parseJsonMetadata(raw);
+  }
+  return parseMarkdownFrontmatter(raw);
+}
+
 function parseMarkdownFrontmatter(raw = "") {
   if (!raw.startsWith("---\n")) return null;
   const end = raw.indexOf("\n---", 4);
@@ -145,7 +272,7 @@ function validateSeedPackFiles(packId = "") {
     }
 
     const raw = fs.readFileSync(absolutePath, "utf8");
-    const frontmatter = parseMarkdownFrontmatter(raw);
+    const frontmatter = parseSeedPackMetadata(raw, fileName);
     if (!frontmatter?.title || !frontmatter?.category) {
       errors.push({ file: fileName, error: "missing_frontmatter" });
       continue;
@@ -198,6 +325,173 @@ function getExistingChunkSources(existingDocs = []) {
       existingChunkSources.add(String(metadata.chunkSource));
   }
   return existingChunkSources;
+}
+
+function seedPackDocFile(doc = {}, packId = "") {
+  const metadata = safeParseMetadata(doc.metadata);
+  const chunkSource = String(metadata?.chunkSource || "");
+  const chunkPrefix = `sparky-wiki-seed-pack://${packId}/`;
+  if (
+    metadata?.sparkyWikiSeedPack !== packId &&
+    !chunkSource.startsWith(chunkPrefix)
+  ) {
+    return null;
+  }
+
+  if (metadata?.sparkyWikiSeedPackFile) {
+    return String(metadata.sparkyWikiSeedPackFile);
+  }
+
+  if (!chunkSource.startsWith(chunkPrefix)) return null;
+  return chunkSource.slice(chunkPrefix.length) || null;
+}
+
+async function getWorkspaceSeedPackFiles(workspace, packIds = []) {
+  const result = new Map(packIds.map((packId) => [packId, new Set()]));
+  if (!workspace?.id || packIds.length === 0) return result;
+
+  const workspaceDocs = await Document.where(
+    { workspaceId: workspace.id },
+    null,
+    null,
+    null,
+    { metadata: true }
+  );
+
+  for (const doc of workspaceDocs || []) {
+    for (const packId of packIds) {
+      const file = seedPackDocFile(doc, packId);
+      if (file) result.get(packId).add(file);
+    }
+  }
+  return result;
+}
+
+function discoverRelevantOptionalSeedPackSections({
+  prompt = "",
+  packFiles = new Map(),
+} = {}) {
+  const text = String(prompt || "").toLowerCase();
+  const sections = [];
+  const add = (packId, file, reason) => {
+    if (!packFiles.get(packId)?.has(file)) return;
+    sections.push({
+      packId,
+      file,
+      path: `${seedPackPath(packId)}/${file}`,
+      reason,
+    });
+  };
+
+  if (
+    /campaign|launch|brand|identity|public signal|earned media|stunt|spectacle|scarcity|drop|meme|arg|viral|culture|press|pr/.test(
+      text
+    )
+  ) {
+    add(
+      "cultural-protocols",
+      "BANKSY_STYLE_PUBLIC_SIGNAL_PROTOCOL.md",
+      "public signal and earned media mechanics"
+    );
+    add(
+      "cultural-protocols",
+      "NIKE_IDENTITY_COMPRESSION_PROTOCOL.md",
+      "identity compression mechanics"
+    );
+    add(
+      "cultural-protocols",
+      "MEME_CULTURE_VIRAL_LOOP_PROTOCOL.md",
+      "social spread loop mechanics"
+    );
+    add(
+      "campaign-case-studies",
+      "MASTER_MARKETERS_OVERVIEW.md",
+      "master marketer overview context"
+    );
+  }
+  if (/scarcity|drop|limited|queue|hype|supreme/.test(text)) {
+    add(
+      "cultural-protocols",
+      "SUPREME_DROP_SCARCITY_PROTOCOL.md",
+      "scarcity and release timing mechanics"
+    );
+    add(
+      "campaign-case-studies",
+      "SUPREME_DROP_CULTURE.md",
+      "drop-culture case study"
+    );
+  }
+  if (/spectacle|red bull|stratos|event|world record/.test(text)) {
+    add(
+      "cultural-protocols",
+      "RED_BULL_SPECTACLE_PROTOCOL.md",
+      "spectacle design mechanics"
+    );
+    add("campaign-case-studies", "RED_BULL_STRATOS.md", "spectacle case study");
+  }
+  if (/apple|1984|category|enemy|disrupt/.test(text)) {
+    add(
+      "cultural-protocols",
+      "APPLE_1984_CATEGORY_DISRUPTION_PROTOCOL.md",
+      "category disruption mechanics"
+    );
+    add(
+      "campaign-case-studies",
+      "APPLE_1984.md",
+      "category disruption case study"
+    );
+  }
+  if (/nike|just do it|slogan|identity compression/.test(text)) {
+    add(
+      "cultural-protocols",
+      "NIKE_IDENTITY_COMPRESSION_PROTOCOL.md",
+      "identity compression mechanics"
+    );
+    add(
+      "campaign-case-studies",
+      "NIKE_JUST_DO_IT.md",
+      "identity compression case study"
+    );
+  }
+  if (/bernays|public opinion|propaganda|pr\b|public relations/.test(text)) {
+    add(
+      "cultural-protocols",
+      "BERNAYS_PUBLIC_OPINION_PROTOCOL.md",
+      "public opinion history and ethics"
+    );
+    add(
+      "campaign-case-studies",
+      "EDWARD_BERNAYS.md",
+      "public opinion case study"
+    );
+  }
+  if (/ogilvy|copy|positioning|advertising/.test(text)) {
+    add(
+      "campaign-case-studies",
+      "OGILVY.md",
+      "research-backed advertising case study"
+    );
+  }
+  if (/banksy|public signal|street art|mystery|archive/.test(text)) {
+    add(
+      "cultural-protocols",
+      "BANKSY_STYLE_PUBLIC_SIGNAL_PROTOCOL.md",
+      "lawful public signal mechanics"
+    );
+    add(
+      "campaign-case-studies",
+      "BANKSY_PUBLIC_SIGNAL.md",
+      "public signal case study"
+    );
+  }
+
+  return sections.filter(
+    (section, index, all) =>
+      all.findIndex(
+        (candidate) =>
+          candidate.packId === section.packId && candidate.file === section.file
+      ) === index
+  );
 }
 
 function getPackLockKey(workspace, packId) {
@@ -377,10 +671,10 @@ async function importSparkyWikiSeedPack({
           ? "partial"
           : "added",
       message: allAlreadyAttached
-        ? "SPARKY Identity Empire knowledge is already attached to this workspace."
+        ? `${pack.title} knowledge is already attached to this workspace.`
         : partial
           ? "SPARKY Wiki seed pack import completed with partial failures."
-          : "SPARKY Identity Empire knowledge added to this workspace.",
+          : `${pack.title} knowledge added to this workspace.`,
     };
   });
 }
@@ -462,16 +756,25 @@ function __resetSeedPackImportLocksForTests() {
 }
 
 module.exports = {
+  CAMPAIGN_CASE_STUDIES_FILES,
+  CULTURAL_PROTOCOLS_FILES,
   IDENTITY_EMPIRE_FILES,
+  OFFLINE_WIKI_LEDGER_STANDARDS_FILES,
+  WIKI_DEPTH_AND_PROVENANCE_FILES,
   REPO_ROOT,
   discoverRelevantIdentityEmpireSections,
   getSeedPackAbsoluteFilePath,
   getSeedPackRelativeFilePath,
   getSparkyWikiSeedPack,
+  getWorkspaceSeedPackFiles,
   importSparkyWikiSeedPack,
+  discoverRelevantOptionalSeedPackSections,
   isSafePackId,
   listSparkyWikiSeedPacks,
+  parseJsonMetadata,
   parseMarkdownFrontmatter,
+  parseSeedPackMetadata,
+  seedPackDocFile,
   validateSeedPackFiles,
   __resetSeedPackImportLocksForTests,
 };

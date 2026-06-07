@@ -9,6 +9,8 @@ jest.mock("../../../models/documents", () => ({
 }));
 
 jest.mock("../../../utils/swarmsy/sparkyWikiSeedPacks", () => ({
+  discoverRelevantOptionalSeedPackSections: jest.fn(() => []),
+  getWorkspaceSeedPackFiles: jest.fn(() => new Map()),
   discoverRelevantIdentityEmpireSections: jest.fn(
     ({ prompt = "", mode = "" }) => {
       const text = `${prompt} ${mode}`.toLowerCase();
