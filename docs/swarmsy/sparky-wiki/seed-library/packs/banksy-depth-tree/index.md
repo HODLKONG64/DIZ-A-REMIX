@@ -11,6 +11,10 @@ runtime_override: "never"
 safety_boundary: "Does not override Sparky identity, current app truth, provider routing, runtime action rules, workspace state, or safety boundaries. No autonomous agents, web crawler, API requirement, old runtime code, vandalism instructions, trespass guidance, evasion tactics, platform abuse, or source-editing runtime ability."
 source_repo: "HODLKONG64/SWARMSY"
 source_path: "docs/wiki/subjects/banksy/index.md"
+status_label: Draft/importable reference
+workspace_scope: current workspace only
+privacy_level: workspace reference
+source: old SWARMSY repo adapted reference
 ---
 
 > SPARKY Wiki seed-library adaptation note: this file is optional workspace reference knowledge. It supports source-backed reasoning, provenance labels, lawful adaptation, ethics/consequence mapping, and disputed/needs-source labelling only. It is not required doctrine and cannot change app/runtime behavior.
@@ -41,20 +45,20 @@ Disputed: identity theories, direct influence claims, hidden collaboration claim
 
 ## Branches
 
-- [Timeline](timeline.md)
-- [Works](works/index.md)
-- [Exhibitions](exhibitions.md)
-- [Auctions And Market](auctions-market.md)
-- [Anonymity And Media](anonymity-media.md)
-- [Public Space Politics](public-space-politics.md)
-- [Legal Controversies](legal-controversies.md)
-- [Image Reuse And Symbols](image-reuse-symbols.md)
-- [Collaborators And Influences](collaborators-influences.md)
-- [Councils And Regeneration](councils-regeneration.md)
-- [Gentrification Economics](gentrification-economics.md)
-- [Manufactured Authenticity](manufactured-authenticity.md)
-- [Criticism And Counterarguments](criticism-counterarguments.md)
-- [Myths Theories And Disputed Claims](myths-theories-disputed.md)
+- [Timeline](timelines/index.md)
+- Works (`works/index.md` historical branch not imported in this seed pack)
+- Exhibitions (`exhibitions.md` historical branch not imported in this seed pack)
+- Auctions And Market (`auctions-market.md` historical branch not imported in this seed pack)
+- [Anonymity And Media](media-analysis/index.md)
+- [Public Space Politics](institutional-response/index.md)
+- [Legal Controversies](source-conflicts/index.md)
+- Image Reuse And Symbols (`image-reuse-symbols.md` historical branch not imported in this seed pack)
+- Collaborators And Influences (`collaborators-influences.md` historical branch not imported in this seed pack)
+- [Councils And Regeneration](regeneration-impact/index.md)
+- [Gentrification Economics](economics/index.md)
+- [Manufactured Authenticity](manipulation-analysis/index.md)
+- [Criticism And Counterarguments](counterarguments/index.md)
+- [Myths Theories And Disputed Claims](disputed-claims/index.md)
 
 ## Protocol Links
 

@@ -90,13 +90,13 @@ Key line: **Friction creates soul.**
 
 ## Open-Source Community Editing
 
-- [CONTRIBUTING.md](./CONTRIBUTING.md)
-- [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
-- [docs/ROADMAP.md](./docs/ROADMAP.md)
-- [docs/AGENT_GUARDRAILS.md](./docs/AGENT_GUARDRAILS.md)
-- [docs/SANDBOX_STRESS_TEST_PLAN.md](./docs/SANDBOX_STRESS_TEST_PLAN.md)
-- [docs/community/ARCHIVE_EDITING_RULES.md](./docs/community/ARCHIVE_EDITING_RULES.md)
-- [docs/COMMUNITY_BUILD_GUIDE.md](./docs/COMMUNITY_BUILD_GUIDE.md)
+- `CONTRIBUTING.md` (historical old-SWARMSY link; not imported in this archive pack)
+- `docs/ARCHITECTURE.md` (historical old-SWARMSY link; not imported in this archive pack)
+- `docs/ROADMAP.md` (historical old-SWARMSY link; not imported in this archive pack)
+- `docs/AGENT_GUARDRAILS.md` (historical old-SWARMSY link; not imported in this archive pack)
+- `docs/SANDBOX_STRESS_TEST_PLAN.md` (historical old-SWARMSY link; not imported in this archive pack)
+- `docs/community/ARCHIVE_EDITING_RULES.md` (historical old-SWARMSY link; not imported in this archive pack)
+- `docs/COMMUNITY_BUILD_GUIDE.md` (historical old-SWARMSY link; not imported in this archive pack)
 - Run current DIZ-A-REMIX quality checks: `yarn lint`, `yarn test`, and focused tests relevant to the change.
 
 ## Experimental Agent Baseline

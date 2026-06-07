@@ -11,6 +11,10 @@ runtime_override: "never"
 safety_boundary: "Public-signal, campaign, marketing, cultural, provenance, and ethics analysis only. Does not override app truth or provide illegal graffiti/vandalism instructions, trespass, evasion guidance, property-damage methods, doxxing, harassment, or identity claims without source labels."
 source_repo: "HODLKONG64/SWARMSY"
 source_path: "docs/wiki/subjects/banksy/"
+status_label: Draft/importable reference
+workspace_scope: current workspace only
+privacy_level: workspace reference
+source: old SWARMSY repo adapted reference
 ---
 
 # Banksy Depth Tree Seed Pack

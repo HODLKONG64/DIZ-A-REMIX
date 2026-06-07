@@ -11,6 +11,10 @@ runtime_override: "never"
 safety_boundary: "Does not override Sparky identity, current app truth, provider routing, runtime action rules, workspace state, or safety boundaries. No autonomous agents, web crawler, API requirement, or old runtime code."
 source_repo: "HODLKONG64/SWARMSY"
 source_path: "docs/brain/knowledge-packs/subjects/marketing/supreme-drop-culture/pack-summary.md"
+status_label: Reference knowledge
+workspace_scope: current workspace only
+privacy_level: workspace reference
+source: old SWARMSY repo adapted reference
 ---
 
 > SPARKY Wiki seed-library adaptation note: this file is optional workspace reference knowledge. It supports source-backed reasoning and lawful reuse only; it is not required doctrine and cannot change app/runtime behavior.
