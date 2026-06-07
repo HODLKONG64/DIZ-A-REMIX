@@ -74,6 +74,79 @@ const WIKI_DEPTH_AND_PROVENANCE_FILES = Object.freeze([
   "MULTI_LAYER_CONVERSATIONAL_DEPTH_ENGINE.md",
 ]);
 
+const BANKSY_DEPTH_TREE_FILES = Object.freeze([
+  "README.md",
+  "advanced/index.md",
+  "beginner/index.md",
+  "branches.json",
+  "campaigns/index.md",
+  "citation-index.md",
+  "claim-map.md",
+  "counterarguments/index.md",
+  "criticism/index.md",
+  "disputed-claims/index.md",
+  "economics/index.md",
+  "emotional-interpretations/index.md",
+  "ethics/index.md",
+  "expert/index.md",
+  "future-implications/index.md",
+  "index.md",
+  "institutional-response/index.md",
+  "manipulation-analysis/index.md",
+  "media-analysis/index.md",
+  "modern-equivalents/index.md",
+  "mythology-lore/index.md",
+  "narrative-analysis/index.md",
+  "psychology/index.md",
+  "regeneration-impact/index.md",
+  "source-cards/banksy-better-out-than-in-archive-2013.json",
+  "source-cards/banksy-cut-run-glasgow-council-2025.json",
+  "source-cards/banksy-dismaland-economy-time-2015.json",
+  "source-cards/banksy-dismaland-time-2015.json",
+  "source-cards/banksy-love-bin-guinness-2021.json",
+  "source-cards/banksy-love-bin-sothebys-2021.json",
+  "source-cards/banksy-official-site.json",
+  "source-cards/banksy-seasons-greetings-guardian-2019.json",
+  "source-cards/banksy-slave-labour-guardian-2013.json",
+  "source-cards/banksy-slave-labour-la-times-2013.json",
+  "source-cards/banksy-walled-off-hotel-cbs-2017.json",
+  "source-cards/bbc-game-changer-sale.json",
+  "source-cards/christies-game-changer.json",
+  "source-cards/pest-control-auth.json",
+  "source-cards/sothebys-love-bin-2021.json",
+  "source-conflicts/index.md",
+  "sparky-answer-notes.md",
+  "speculation/index.md",
+  "timelines/index.md",
+]);
+const OPEN_CULTURAL_INTELLIGENCE_FILES = Object.freeze([
+  "KNOWLEDGE_GRAPH_RETRIEVAL_COMPRESSION.md",
+  "KNOWLEDGE_GRAPH_RETRIEVAL_REFERENCE_PLAN.md",
+  "NETWORKED_WEBSITE_FUTURE.md",
+  "OPEN_CULTURAL_INTELLIGENCE_DOCTRINE.md",
+  "README.md",
+]);
+const SWARMSY_PRODUCT_OPERATOR_DOCTRINE_FILES = Object.freeze([
+  "README.md",
+  "RUNTIME_ACTION_KERNEL.md",
+  "SPARKY_APP_ACTIONS.md",
+  "USER_ACTION_AUTOPILOT_RULES.md",
+  "WIDGET_MANAGER.md",
+  "WIDGET_MANAGER_REFERENCE_IMPLEMENTATION_PLAN.md",
+  "WORKSPACE_BRAIN_MANAGER.md",
+  "WORKSPACE_RAG_SHELL.md",
+  "WORKSPACE_RAG_SHELL_REFERENCE_IMPLEMENTATION_PLAN.md",
+]);
+const SWARMSY_SUPPORT_AND_PROVIDER_HELP_FILES = Object.freeze([
+  "BEGINNER_MODE_HELP.md",
+  "BROWSER_FIRST_TROUBLESHOOTING.md",
+  "EXPERT_MODE_HELP.md",
+  "EXTERNAL_HELP_CONNECTIONS.md",
+  "PROVIDER_FAILURE_PLAYBOOK.md",
+  "README.md",
+  "TELEGRAM_GATED_BUILDER_ACCESS.md",
+]);
+
 const seedPackPath = (packId) => `${SEED_PACK_SOURCE_ROOT}/${packId}`;
 
 const SAFETY_BOUNDARIES = Object.freeze([
@@ -161,6 +234,74 @@ const PACKS = Object.freeze([
     safetyBoundaries: SAFETY_BOUNDARIES,
     recommendedWorkspaceUseCase:
       "Attach when auditing provenance, disputed claims, citation trees, or retrieval priority for local SPARKY Wiki reference packs.",
+    importable: true,
+    draftImportable: true,
+  }),
+  Object.freeze({
+    id: "banksy-depth-tree",
+    title: "Banksy Depth Tree",
+    shortDescription:
+      "Book-grade Banksy subject tree for public-signal, campaign, cultural, media, provenance, disputed-claim, myth/lore, and source-conflict analysis.",
+    category: "banksy depth tree",
+    status:
+      "reference knowledge, draft-importable workspace reference knowledge",
+    docsSpecOnly: true,
+    sourcePath: seedPackPath("banksy-depth-tree"),
+    includedFiles: BANKSY_DEPTH_TREE_FILES,
+    safetyBoundaries: SAFETY_BOUNDARIES,
+    recommendedWorkspaceUseCase:
+      "Attach when Sparky needs deep Banksy/public-signal analysis with source cards, claim maps, disputed labels, myth/lore separation, and lawful adaptation boundaries.",
+    importable: true,
+    draftImportable: true,
+  }),
+  Object.freeze({
+    id: "open-cultural-intelligence",
+    title: "Open Cultural Intelligence",
+    shortDescription:
+      "Docs/spec reference for local-first open cultural intelligence, provenance-aware wiki reasoning, knowledge-graph direction, and agent-readable boundaries.",
+    category: "open cultural intelligence",
+    status:
+      "docs/spec-only source, draft-importable workspace reference knowledge",
+    docsSpecOnly: true,
+    sourcePath: seedPackPath("open-cultural-intelligence"),
+    includedFiles: OPEN_CULTURAL_INTELLIGENCE_FILES,
+    safetyBoundaries: SAFETY_BOUNDARIES,
+    recommendedWorkspaceUseCase:
+      "Attach when discussing provenance-aware cultural intelligence, future wiki/website/knowledge-graph direction, and local-first reasoning boundaries.",
+    importable: true,
+    draftImportable: true,
+  }),
+  Object.freeze({
+    id: "swarmsy-product-operator-doctrine",
+    title: "SWARMSY Product Operator Doctrine",
+    shortDescription:
+      "Docs/spec-only future product/operator design references for app actions, workspace brain, RAG shell, widgets, and autopilot boundaries without runtime wiring.",
+    category: "swarmsy product operator doctrine",
+    status:
+      "docs/spec-only source, draft-importable workspace reference knowledge",
+    docsSpecOnly: true,
+    sourcePath: seedPackPath("swarmsy-product-operator-doctrine"),
+    includedFiles: SWARMSY_PRODUCT_OPERATOR_DOCTRINE_FILES,
+    safetyBoundaries: SAFETY_BOUNDARIES,
+    recommendedWorkspaceUseCase:
+      "Attach only for future product/operator planning. Treat as docs/spec reference, not runtime actions, autonomous agents, widgets, source-editing ability, or current app truth.",
+    importable: true,
+    draftImportable: true,
+  }),
+  Object.freeze({
+    id: "swarmsy-support-and-provider-help",
+    title: "SWARMSY Support and Provider Help",
+    shortDescription:
+      "Local setup, provider failure, beginner/expert help, browser-first troubleshooting, external help, and Telegram access reference updated for current app boundaries.",
+    category: "swarmsy support and provider help",
+    status:
+      "reference knowledge, draft-importable workspace reference knowledge",
+    docsSpecOnly: true,
+    sourcePath: seedPackPath("swarmsy-support-and-provider-help"),
+    includedFiles: SWARMSY_SUPPORT_AND_PROVIDER_HELP_FILES,
+    safetyBoundaries: SAFETY_BOUNDARIES,
+    recommendedWorkspaceUseCase:
+      "Attach when Sparky should answer setup/provider/troubleshooting questions locally while preserving current DIZ/SWARMSY behavior and explicit Use API boundaries.",
     importable: true,
     draftImportable: true,
   }),
@@ -756,10 +897,14 @@ function __resetSeedPackImportLocksForTests() {
 }
 
 module.exports = {
+  BANKSY_DEPTH_TREE_FILES,
   CAMPAIGN_CASE_STUDIES_FILES,
   CULTURAL_PROTOCOLS_FILES,
   IDENTITY_EMPIRE_FILES,
   OFFLINE_WIKI_LEDGER_STANDARDS_FILES,
+  OPEN_CULTURAL_INTELLIGENCE_FILES,
+  SWARMSY_PRODUCT_OPERATOR_DOCTRINE_FILES,
+  SWARMSY_SUPPORT_AND_PROVIDER_HELP_FILES,
   WIKI_DEPTH_AND_PROVENANCE_FILES,
   REPO_ROOT,
   discoverRelevantIdentityEmpireSections,

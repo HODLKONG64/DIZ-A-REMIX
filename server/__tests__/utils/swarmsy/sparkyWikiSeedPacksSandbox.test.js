@@ -134,6 +134,10 @@ describe("SPARKY Wiki seed pack sandbox stress test", () => {
       "cultural-protocols",
       "campaign-case-studies",
       "wiki-depth-and-provenance",
+      "banksy-depth-tree",
+      "open-cultural-intelligence",
+      "swarmsy-product-operator-doctrine",
+      "swarmsy-support-and-provider-help",
     ]);
 
     const validation = validateSeedPackFiles("identity-empire");

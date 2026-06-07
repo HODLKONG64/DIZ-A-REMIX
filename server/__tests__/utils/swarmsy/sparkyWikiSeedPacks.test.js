@@ -12,10 +12,14 @@ jest.mock("../../../utils/collectorApi", () => ({
 const { Document } = require("../../../models/documents");
 const { CollectorApi } = require("../../../utils/collectorApi");
 const {
+  BANKSY_DEPTH_TREE_FILES,
   CAMPAIGN_CASE_STUDIES_FILES,
   CULTURAL_PROTOCOLS_FILES,
   IDENTITY_EMPIRE_FILES,
   OFFLINE_WIKI_LEDGER_STANDARDS_FILES,
+  OPEN_CULTURAL_INTELLIGENCE_FILES,
+  SWARMSY_PRODUCT_OPERATOR_DOCTRINE_FILES,
+  SWARMSY_SUPPORT_AND_PROVIDER_HELP_FILES,
   WIKI_DEPTH_AND_PROVENANCE_FILES,
   discoverRelevantIdentityEmpireSections,
   discoverRelevantOptionalSeedPackSections,
@@ -64,6 +68,10 @@ describe("SPARKY Wiki seed pack registry", () => {
       "cultural-protocols",
       "campaign-case-studies",
       "wiki-depth-and-provenance",
+      "banksy-depth-tree",
+      "open-cultural-intelligence",
+      "swarmsy-product-operator-doctrine",
+      "swarmsy-support-and-provider-help",
     ]);
     expect(packs[0]).toMatchObject({
       id: "identity-empire",
@@ -83,6 +91,22 @@ describe("SPARKY Wiki seed pack registry", () => {
     expect(packs[3].includedFiles).toEqual([...CAMPAIGN_CASE_STUDIES_FILES]);
     expect(packs[4].includedFiles).toEqual([
       ...WIKI_DEPTH_AND_PROVENANCE_FILES,
+    ]);
+    expect(packs[5]).toMatchObject({
+      id: "banksy-depth-tree",
+      category: "banksy depth tree",
+      draftImportable: true,
+      importable: true,
+    });
+    expect(packs[5].includedFiles).toEqual([...BANKSY_DEPTH_TREE_FILES]);
+    expect(packs[6].includedFiles).toEqual([
+      ...OPEN_CULTURAL_INTELLIGENCE_FILES,
+    ]);
+    expect(packs[7].includedFiles).toEqual([
+      ...SWARMSY_PRODUCT_OPERATOR_DOCTRINE_FILES,
+    ]);
+    expect(packs[8].includedFiles).toEqual([
+      ...SWARMSY_SUPPORT_AND_PROVIDER_HELP_FILES,
     ]);
     expect(
       packs.every((pack) =>
@@ -108,6 +132,22 @@ describe("SPARKY Wiki seed pack registry", () => {
       "wiki-depth-and-provenance",
       WIKI_DEPTH_AND_PROVENANCE_FILES,
       "wiki depth and provenance",
+    ],
+    ["banksy-depth-tree", BANKSY_DEPTH_TREE_FILES, "banksy depth tree"],
+    [
+      "open-cultural-intelligence",
+      OPEN_CULTURAL_INTELLIGENCE_FILES,
+      "open cultural intelligence",
+    ],
+    [
+      "swarmsy-product-operator-doctrine",
+      SWARMSY_PRODUCT_OPERATOR_DOCTRINE_FILES,
+      "swarmsy product operator doctrine",
+    ],
+    [
+      "swarmsy-support-and-provider-help",
+      SWARMSY_SUPPORT_AND_PROVIDER_HELP_FILES,
+      "swarmsy support and provider help",
     ],
   ])(
     "validates every expected %s file and metadata without crawling the repo",
@@ -270,6 +310,16 @@ describe("SPARKY Wiki seed pack registry", () => {
       runtime_override: "never",
     });
     expect(parseSeedPackMetadata("{}", "SOURCE_CARD_SCHEMA.json")).toBeNull();
+
+    const banksyValidation = validateSeedPackFiles("banksy-depth-tree");
+    const banksySourceCard = banksyValidation.files.find((file) =>
+      file.file.startsWith("source-cards/")
+    );
+    expect(banksySourceCard.frontmatter).toMatchObject({
+      category: "banksy depth tree",
+      runtime_override: "never",
+      optional_reference_knowledge: true,
+    });
   });
 
   it("keeps seed pack docs optional, safe, and non-overriding", () => {
@@ -298,12 +348,21 @@ describe("SPARKY Wiki seed pack registry", () => {
           )
         ) {
           expect(raw).toMatch(
-            /must not operationalize|must not provide|not allowed/i
+            /must not operationalize|must not provide|not allowed|not operational playbooks|no step-by-step/i
           );
         }
         expect(raw).not.toMatch(
-          /here is how to trespass|evade police by|damage property by/i
+          /here is how to trespass|evade police by|damage property by|police\/council avoidance tactics:/i
         );
+        if (pack.id === "banksy-depth-tree") {
+          expect(raw).toMatch(/public evidence|disputed|myth\/lore|source/i);
+        }
+        if (pack.id === "swarmsy-product-operator-doctrine") {
+          expect(raw).toMatch(/Docs\/spec|docs_spec_only|not runtime wiring/i);
+        }
+        if (pack.id === "swarmsy-support-and-provider-help") {
+          expect(raw).toMatch(/Use API|local-first|provider|current app/i);
+        }
       }
     }
   });

@@ -85,6 +85,68 @@ This index lists the starter SPARKY Wiki seed files. They are optional reference
 - `packs/wiki-depth-and-provenance/WIKI_DEPTH_TREE_DOCTRINE.md`
 - `packs/wiki-depth-and-provenance/MULTI_LAYER_CONVERSATIONAL_DEPTH_ENGINE.md`
 
+### Banksy Depth Tree pack
+
+- `packs/banksy-depth-tree/README.md`
+- `packs/banksy-depth-tree/index.md`
+- `packs/banksy-depth-tree/branches.json`
+- `packs/banksy-depth-tree/claim-map.md`
+- `packs/banksy-depth-tree/citation-index.md`
+- `packs/banksy-depth-tree/sparky-answer-notes.md`
+- `packs/banksy-depth-tree/source-cards/*.json`
+- `packs/banksy-depth-tree/beginner/index.md`
+- `packs/banksy-depth-tree/advanced/index.md`
+- `packs/banksy-depth-tree/expert/index.md`
+- `packs/banksy-depth-tree/timelines/index.md`
+- `packs/banksy-depth-tree/campaigns/index.md`
+- `packs/banksy-depth-tree/psychology/index.md`
+- `packs/banksy-depth-tree/economics/index.md`
+- `packs/banksy-depth-tree/ethics/index.md`
+- `packs/banksy-depth-tree/criticism/index.md`
+- `packs/banksy-depth-tree/counterarguments/index.md`
+- `packs/banksy-depth-tree/institutional-response/index.md`
+- `packs/banksy-depth-tree/mythology-lore/index.md`
+- `packs/banksy-depth-tree/disputed-claims/index.md`
+- `packs/banksy-depth-tree/speculation/index.md`
+- `packs/banksy-depth-tree/modern-equivalents/index.md`
+- `packs/banksy-depth-tree/emotional-interpretations/index.md`
+- `packs/banksy-depth-tree/regeneration-impact/index.md`
+- `packs/banksy-depth-tree/media-analysis/index.md`
+- `packs/banksy-depth-tree/narrative-analysis/index.md`
+- `packs/banksy-depth-tree/manipulation-analysis/index.md`
+- `packs/banksy-depth-tree/source-conflicts/index.md`
+- `packs/banksy-depth-tree/future-implications/index.md`
+
+### Open Cultural Intelligence pack
+
+- `packs/open-cultural-intelligence/README.md`
+- `packs/open-cultural-intelligence/OPEN_CULTURAL_INTELLIGENCE_DOCTRINE.md`
+- `packs/open-cultural-intelligence/NETWORKED_WEBSITE_FUTURE.md`
+- `packs/open-cultural-intelligence/KNOWLEDGE_GRAPH_RETRIEVAL_COMPRESSION.md`
+- `packs/open-cultural-intelligence/KNOWLEDGE_GRAPH_RETRIEVAL_REFERENCE_PLAN.md`
+
+### SWARMSY Product Operator Doctrine pack
+
+- `packs/swarmsy-product-operator-doctrine/README.md`
+- `packs/swarmsy-product-operator-doctrine/SPARKY_APP_ACTIONS.md`
+- `packs/swarmsy-product-operator-doctrine/RUNTIME_ACTION_KERNEL.md`
+- `packs/swarmsy-product-operator-doctrine/WORKSPACE_BRAIN_MANAGER.md`
+- `packs/swarmsy-product-operator-doctrine/WORKSPACE_RAG_SHELL.md`
+- `packs/swarmsy-product-operator-doctrine/WORKSPACE_RAG_SHELL_REFERENCE_IMPLEMENTATION_PLAN.md`
+- `packs/swarmsy-product-operator-doctrine/WIDGET_MANAGER.md`
+- `packs/swarmsy-product-operator-doctrine/WIDGET_MANAGER_REFERENCE_IMPLEMENTATION_PLAN.md`
+- `packs/swarmsy-product-operator-doctrine/USER_ACTION_AUTOPILOT_RULES.md`
+
+### SWARMSY Support and Provider Help pack
+
+- `packs/swarmsy-support-and-provider-help/README.md`
+- `packs/swarmsy-support-and-provider-help/PROVIDER_FAILURE_PLAYBOOK.md`
+- `packs/swarmsy-support-and-provider-help/BEGINNER_MODE_HELP.md`
+- `packs/swarmsy-support-and-provider-help/EXPERT_MODE_HELP.md`
+- `packs/swarmsy-support-and-provider-help/BROWSER_FIRST_TROUBLESHOOTING.md`
+- `packs/swarmsy-support-and-provider-help/EXTERNAL_HELP_CONNECTIONS.md`
+- `packs/swarmsy-support-and-provider-help/TELEGRAM_GATED_BUILDER_ACCESS.md`
+
 ### Core doctrine reference
 
 - `core-doctrine/SWARMSY_IDENTITY_OPERATING_SYSTEM.md`
