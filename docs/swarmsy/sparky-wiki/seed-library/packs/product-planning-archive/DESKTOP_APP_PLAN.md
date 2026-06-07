@@ -127,7 +127,7 @@ Mobile remains unchanged:
 
 - Added `electron-builder` as dev dependency
 - Added `build` config in `package.json` (appId, productName, files, win portable target, output → `release/`)
-- Added reference SPARKY Wiki Windows packaging command; do not use as current DIZ-A-REMIX guidance script (`electron-builder --win portable`)
+- Windows packaging references must use current root `package.json` desktop artifact scripts only.
 - Added `release/` to `.gitignore`
 - Updated docs with build steps and output location
 

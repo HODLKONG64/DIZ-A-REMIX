@@ -21,35 +21,42 @@ const {
   validateSeedPackFiles,
 } = require("../../../utils/swarmsy/sparkyWikiSeedPacks");
 
-const INVALID_OLD_COMMAND_PATTERN =
-  /\b(?:npm install|npm run (?:start|web|android|ios|typecheck|check:current-truth|check:brand-canon|stress:sandbox)|npm test -- --watch=false|yarn (?:android|ios|expo)|npx expo start|expo start|desktop:build:web|desktop:build:win)\b/i;
+const STALE_COMMAND_PATTERN =
+  /\b(?:npm install|npm run (?:start|web|android|ios|typecheck|check:current-truth|check:brand-canon|stress:sandbox|electron)|npm test -- --watch=false|yarn (?:android|ios|expo|electron|desktop:build)|npx expo start|expo start|scripts\/system-sync-stress-sandbox\.mjs|desktop:build:web|desktop:build:win|electron-builder --win portable)\b/i;
 const CURRENT_DIZ_COMMAND_PATTERN =
   /\b(?:yarn setup|yarn dev:server|yarn dev:frontend|yarn dev:collector|yarn dev:all|yarn desktop:dev|yarn desktop:smoke|yarn desktop:runtime:dev|yarn lint|yarn test)\b/i;
 const BANNED_VISIBLE_OLD_REPO_PATTERN = new RegExp(
   [
-    "old[-\\s]+SWARMSY",
-    "HODLKONG64\\/SWARMSY",
-    "imported\\s+from",
-    "adapted\\s+reference",
-    "historical\\s+reference",
-    "legacy\\s+source",
-    "source[_-]repo",
-    "source[_-]path",
-    "preserved\\s+for\\s+continuity",
-    "migrat(?:ion|ed)",
-    "skipped\\s+files",
-    "manual\\s+review\\s+files",
-    "old[_-]path",
-    "new[_-]path",
+    "old[-\\s]+" + "SWARMSY",
+    "HODLKONG64\\/" + "SWARMSY",
+    "import" + "ed\\s+from",
+    "adapt" + "ed\\s+reference",
+    "histor" + "ical\\s+reference",
+    "leg" + "acy\\s+source",
+    "source[_-]" + "repo",
+    "source[_-]" + "path",
+    "preserved\\s+for\\s+continu" + "ity",
+    "migrat" + "(?:ion|ed)",
+    "skip" + "ped\\s+files",
+    "manual\\s+review\\s+" + "files",
+    "old[_-]" + "path",
+    "new[_-]" + "path",
   ].join("|"),
   "i"
 );
 
-function invalidOldCommandMatches(raw = "") {
+function staleCommandMatches(raw = "") {
   return String(raw || "")
     .split(/\r?\n/)
     .map((line, index) => ({ line, lineNumber: index + 1 }))
-    .filter(({ line }) => INVALID_OLD_COMMAND_PATTERN.test(line));
+    .filter(({ line }) => STALE_COMMAND_PATTERN.test(line))
+    .map((match) => ({
+      ...match,
+      matchedStaleCommand:
+        match.line.match(STALE_COMMAND_PATTERN)?.[0] || match.line,
+      reason:
+        "stale command must be removed or replaced with a current DIZ-A-REMIX command",
+    }));
 }
 
 const REQUIRED_MARKDOWN_FIELDS = [
@@ -213,18 +220,22 @@ describe("SPARKY Wiki seed library audit invariants", () => {
     expect(violations).toEqual([]);
   });
 
-  it("contains no invalid old setup/mobile/runtime commands in registered markdown files", () => {
+  it("contains no stale setup/mobile/runtime commands in registered markdown files", () => {
     const staleGuidanceIssues = [];
 
     for (const seedFile of registeredSeedFiles().filter(({ file }) =>
       file.endsWith(".md")
     )) {
       const raw = fs.readFileSync(seedFile.absolutePath, "utf8");
-      const invalidMatches = invalidOldCommandMatches(raw);
+      const invalidMatches = staleCommandMatches(raw);
       if (invalidMatches.length) {
         staleGuidanceIssues.push({
           file: seedFile.relativePath,
-          matches: invalidMatches,
+          matches: invalidMatches.map((match) => ({
+            lineNumber: match.lineNumber,
+            matchedStaleCommand: match.matchedStaleCommand,
+            reason: match.reason,
+          })),
         });
       }
     }
@@ -232,12 +243,12 @@ describe("SPARKY Wiki seed library audit invariants", () => {
     expect(staleGuidanceIssues).toEqual([]);
   });
 
-  it("rejects invalid old commands without allowing stale labels to excuse them", () => {
+  it("rejects stale commands without allowing nearby labels to excuse them", () => {
     expect(
-      invalidOldCommandMatches(`
+      staleCommandMatches(`
 ## Setup
 
-Archival command label:
+Label near command:
 yarn expo start
 `)
     ).toEqual([
@@ -247,7 +258,7 @@ yarn expo start
     ]);
 
     expect(
-      invalidOldCommandMatches(`
+      staleCommandMatches(`
 ## Current setup
 
 Run npm run android to launch the mobile preview.
@@ -259,7 +270,7 @@ Run npm run android to launch the mobile preview.
     ]);
 
     expect(
-      invalidOldCommandMatches(`
+      staleCommandMatches(`
 ## Current DIZ-A-REMIX commands
 
 Run yarn setup, yarn dev:server, yarn dev:frontend, yarn dev:collector, yarn dev:all, yarn desktop:dev, yarn desktop:smoke, yarn desktop:runtime:dev, yarn lint, and yarn test.

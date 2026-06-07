@@ -483,11 +483,11 @@ describe("SPARKY Wiki seed pack registry", () => {
     );
     expect(manifest.validation).toMatchObject({
       registry: "passed",
-      frontmatter: "passed",
-      json: "passed",
-      links: "passed",
-      stale_commands: "passed",
-      runtime_override: "blocked",
+      metadata_validation: "passed",
+      json_validation: "passed",
+      link_validation: "passed",
+      stale_command_validation: "passed",
+      runtime_override_validation: "blocked",
     });
     expect(JSON.stringify(manifest)).not.toMatch(
       new RegExp(
