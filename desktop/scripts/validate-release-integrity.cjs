@@ -27,6 +27,12 @@ function resolveFromManifest(manifestPath, manifestArtifactPath) {
   return path.resolve(repoRoot, manifestArtifactPath);
 }
 
+function assertPortableManifestPath(manifestArtifactPath, label) {
+  const value = String(manifestArtifactPath || "");
+  if (path.isAbsolute(value) || value.includes("..") || value.includes("\\")) {
+    fail(`${label} must be a portable relative path.`);
+  }
+}
 
 function parseSha256Sums(contents) {
   const entries = new Map();
@@ -97,6 +103,10 @@ function validateReleaseIntegrity({ manifestPath = releaseManifest } = {}) {
   assertSha256(manifest.artifactSHA256, "artifactSHA256");
   assertSha256(manifest.installerSHA256, "installerSHA256");
   if (!manifest.checksums) fail("Release manifest checksums path is missing.");
+  assertPortableManifestPath(
+    manifest.checksums,
+    "Release manifest checksums path"
+  );
 
   const checksumsPath = resolveFromManifest(manifestPath, manifest.checksums);
   if (!fs.existsSync(checksumsPath)) fail(`SHA256SUMS.txt is missing: ${checksumsPath}`);
@@ -148,6 +158,7 @@ function main() {
 if (require.main === module) main();
 
 module.exports = {
+  assertPortableManifestPath,
   parseSha256Sums,
   validateReleaseIntegrity,
 };

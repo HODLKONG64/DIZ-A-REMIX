@@ -224,6 +224,39 @@ describe("desktop release integrity manifest", () => {
     );
   });
 
+  it("rejects checksums manifest paths that escape the release bundle", () => {
+    createFixtureManifest();
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    manifest.checksums = "../SHA256SUMS.txt";
+    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    expect(() => validateReleaseIntegrity({ manifestPath })).toThrow(
+      "Release manifest checksums path must be a portable relative path."
+    );
+  });
+
+  it("rejects absolute checksums manifest paths", () => {
+    createFixtureManifest();
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    manifest.checksums = path.join(tmpRoot, "SHA256SUMS.txt");
+    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    expect(() => validateReleaseIntegrity({ manifestPath })).toThrow(
+      "Release manifest checksums path must be a portable relative path."
+    );
+  });
+
+  it("rejects backslash checksums manifest paths", () => {
+    createFixtureManifest();
+    const manifest = JSON.parse(fs.readFileSync(manifestPath, "utf8"));
+    manifest.checksums = "checksums\\SHA256SUMS.txt";
+    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
+
+    expect(() => validateReleaseIntegrity({ manifestPath })).toThrow(
+      "Release manifest checksums path must be a portable relative path."
+    );
+  });
+
   it("publishes desktop downloads and checksums to permanent GitHub Releases", () => {
     const releaseWorkflow = fs.readFileSync(releaseWorkflowPath, "utf8");
 
@@ -242,6 +275,41 @@ describe("desktop release integrity manifest", () => {
     expect(releaseWorkflow).toContain("desktop/artifacts/SWARMSY-Desktop-Setup.exe");
     expect(releaseWorkflow).toContain("desktop/artifacts/swarmsy-desktop-win32-x64.zip");
     expect(releaseWorkflow).toContain("desktop/artifacts/SHA256SUMS.txt");
+    expect(releaseWorkflow).toContain("desktop/artifacts/SWARMSY-Desktop-Release.json");
+    expect(releaseWorkflow).toContain("desktop/artifacts/RELEASE_NOTES.md");
+  });
+
+  it("uses explicit release state booleans when editing existing releases", () => {
+    const releaseWorkflow = fs.readFileSync(releaseWorkflowPath, "utf8");
+
+    expect(releaseWorkflow).toContain("RELEASE_DRAFT: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.draft == 'true' && 'true' || 'false' }}");
+    expect(releaseWorkflow).toContain("RELEASE_PRERELEASE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease == 'true' && 'true' || 'false' }}");
+    expect(releaseWorkflow).toContain('"--draft=$env:RELEASE_DRAFT"');
+    expect(releaseWorkflow).toContain('"--prerelease=$env:RELEASE_PRERELEASE"');
+    expect(releaseWorkflow).toContain("gh release edit @editReleaseArgs");
+  });
+
+  it("defaults tag-pushed releases to non-draft non-prerelease", () => {
+    const releaseWorkflow = fs.readFileSync(releaseWorkflowPath, "utf8");
+
+    expect(releaseWorkflow).toContain('tags:\n      - "desktop-v*"');
+    expect(releaseWorkflow).toContain("github.event_name == 'workflow_dispatch'");
+    expect(releaseWorkflow).toContain("github.event.inputs.draft == 'true' && 'true' || 'false'");
+    expect(releaseWorkflow).toContain("github.event.inputs.prerelease == 'true' && 'true' || 'false'");
+    expect(releaseWorkflow).not.toContain("github.event.inputs.prerelease || 'true'");
+  });
+
+  it("verifies the downloaded Electron runtime against published SHASUMS", () => {
+    const releaseWorkflow = fs.readFileSync(releaseWorkflowPath, "utf8");
+
+    expect(releaseWorkflow).toContain("Download and verify Electron runtime");
+    expect(releaseWorkflow).toContain("SHASUMS256.txt");
+    expect(releaseWorkflow).toContain("Electron SHASUMS256.txt does not contain $zipName");
+    expect(releaseWorkflow).toContain("Get-FileHash -Algorithm SHA256 $zipPath");
+    expect(releaseWorkflow).toContain("Electron runtime SHA256 mismatch");
+    expect(releaseWorkflow.indexOf("Expand-Archive -Path $zipPath")).toBeGreaterThan(
+      releaseWorkflow.indexOf("Electron runtime SHA256 mismatch")
+    );
   });
 
   it("writes user-ready release notes without developer setup instructions", () => {

@@ -142,13 +142,31 @@ jobs:
       - name: Run desktop signing and release integrity tests
         run: npx --yes jest@29.7.0 server/__tests__/desktop/desktopSigningFoundation.test.js server/__tests__/desktop/desktopReleaseIntegrity.test.js --runInBand
 
-      - name: Download Electron runtime
+      - name: Download and verify Electron runtime
         shell: pwsh
         run: |
-          $zipPath = Join-Path $env:RUNNER_TEMP "electron-v$env:ELECTRON_VERSION-win32-x64.zip"
+          $zipName = "electron-v$env:ELECTRON_VERSION-win32-x64.zip"
+          $zipPath = Join-Path $env:RUNNER_TEMP $zipName
+          $shasumsPath = Join-Path $env:RUNNER_TEMP "electron-v$env:ELECTRON_VERSION-SHASUMS256.txt"
           $extractPath = Join-Path $env:RUNNER_TEMP "electron-win32-x64"
-          $downloadUrl = "https://github.com/electron/electron/releases/download/v$env:ELECTRON_VERSION/electron-v$env:ELECTRON_VERSION-win32-x64.zip"
-          Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath
+          $releaseUrl = "https://github.com/electron/electron/releases/download/v$env:ELECTRON_VERSION"
+          Invoke-WebRequest -Uri "$releaseUrl/$zipName" -OutFile $zipPath
+          Invoke-WebRequest -Uri "$releaseUrl/SHASUMS256.txt" -OutFile $shasumsPath
+
+          $matchingLine = Get-Content $shasumsPath | Where-Object {
+            $parts = $_ -split "\s+", 2
+            $parts.Length -eq 2 -and $parts[1].TrimStart("*") -eq $zipName
+          } | Select-Object -First 1
+          if ([string]::IsNullOrWhiteSpace($matchingLine)) {
+            throw "Electron SHASUMS256.txt does not contain $zipName"
+          }
+
+          $expectedSha256 = ($matchingLine -split "\s+", 2)[0].ToLowerInvariant()
+          $actualSha256 = (Get-FileHash -Algorithm SHA256 $zipPath).Hash.ToLowerInvariant()
+          if ($actualSha256 -ne $expectedSha256) {
+            throw "Electron runtime SHA256 mismatch for $zipName. Expected $expectedSha256 but got $actualSha256."
+          }
+
           if (Test-Path $extractPath) { Remove-Item -Recurse -Force $extractPath }
           Expand-Archive -Path $zipPath -DestinationPath $extractPath
           "ELECTRON_DIST_PATH=$extractPath" | Out-File -FilePath $env:GITHUB_ENV -Append
@@ -202,8 +220,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
           RELEASE_TITLE: SWARMSY Desktop ${{ steps.release_tag.outputs.tag }}
-          RELEASE_DRAFT: ${{ github.event.inputs.draft || 'false' }}
-          RELEASE_PRERELEASE: ${{ github.event.inputs.prerelease || 'true' }}
+          RELEASE_DRAFT: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.draft == 'true' && 'true' || 'false' }}
+          RELEASE_PRERELEASE: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.prerelease == 'true' && 'true' || 'false' }}
         run: |
           $assets = @(
             "desktop/artifacts/SWARMSY-Desktop-Setup.exe",
@@ -222,14 +240,19 @@ jobs:
             "--notes-file", "desktop/artifacts/RELEASE_NOTES.md",
             "--target", "${{ github.sha }}"
           )
-          if ($env:RELEASE_DRAFT -eq "true") { $releaseArgs += "--draft" }
-          if ($env:RELEASE_PRERELEASE -eq "true") { $releaseArgs += "--prerelease" }
+          $editReleaseArgs = $releaseArgs + @(
+            "--draft=$env:RELEASE_DRAFT",
+            "--prerelease=$env:RELEASE_PRERELEASE"
+          )
+          $createReleaseArgs = $releaseArgs
+          if ($env:RELEASE_DRAFT -eq "true") { $createReleaseArgs += "--draft" }
+          if ($env:RELEASE_PRERELEASE -eq "true") { $createReleaseArgs += "--prerelease" }
 
           gh release view $env:RELEASE_TAG *> $null
           if ($LASTEXITCODE -eq 0) {
-            gh release edit @releaseArgs
+            gh release edit @editReleaseArgs
           } else {
-            gh release create @releaseArgs
+            gh release create @createReleaseArgs
           }
           gh release upload $env:RELEASE_TAG @assets --clobber
 
