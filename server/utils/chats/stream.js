@@ -178,15 +178,18 @@ async function streamChatWithWorkspace(
     });
   });
 
-  const identityEmpireRetrievalPlan = await buildIdentityEmpireRetrievalPlan({
-    workspace,
-    prompt: updatedMessage,
-  });
-  const vectorSearchInput =
-    identityEmpireRetrievalPlan.retrievalInput || updatedMessage;
+  let vectorSearchInput = updatedMessage;
+  if (embeddingsCount > 0) {
+    const identityEmpireRetrievalPlan = await buildIdentityEmpireRetrievalPlan({
+      workspace,
+      prompt: updatedMessage,
+    });
+    vectorSearchInput =
+      identityEmpireRetrievalPlan.retrievalInput || updatedMessage;
+  }
 
   const vectorSearchResults =
-    embeddingsCount !== 0
+    embeddingsCount > 0
       ? await VectorDb.performSimilaritySearch({
           namespace: workspace.slug,
           input: vectorSearchInput,

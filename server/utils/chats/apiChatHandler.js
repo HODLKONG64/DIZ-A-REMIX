@@ -320,15 +320,17 @@ async function chatSync({
     }
   });
 
-  const identityEmpireRetrievalPlan = await buildIdentityEmpireRetrievalPlan({
-    workspace,
-    prompt: message,
-  });
-  const vectorSearchInput =
-    identityEmpireRetrievalPlan.retrievalInput || message;
+  let vectorSearchInput = message;
+  if (embeddingsCount > 0) {
+    const identityEmpireRetrievalPlan = await buildIdentityEmpireRetrievalPlan({
+      workspace,
+      prompt: message,
+    });
+    vectorSearchInput = identityEmpireRetrievalPlan.retrievalInput || message;
+  }
 
   const vectorSearchResults =
-    embeddingsCount !== 0
+    embeddingsCount > 0
       ? await VectorDb.performSimilaritySearch({
           namespace: workspace.slug,
           input: vectorSearchInput,
@@ -703,15 +705,17 @@ async function streamChat({
     }
   });
 
-  const identityEmpireRetrievalPlan = await buildIdentityEmpireRetrievalPlan({
-    workspace,
-    prompt: message,
-  });
-  const vectorSearchInput =
-    identityEmpireRetrievalPlan.retrievalInput || message;
+  let vectorSearchInput = message;
+  if (embeddingsCount > 0) {
+    const identityEmpireRetrievalPlan = await buildIdentityEmpireRetrievalPlan({
+      workspace,
+      prompt: message,
+    });
+    vectorSearchInput = identityEmpireRetrievalPlan.retrievalInput || message;
+  }
 
   const vectorSearchResults =
-    embeddingsCount !== 0
+    embeddingsCount > 0
       ? await VectorDb.performSimilaritySearch({
           namespace: workspace.slug,
           input: vectorSearchInput,

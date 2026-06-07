@@ -1,7 +1,7 @@
 process.env.STORAGE_DIR = "test-storage";
 jest.mock("../../../models/documents", () => ({
   Document: {
-    forWorkspace: jest.fn(),
+    where: jest.fn(),
   },
 }));
 
@@ -36,8 +36,8 @@ describe("Identity Empire retrieval planning", () => {
   });
 
   it("detects imported Identity Empire docs only inside the current workspace", async () => {
-    Document.forWorkspace.mockImplementation(async (workspaceId) =>
-      workspaceId === 101
+    Document.where.mockImplementation(async (clause) =>
+      clause.workspaceId === 101
         ? [identityEmpireDoc(101, "03_brand_foundation_builder.md")]
         : []
     );
@@ -48,6 +48,20 @@ describe("Identity Empire retrieval planning", () => {
     await expect(
       getWorkspaceIdentityEmpireFiles({ id: 202, slug: "workspace-b" })
     ).resolves.toEqual(new Set());
+    expect(Document.where).toHaveBeenCalledWith(
+      { workspaceId: 101 },
+      null,
+      null,
+      null,
+      { metadata: true }
+    );
+    expect(Document.where).toHaveBeenCalledWith(
+      { workspaceId: 202 },
+      null,
+      null,
+      null,
+      { metadata: true }
+    );
     expect(global.fetch).not.toHaveBeenCalled();
   });
 
@@ -91,7 +105,7 @@ describe("Identity Empire retrieval planning", () => {
   ])(
     "builds a %s retrieval query with mode-aware Identity Empire sections",
     async (_mode, prompt, expectedFiles, expectedFocus) => {
-      Document.forWorkspace.mockResolvedValue([
+      Document.where.mockResolvedValue([
         identityEmpireDoc(101, "IDENTITY_EMPIRE_INDEX.md"),
         identityEmpireDoc(101, "01_identity_operating_system.md"),
         identityEmpireDoc(101, "02_no_idea_user_intake.md"),
@@ -123,7 +137,7 @@ describe("Identity Empire retrieval planning", () => {
   );
 
   it("leaves Sparky on the existing intake path when no pack is imported", async () => {
-    Document.forWorkspace.mockResolvedValue([]);
+    Document.where.mockResolvedValue([]);
 
     const prompt = "Build my identity empire from nothing.";
     const plan = await buildIdentityEmpireRetrievalPlan({

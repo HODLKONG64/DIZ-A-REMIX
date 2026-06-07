@@ -2,6 +2,7 @@ jest.mock("../../../models/documents", () => ({
   Document: {
     addDocuments: jest.fn(),
     forWorkspace: jest.fn(),
+    where: jest.fn(),
   },
 }));
 
@@ -53,6 +54,10 @@ describe("SPARKY Wiki seed pack sandbox stress test", () => {
     Document.forWorkspace.mockImplementation(
       async (workspaceId) => workspaceDocs.get(workspaceId) || []
     );
+    Document.where.mockImplementation(async (clause) => {
+      const docs = workspaceDocs.get(clause.workspaceId) || [];
+      return docs.map(({ metadata }) => ({ metadata }));
+    });
     Document.addDocuments.mockImplementation(async (workspace, locations) => {
       const docs = workspaceDocs.get(workspace.id) || [];
       for (const location of locations) {
@@ -167,6 +172,13 @@ describe("SPARKY Wiki seed pack sandbox stress test", () => {
     );
     expect(workspaceBRetrievalPlan.retrievalInput).toBe(
       "Build my identity empire from nothing."
+    );
+    expect(Document.where).toHaveBeenCalledWith(
+      { workspaceId: workspaceA.id },
+      null,
+      null,
+      null,
+      { metadata: true }
     );
 
     const sections = discoverRelevantIdentityEmpireSections({

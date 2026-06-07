@@ -35,7 +35,13 @@ function identityEmpireDocFile(doc = {}) {
 async function getWorkspaceIdentityEmpireFiles(workspace) {
   if (!workspace?.id) return new Set();
 
-  const workspaceDocs = await Document.forWorkspace(workspace.id);
+  const workspaceDocs = await Document.where(
+    { workspaceId: workspace.id },
+    null,
+    null,
+    null,
+    { metadata: true }
+  );
   const files = new Set();
   for (const doc of workspaceDocs || []) {
     const file = identityEmpireDocFile(doc);
