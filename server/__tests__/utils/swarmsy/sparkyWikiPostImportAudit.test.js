@@ -45,6 +45,11 @@ const BANNED_VISIBLE_OLD_REPO_PATTERN = new RegExp(
   "i"
 );
 
+const POST_IMPORT_AUDIT_REPORT_PATH =
+  "docs/swarmsy/audits/SPARKY_WIKI_POST_IMPORT_SANITY_AUDIT.md";
+const POST_IMPORT_AUDIT_RECORD_PATH =
+  "docs/swarmsy/sparky-wiki/seed-library/SPARKY_WIKI_POST_IMPORT_AUDIT.json";
+
 function staleCommandMatches(raw = "") {
   return String(raw || "")
     .split(/\r?\n/)
@@ -83,6 +88,31 @@ function registeredSeedFiles() {
 }
 
 describe("SPARKY Wiki seed library audit invariants", () => {
+  it("keeps a machine-readable and human-readable audit record in-tree", () => {
+    const reportAbsolutePath = path.resolve(REPO_ROOT, POST_IMPORT_AUDIT_REPORT_PATH);
+    const recordAbsolutePath = path.resolve(REPO_ROOT, POST_IMPORT_AUDIT_RECORD_PATH);
+
+    expect(fs.existsSync(reportAbsolutePath)).toBe(true);
+    expect(fs.existsSync(recordAbsolutePath)).toBe(true);
+
+    const recordRaw = fs.readFileSync(recordAbsolutePath, "utf8");
+    const record = JSON.parse(recordRaw);
+    expect(record).toEqual(
+      expect.objectContaining({
+        audit_id: expect.any(String),
+        audit_report: POST_IMPORT_AUDIT_REPORT_PATH,
+        pack_count: expect.any(Number),
+        file_count: expect.any(Number),
+        unsafe_patterns_scanned: expect.any(Array),
+      })
+    );
+
+    expect(record.unsafe_patterns_scanned).not.toContain(".env");
+    expect(record.unsafe_patterns_scanned).toContain(
+      "markdown link targets to `.env`"
+    );
+  });
+
   it("keeps every registry entry docs/spec-only, workspace-scoped, and locally present", () => {
     const packs = listSparkyWikiSeedPacks();
     expect(packs).toHaveLength(16);
@@ -191,6 +221,29 @@ describe("SPARKY Wiki seed library audit invariants", () => {
     }
 
     expect(brokenLinks).toEqual([]);
+  });
+
+  it("does not link directly to .env files in registered markdown files", () => {
+    const violations = [];
+    const linkPattern = /\[[^\]]+\]\((?!https?:|mailto:|#)([^)]+)\)/g;
+
+    for (const seedFile of registeredSeedFiles().filter(({ file }) =>
+      file.endsWith(".md")
+    )) {
+      const raw = fs.readFileSync(seedFile.absolutePath, "utf8");
+      for (const match of raw.matchAll(linkPattern)) {
+        const relativeTarget = match[1].split("#")[0].trim();
+        if (!relativeTarget) continue;
+        const decodedTarget = decodeURI(relativeTarget);
+        const normalizedTarget = decodedTarget.replace(/\\/g, "/");
+        const baseName = path.posix.basename(normalizedTarget);
+        if (baseName === ".env") {
+          violations.push({ file: seedFile.relativePath, relativeTarget });
+        }
+      }
+    }
+
+    expect(violations).toEqual([]);
   });
 
   it("blocks forbidden local paths, old app names, and real secret material in registered seed files", () => {
