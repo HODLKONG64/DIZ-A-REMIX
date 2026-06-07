@@ -21,6 +21,56 @@ const {
   validateSeedPackFiles,
 } = require("../../../utils/swarmsy/sparkyWikiSeedPacks");
 
+const STALE_COMMAND_PATTERN =
+  /\b(?:yarn|npm run|pnpm)\s+(?:android|ios|expo|eas|electron)\b[^`\n]*/gi;
+const CURRENT_DIZ_COMMAND_PATTERN =
+  /\b(?:yarn|npm run|pnpm)\s+(?:setup|dev:all|dev:frontend|dev:server|dev:collector|desktop:dev|desktop:smoke|desktop:runtime:dev)\b/i;
+const LOCAL_HISTORICAL_BOUNDARY_PATTERN =
+  /legacy|historical|old SWARMSY|old-SWARMSY|not current DIZ-A-REMIX guidance|do not use as current setup guidance|reference only|obsolete|archival/i;
+
+function lineWindowForMatch(raw, matchIndex, radius = 4) {
+  const lines = String(raw || "").split(/\r?\n/);
+  let offset = 0;
+  let matchLine = 0;
+
+  for (let index = 0; index < lines.length; index += 1) {
+    const nextOffset = offset + lines[index].length + 1;
+    if (matchIndex < nextOffset) {
+      matchLine = index;
+      break;
+    }
+    offset = nextOffset;
+  }
+
+  return lines
+    .slice(Math.max(0, matchLine - radius), matchLine + radius + 1)
+    .join("\n");
+}
+
+function hasLocalHistoricalBoundary(raw, matchIndex) {
+  return LOCAL_HISTORICAL_BOUNDARY_PATTERN.test(
+    lineWindowForMatch(raw, matchIndex)
+  );
+}
+
+function staleGuidanceMatches(raw = "") {
+  const matches = [];
+  for (const pattern of [STALE_COMMAND_PATTERN]) {
+    pattern.lastIndex = 0;
+    for (const match of String(raw || "").matchAll(pattern)) {
+      if (CURRENT_DIZ_COMMAND_PATTERN.test(match[0])) continue;
+      matches.push({ text: match[0], index: match.index });
+    }
+  }
+  return matches;
+}
+
+function unlabelledStaleGuidanceMatches(raw = "") {
+  return staleGuidanceMatches(raw).filter(
+    (match) => !hasLocalHistoricalBoundary(raw, match.index)
+  );
+}
+
 const REQUIRED_MARKDOWN_FIELDS = [
   "title",
   "category",
@@ -167,25 +217,72 @@ describe("SPARKY Wiki post-import audit invariants", () => {
     expect(violations).toEqual([]);
   });
 
-  it("keeps old mobile/Electron command material labelled as historical or not-current guidance", () => {
+  it("keeps old mobile/Electron command material locally labelled as historical or not-current guidance", () => {
     const staleGuidanceIssues = [];
-    const commandPattern =
-      /\b(?:yarn|npm run|pnpm)\s+(?:android|ios|expo|desktop|eas|electron|dev:frontend|dev:all)[^`\n]*/i;
-    const staleRuntimePattern = /\b(?:Expo|Electron|Android APK|EAS)\b/;
 
     for (const seedFile of registeredSeedFiles().filter(({ file }) =>
       file.endsWith(".md")
     )) {
       const raw = fs.readFileSync(seedFile.absolutePath, "utf8");
-      if (!commandPattern.test(raw) && !staleRuntimePattern.test(raw)) continue;
-      const hasHistoricalBoundary =
-        /old `HODLKONG64\/SWARMSY` repository|old SWARMSY repo adapted reference|historical|old-SWARMSY|not current DIZ-A-REMIX guidance|does not create runtime actions/i.test(
-          raw
-        );
-      if (!hasHistoricalBoundary)
-        staleGuidanceIssues.push(seedFile.relativePath);
+      const unlabelledMatches = unlabelledStaleGuidanceMatches(raw);
+      if (unlabelledMatches.length) {
+        staleGuidanceIssues.push({
+          file: seedFile.relativePath,
+          matches: unlabelledMatches.map((match) => match.text),
+        });
+      }
     }
 
     expect(staleGuidanceIssues).toEqual([]);
+  });
+
+  it("requires stale command labels near the command instead of relying on top-of-file adaptation notes", () => {
+    expect(
+      unlabelledStaleGuidanceMatches(`
+---
+source: old SWARMSY repo adapted reference
+---
+
+This imported document is historical reference only.
+
+## Setup
+
+Install the old app dependencies.
+yarn expo start
+`)
+    ).toEqual([
+      expect.objectContaining({
+        text: expect.stringContaining("yarn expo start"),
+      }),
+    ]);
+
+    expect(
+      unlabelledStaleGuidanceMatches(`
+## Historical mobile notes
+
+Legacy old SWARMSY command, not current DIZ-A-REMIX guidance:
+yarn expo start
+`)
+    ).toEqual([]);
+
+    expect(
+      unlabelledStaleGuidanceMatches(`
+## Current setup
+
+Run yarn expo start to launch the mobile preview.
+`)
+    ).toEqual([
+      expect.objectContaining({
+        text: expect.stringContaining("yarn expo start"),
+      }),
+    ]);
+
+    expect(
+      unlabelledStaleGuidanceMatches(`
+## Current DIZ-A-REMIX commands
+
+Run yarn setup, yarn dev:all, yarn desktop:smoke, and yarn desktop:runtime:dev.
+`)
+    ).toEqual([]);
   });
 });
