@@ -54,14 +54,16 @@
     "hosted_admin_global_mutation_not_called": "pass"
   },
   "unsafe_patterns_scanned": [
+    "local absolute Windows paths",
     "C:\\\\Users",
     "Users\\\\GOD",
     "swarmsy-APP",
-    ".env",
     "BEGIN PRIVATE KEY",
+    "raw private key blocks",
     "GitHub ghp_ tokens",
     "Slack xox tokens",
     "OpenAI sk- tokens",
+    "unlabelled legacy mobile/current command claims",
     "old Expo/mobile commands",
     "old Electron/runtime claims"
   ],
