@@ -113,12 +113,12 @@ export function canStartSwarmsyIntake(status, selectedMode) {
 
   return Boolean(
     status?.workspace?.exists &&
-    status?.workspace?.ready &&
-    status?.doctrine?.statusAvailable === true &&
-    status?.doctrine?.docsRootAvailable === true &&
-    Number(status?.doctrine?.requiredMissing || 0) === 0 &&
-    Number(status?.doctrine?.requiredNonLoadable || 0) === 0 &&
-    status?.workspace?.slug &&
-    getIntakeStarterMessage(selectedMode)
+      status?.workspace?.ready &&
+      status?.doctrine?.statusAvailable === true &&
+      status?.doctrine?.docsRootAvailable === true &&
+      Number(status?.doctrine?.requiredMissing || 0) === 0 &&
+      Number(status?.doctrine?.requiredNonLoadable || 0) === 0 &&
+      status?.workspace?.slug &&
+      getIntakeStarterMessage(selectedMode)
   );
 }

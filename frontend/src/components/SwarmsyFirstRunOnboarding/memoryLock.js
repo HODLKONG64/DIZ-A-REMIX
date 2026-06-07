@@ -6,12 +6,12 @@ export const MEMORY_LOCK_BLOCKED_MESSAGE =
 export function canContinueFromMemoryLock(status) {
   return Boolean(
     status?.workspace?.exists &&
-    status?.workspace?.ready &&
-    status?.workspace?.slug &&
-    status?.doctrine?.statusAvailable === true &&
-    status?.doctrine?.docsRootAvailable === true &&
-    Number(status?.doctrine?.requiredMissing || 0) === 0 &&
-    Number(status?.doctrine?.requiredNonLoadable || 0) === 0
+      status?.workspace?.ready &&
+      status?.workspace?.slug &&
+      status?.doctrine?.statusAvailable === true &&
+      status?.doctrine?.docsRootAvailable === true &&
+      Number(status?.doctrine?.requiredMissing || 0) === 0 &&
+      Number(status?.doctrine?.requiredNonLoadable || 0) === 0
   );
 }
 

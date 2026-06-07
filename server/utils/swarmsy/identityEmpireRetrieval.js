@@ -53,7 +53,7 @@ async function getWorkspaceIdentityEmpireFiles(workspace) {
 function resolveSparkyMode({ prompt = "", mode = "" } = {}) {
   const text = `${mode} ${prompt}`.toLowerCase();
   if (
-    /load memory lock|memory lock|locked project|continue this swarmsy project/.test(
+    /load memory lock|memory lock wins over fresh intake|continue this swarmsy project from the memory lock|continue this project from memory lock|locked project/.test(
       text
     )
   ) {
