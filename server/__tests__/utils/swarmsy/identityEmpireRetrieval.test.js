@@ -299,6 +299,11 @@ describe("Identity Empire retrieval planning", () => {
       "What does this signal value mean in the dataset?",
       "Identity Empire knowledge available",
     ],
+    [
+      "How do I measure privacy risk in this project?",
+      "Identity Empire knowledge available",
+    ],
+    ["What PR metrics should I measure?", "Using local wiki knowledge"],
     ["What brand metrics should I measure?", "Using local wiki knowledge"],
     ["What campaign signals should I track?", "Using local wiki knowledge"],
   ])(
@@ -397,6 +402,7 @@ describe("Identity Empire retrieval planning", () => {
     "private hidden identity project",
     "what is the target audience?",
     "privacy boundary for hidden identity",
+    "How do I measure privacy risk in this project?",
     "How do I measure voltage from this document?",
   ])(
     "does not query optional campaign packs for unrelated prompt: %s",
