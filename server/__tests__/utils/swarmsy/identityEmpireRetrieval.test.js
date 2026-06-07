@@ -366,14 +366,10 @@ describe("Identity Empire retrieval planning", () => {
   });
 
   it.each([
-    "advertising copy",
-    "public relations ethics",
-    "positioning strategy",
-    "propaganda analysis",
     "build a PR angle for my campaign",
     "make an ARG mystery trail campaign",
-    "What should Bernays teach this launch?",
-    "Use Ogilvy research for this offer",
+    "What should Bernays teach this campaign launch?",
+    "Use Ogilvy research for this brand offer",
   ])(
     "queries optional campaign packs for relevant prompt: %s",
     async (prompt) => {
@@ -422,6 +418,9 @@ describe("Identity Empire retrieval planning", () => {
     "privacy boundary for hidden identity",
     "How do I measure privacy risk in this project?",
     "How do I measure voltage from this document?",
+    "Summarize public relations ethics from this textbook.",
+    "Compare advertising copy examples in this document.",
+    "Summarize launch notes from this technical changelog.",
   ])(
     "does not query optional campaign packs for unrelated prompt: %s",
     async (prompt) => {
@@ -436,6 +435,9 @@ describe("Identity Empire retrieval planning", () => {
       });
 
       expect(plan.available).toBe(true);
+      if (!isIdentityEmpirePrompt(prompt)) {
+        expect(plan.retrievalInput).toBe(prompt);
+      }
       expect(plan.supportingSections).toEqual([]);
       expect(getWorkspaceSeedPackFiles).not.toHaveBeenCalled();
       expect(discoverRelevantOptionalSeedPackSections).not.toHaveBeenCalled();

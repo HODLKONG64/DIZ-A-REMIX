@@ -21,10 +21,10 @@ Status: implementation plan plus PR foundation notes. This PR adapts architectur
 
 ## Reference Folders Inspected
 
-- `C:\Users\GOD\swarmsy-APP\anything-llm-master\anything-llm-master`
-- `C:\Users\GOD\swarmsy-APP\space-agent-main\space-agent-main`
-- `C:\Users\GOD\swarmsy-APP\hermes-webui-master\hermes-webui-master`
-- `C:\Users\GOD\swarmsy-APP\claude-code-main\claude-code-main`
+- `anything-llm-master/anything-llm-master` (local reference checkout)
+- `space-agent-main/space-agent-main` (local reference checkout)
+- `hermes-webui-master/hermes-webui-master` (local reference checkout)
+- `claude-code-main/claude-code-main` (conceptual reference; do not copy code)
 
 ## License Notes
 

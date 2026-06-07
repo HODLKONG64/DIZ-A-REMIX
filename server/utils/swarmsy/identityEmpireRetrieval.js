@@ -143,8 +143,12 @@ async function buildIdentityEmpireRetrievalPlan({
     prompt,
     mode: resolvedMode,
   }).filter((section) => workspaceFiles.has(section.file));
+  const isRelevantIdentityEmpirePrompt = isIdentityEmpirePrompt(prompt);
   let supportingSections = [];
-  if (shouldCheckOptionalCampaignPacks(prompt)) {
+  if (
+    isRelevantIdentityEmpirePrompt &&
+    shouldCheckOptionalCampaignPacks(prompt)
+  ) {
     const optionalPackFiles = await getWorkspaceSeedPackFiles(workspace, [
       "cultural-protocols",
       "campaign-case-studies",
@@ -155,7 +159,7 @@ async function buildIdentityEmpireRetrievalPlan({
     });
   }
 
-  if (!isIdentityEmpirePrompt(prompt)) {
+  if (!isRelevantIdentityEmpirePrompt) {
     return {
       available: true,
       status: "Identity Empire knowledge available",
