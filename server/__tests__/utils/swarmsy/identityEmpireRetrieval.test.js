@@ -130,13 +130,13 @@ describe("Identity Empire retrieval planning", () => {
         "06_campaign_builder.md",
         "13_30_day_identity_empire_launch.md",
       ],
-      "existing project audit",
+      "audit, weak positioning",
     ],
     [
       "Load Memory Lock",
       "Continue this SWARMSY project from the memory lock and create my 30-day launch plan.",
       ["13_30_day_identity_empire_launch.md"],
-      "without overwriting existing user identity",
+      "without overwriting existing user identity unless confirmed",
     ],
   ])(
     "builds a %s retrieval query with mode-aware Identity Empire sections",
@@ -161,7 +161,13 @@ describe("Identity Empire retrieval planning", () => {
       expect(plan.status).toBe("Using local wiki knowledge");
       expect(plan.mode).toBe(resolveSparkyMode({ prompt }));
       expect(plan.retrievalInput).toContain(
-        "Use as supporting knowledge only; keep the existing Sparky intake/memory flow primary."
+        "Use as supporting knowledge only; keep the existing Sparky intake/memory flow primary"
+      );
+      expect(plan.retrievalInput).toContain(
+        "Do not overwrite Memory Lock or existing identity unless the user confirms."
+      );
+      expect(plan.retrievalInput).toContain(
+        "Do not use web/API unless Use API is explicitly enabled; use Ollama/local-first"
       );
       expect(plan.retrievalInput).toContain(expectedFocus);
       expectedFiles.forEach((file) => {
