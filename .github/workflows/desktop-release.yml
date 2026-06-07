@@ -1,21 +1,38 @@
-name: Windows Desktop Installer Build
+name: Publish SWARMSY Desktop Release
 
 concurrency:
-  group: desktop-installer-build-${{ github.ref }}
-  cancel-in-progress: true
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
 
 on:
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag to create or update, for example desktop-v1.13.0"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark the GitHub Release as a prerelease"
+        required: false
+        default: true
+        type: boolean
+      draft:
+        description: "Create or update the GitHub Release as a draft"
+        required: false
+        default: false
+        type: boolean
   push:
     tags:
-      - "v*"
       - "desktop-v*"
 
+permissions:
+  contents: write
+
 jobs:
-  build-windows-desktop-installer:
-    name: Build Windows desktop installer
+  publish-windows-desktop-release:
+    name: Build and publish Windows desktop release
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 75
 
     env:
       ELECTRON_VERSION: 33.4.11
@@ -25,6 +42,21 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release tag
+        id: release_tag
+        shell: pwsh
+        run: |
+          $tag = "${{ github.event.inputs.tag_name }}"
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            $tag = "${{ github.ref_name }}"
+          }
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            throw "Release tag could not be resolved. Use workflow_dispatch with tag_name or push a desktop-v* tag."
+          }
+          "tag=$tag" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -134,24 +166,83 @@ jobs:
       - name: Build Windows installer
         run: npm run desktop:installer:package:win
 
-      - name: Generate release integrity manifest
+      - name: Generate SHA256 checksums and release integrity manifest
         run: npm run desktop:release:manifest
 
-      - name: Validate release integrity manifest
+      - name: Validate release integrity manifest and checksums
         run: npm run desktop:release:validate
 
       - name: Smoke validate Windows installer
         run: npm run desktop:installer:smoke
 
-      - name: Upload Windows desktop installer
+      - name: Write release notes
+        shell: pwsh
+        run: |
+          @"
+          # SWARMSY Desktop for Windows
+
+          ## Recommended download
+          Download `SWARMSY-Desktop-Setup.exe`, then double-click the installer and open SWARMSY Desktop.
+
+          ## Tester download
+          `swarmsy-desktop-win32-x64.zip` is also available as a portable build for testers.
+
+          ## Notes
+          - Normal users do not need CMD, Node, yarn, Electron setup, or local build steps.
+          - Ollama is required for local AI. Ollama and models are not bundled.
+          - The hosted web app remains available at https://swarmsy.cryptomoonboys.com
+          - This build is unsigned for now, so Windows SmartScreen may warn before installation.
+          - Uninstalling SWARMSY Desktop removes app files only and does not wipe user data.
+          - `SHA256SUMS.txt` contains checksums for the installer and portable zip.
+          "@ | Set-Content -Path desktop/artifacts/RELEASE_NOTES.md -Encoding UTF8
+
+      - name: Upload permanent GitHub Release assets
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release_tag.outputs.tag }}
+          RELEASE_TITLE: SWARMSY Desktop ${{ steps.release_tag.outputs.tag }}
+          RELEASE_DRAFT: ${{ github.event.inputs.draft || 'false' }}
+          RELEASE_PRERELEASE: ${{ github.event.inputs.prerelease || 'true' }}
+        run: |
+          $assets = @(
+            "desktop/artifacts/SWARMSY-Desktop-Setup.exe",
+            "desktop/artifacts/swarmsy-desktop-win32-x64.zip",
+            "desktop/artifacts/SHA256SUMS.txt",
+            "desktop/artifacts/SWARMSY-Desktop-Release.json",
+            "desktop/artifacts/SWARMSY-Desktop-Setup.manifest.json"
+          )
+          foreach ($asset in $assets) {
+            if (!(Test-Path $asset)) { throw "Missing release asset: $asset" }
+          }
+
+          $releaseArgs = @(
+            $env:RELEASE_TAG,
+            "--title", $env:RELEASE_TITLE,
+            "--notes-file", "desktop/artifacts/RELEASE_NOTES.md",
+            "--target", "${{ github.sha }}"
+          )
+          if ($env:RELEASE_DRAFT -eq "true") { $releaseArgs += "--draft" }
+          if ($env:RELEASE_PRERELEASE -eq "true") { $releaseArgs += "--prerelease" }
+
+          gh release view $env:RELEASE_TAG *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release edit @releaseArgs
+          } else {
+            gh release create @releaseArgs
+          }
+          gh release upload $env:RELEASE_TAG @assets --clobber
+
+      - name: Upload build log artifact copy
         uses: actions/upload-artifact@v4
         with:
-          name: SWARMSY-Desktop-Setup
+          name: SWARMSY-Desktop-Release-${{ steps.release_tag.outputs.tag }}
           path: |
             desktop/artifacts/SWARMSY-Desktop-Setup.exe
-            desktop/artifacts/SWARMSY-Desktop-Setup.manifest.json
-            desktop/artifacts/SWARMSY-Desktop-Release.json
-            desktop/artifacts/SHA256SUMS.txt
             desktop/artifacts/swarmsy-desktop-win32-x64.zip
+            desktop/artifacts/SHA256SUMS.txt
+            desktop/artifacts/SWARMSY-Desktop-Release.json
+            desktop/artifacts/SWARMSY-Desktop-Setup.manifest.json
+            desktop/artifacts/RELEASE_NOTES.md
           if-no-files-found: error
           retention-days: 14

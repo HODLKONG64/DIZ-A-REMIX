@@ -27,6 +27,29 @@ function resolveFromManifest(manifestPath, manifestArtifactPath) {
   return path.resolve(repoRoot, manifestArtifactPath);
 }
 
+
+function parseSha256Sums(contents) {
+  const entries = new Map();
+  for (const rawLine of String(contents || "").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line) continue;
+    const match = line.match(/^([a-f0-9]{64})\s+\*?(.+)$/i);
+    if (!match) fail(`Invalid SHA256SUMS.txt line: ${rawLine}`);
+    entries.set(match[2].replace(/\\/g, "/"), match[1].toLowerCase());
+  }
+  return entries;
+}
+
+function basenameEntry(entries, targetPath) {
+  const normalizedTarget = String(targetPath || "").replace(/\\/g, "/");
+  const basename = path.basename(normalizedTarget);
+  return (
+    entries.get(normalizedTarget) ||
+    entries.get(`./${normalizedTarget}`) ||
+    entries.get(basename)
+  );
+}
+
 function assertSha256(value, label) {
   if (!/^[a-f0-9]{64}$/i.test(String(value || ""))) {
     fail(`${label} must be a SHA256 hex digest.`);
@@ -73,6 +96,27 @@ function validateReleaseIntegrity({ manifestPath = releaseManifest } = {}) {
 
   assertSha256(manifest.artifactSHA256, "artifactSHA256");
   assertSha256(manifest.installerSHA256, "installerSHA256");
+  if (!manifest.checksums) fail("Release manifest checksums path is missing.");
+
+  const checksumsPath = resolveFromManifest(manifestPath, manifest.checksums);
+  if (!fs.existsSync(checksumsPath)) fail(`SHA256SUMS.txt is missing: ${checksumsPath}`);
+  const checksumEntries = parseSha256Sums(fs.readFileSync(checksumsPath, "utf8"));
+  if (
+    basenameEntry(checksumEntries, manifest.artifact) !==
+    manifest.artifactSHA256.toLowerCase()
+  ) {
+    fail(
+      "Desktop artifact zip SHA256 is missing from SHA256SUMS.txt or does not match release manifest."
+    );
+  }
+  if (
+    basenameEntry(checksumEntries, manifest.installer) !==
+    manifest.installerSHA256.toLowerCase()
+  ) {
+    fail(
+      "Desktop installer exe SHA256 is missing from SHA256SUMS.txt or does not match release manifest."
+    );
+  }
 
   const artifactPath = resolveFromManifest(manifestPath, manifest.artifact);
   const installerPath = resolveFromManifest(manifestPath, manifest.installer);
@@ -88,7 +132,7 @@ function validateReleaseIntegrity({ manifestPath = releaseManifest } = {}) {
     fail("Desktop installer exe SHA256 does not match release manifest.");
   }
 
-  return { ok: true, manifestPath, manifest };
+  return { ok: true, manifestPath, manifest, checksumsPath };
 }
 
 function main() {
@@ -104,5 +148,6 @@ function main() {
 if (require.main === module) main();
 
 module.exports = {
+  parseSha256Sums,
   validateReleaseIntegrity,
 };
