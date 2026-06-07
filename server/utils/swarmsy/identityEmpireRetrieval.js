@@ -99,9 +99,19 @@ function modeRetrievalFocus(mode = "") {
 }
 
 function isIdentityEmpirePrompt(prompt = "") {
-  return /identity empire|messy idea|brand|30[- ]?day|launch plan|pr angle|press angle|slogan|lawful physical visibility|digital wall|ghost|stickup|signal|campaign direction|measure|founder story|public identity|hidden identity|alias|pseudonym|existing project|relaunch|memory lock/i.test(
-    prompt
-  );
+  const text = String(prompt || "").toLowerCase();
+  const strongIdentityEmpireTerms =
+    /identity empire|messy idea|\bbrand\b|brand identity|build my brand|turn .* into a brand|30[- ]?day .*launch|launch plan|pr angle|press angle|slogan|lawful physical visibility|digital wall|ghost|stickup|swarmnet|campaign direction|\bcampaign\b|founder story|public identity|hidden identity|alias|pseudonym|existing project|relaunch|memory lock/i;
+  if (strongIdentityEmpireTerms.test(text)) return true;
+
+  const hasIdentityContext =
+    /identity|brand|campaign|launch|pr|press|slogan|audience|offer|creator|artist|business|visibility|swarm|story/.test(
+      text
+    );
+  const hasAmbiguousSignalTerm =
+    /measure|measurement|signal|analytics|kpi|metrics/.test(text);
+
+  return hasIdentityContext && hasAmbiguousSignalTerm;
 }
 
 async function buildIdentityEmpireRetrievalPlan({
@@ -127,7 +137,7 @@ async function buildIdentityEmpireRetrievalPlan({
     mode: resolvedMode,
   }).filter((section) => workspaceFiles.has(section.file));
 
-  if (!isIdentityEmpirePrompt(prompt) && discoveredSections.length <= 1) {
+  if (!isIdentityEmpirePrompt(prompt)) {
     return {
       available: true,
       status: "Identity Empire knowledge available",

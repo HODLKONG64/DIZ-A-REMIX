@@ -53,6 +53,13 @@ jest.mock("../../../utils/helpers/chat/responses", () => ({
   writeResponseChunk: jest.fn(),
 }));
 
+jest.mock("../../../utils/helpers/chat", () => ({
+  fillSourceWindow: jest.fn(({ searchResults = [] }) => ({
+    sources: searchResults,
+    contextTexts: searchResults.map((source) => source.text),
+  })),
+}));
+
 jest.mock("../../../utils/chats/agents", () => ({
   grepAgents: jest.fn(async () => false),
 }));
@@ -79,6 +86,13 @@ jest.mock("../../../models/telemetry", () => ({
 
 jest.mock("../../../utils/collectorApi", () => ({
   CollectorApi: jest.fn(),
+}));
+
+jest.mock("../../../utils/files", () => ({
+  hotdirPath: "/tmp/hotdir",
+  normalizePath: jest.fn((value) => value),
+  isWithin: jest.fn(() => true),
+  sanitizeFileName: jest.fn((value) => value),
 }));
 
 const { streamChatWithWorkspace } = require("../../../utils/chats/stream");

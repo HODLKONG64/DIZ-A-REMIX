@@ -5,10 +5,46 @@ jest.mock("../../../models/documents", () => ({
   },
 }));
 
+jest.mock("../../../utils/swarmsy/sparkyWikiSeedPacks", () => ({
+  discoverRelevantIdentityEmpireSections: jest.fn(
+    ({ prompt = "", mode = "" }) => {
+      const text = `${prompt} ${mode}`.toLowerCase();
+      const files = new Set(["IDENTITY_EMPIRE_INDEX.md"]);
+      if (/identity|from nothing|no idea/.test(text)) {
+        files.add("01_identity_operating_system.md");
+        files.add("02_no_idea_user_intake.md");
+      }
+      if (/face|founder|public|brand/.test(text)) {
+        files.add("03_brand_foundation_builder.md");
+        files.add("04_story_myth_and_manifesto.md");
+      }
+      if (/hidden|alias|pseudonym/.test(text)) {
+        files.add("02_no_idea_user_intake.md");
+        files.add("04_story_myth_and_manifesto.md");
+      }
+      if (/existing|audit|rebuild|relaunch|brand/.test(text)) {
+        files.add("03_brand_foundation_builder.md");
+        files.add("06_campaign_builder.md");
+        files.add("13_30_day_identity_empire_launch.md");
+      }
+      if (/campaign|stickup/.test(text)) files.add("06_campaign_builder.md");
+      if (/pr|press|ghost/.test(text)) files.add("07_pr_and_press_machine.md");
+      if (/30[- ]?day|launch/.test(text)) {
+        files.add("13_30_day_identity_empire_launch.md");
+      }
+      if (/measure|measurement|signal|analytics|kpi|metrics/.test(text)) {
+        files.add("16_measurement_signal_and_next_moves.md");
+      }
+      return [...files].map((file) => ({ file, packId: "identity-empire" }));
+    }
+  ),
+}));
+
 const { Document } = require("../../../models/documents");
 const {
   buildIdentityEmpireRetrievalPlan,
   getWorkspaceIdentityEmpireFiles,
+  isIdentityEmpirePrompt,
   resolveSparkyMode,
 } = require("../../../utils/swarmsy/identityEmpireRetrieval");
 
@@ -133,6 +169,70 @@ describe("Identity Empire retrieval planning", () => {
         expect(plan.retrievalInput).toContain(file);
       });
       expect(global.fetch).not.toHaveBeenCalled();
+    }
+  );
+
+  it.each([
+    ["Build my identity empire from nothing.", true],
+    ["Create my 30-day launch plan.", true],
+    ["Act as SIGNAL and tell me what to measure for this campaign.", true],
+    ["How do I measure voltage from this document?", false],
+    ["How do I measure latency from this doc?", false],
+    ["What does this signal value mean in the dataset?", false],
+    ["What brand metrics should I measure?", true],
+    ["What campaign signals should I track?", true],
+  ])(
+    "classifies Identity Empire prompt specificity for %s",
+    (prompt, expected) => {
+      expect(isIdentityEmpirePrompt(prompt)).toBe(expected);
+    }
+  );
+
+  it.each([
+    ["Build my identity empire from nothing.", "Using local wiki knowledge"],
+    ["Create my 30-day launch plan.", "Using local wiki knowledge"],
+    [
+      "Act as SIGNAL and tell me what to measure for this campaign.",
+      "Using local wiki knowledge",
+    ],
+    [
+      "How do I measure voltage from this document?",
+      "Identity Empire knowledge available",
+    ],
+    [
+      "How do I measure latency from this doc?",
+      "Identity Empire knowledge available",
+    ],
+    [
+      "What does this signal value mean in the dataset?",
+      "Identity Empire knowledge available",
+    ],
+    ["What brand metrics should I measure?", "Using local wiki knowledge"],
+    ["What campaign signals should I track?", "Using local wiki knowledge"],
+  ])(
+    "only appends Identity Empire retrieval focus for specific identity prompts: %s",
+    async (prompt, expectedStatus) => {
+      Document.where.mockResolvedValue([
+        identityEmpireDoc(101, "IDENTITY_EMPIRE_INDEX.md"),
+        identityEmpireDoc(101, "01_identity_operating_system.md"),
+        identityEmpireDoc(101, "06_campaign_builder.md"),
+        identityEmpireDoc(101, "13_30_day_identity_empire_launch.md"),
+        identityEmpireDoc(101, "16_measurement_signal_and_next_moves.md"),
+      ]);
+
+      const plan = await buildIdentityEmpireRetrievalPlan({
+        workspace: { id: 101, slug: "workspace-a" },
+        prompt,
+      });
+
+      expect(plan.status).toBe(expectedStatus);
+      if (expectedStatus === "Using local wiki knowledge") {
+        expect(plan.retrievalInput).toContain(
+          "SPARKY Wiki Identity Empire local retrieval focus:"
+        );
+      } else {
+        expect(plan.retrievalInput).toBe(prompt);
+      }
     }
   );
 
