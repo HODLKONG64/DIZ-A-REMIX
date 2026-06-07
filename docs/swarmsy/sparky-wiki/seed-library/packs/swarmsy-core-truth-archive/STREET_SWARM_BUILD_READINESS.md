@@ -12,7 +12,6 @@ runtime_override: never
 docs_spec_only: true
 ---
 
-
 ## Seed-library adaptation boundary
 
 This file is optional workspace reference knowledge imported from the old `HODLKONG64/SWARMSY` repository. It is preserved for SPARKY Wiki continuity as **historical reference** and does not override current DIZ-A-REMIX app truth, Sparky identity, provider routing, privacy boundaries, or runtime behavior.
@@ -97,8 +96,8 @@ AI Studio now supports two live provider paths plus a deterministic local fallba
 
 Before the next Expo/EAS build, confirm:
 
-- `npm run typecheck` passes
-- `npm test` passes
+- `yarn lint` passes
+- `yarn test` passes
 - Local Brain settings are visible in Settings (enabled toggle, URL, model)
 - AI Studio provider routing follows: Local Brain if reachable → OpenAI if key exists → deterministic fallback message
 - only one Budget Beast implementation is present and no superseded helper-only branch remains open for merge.

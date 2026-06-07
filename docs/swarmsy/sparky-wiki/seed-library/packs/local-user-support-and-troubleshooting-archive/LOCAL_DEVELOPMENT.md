@@ -12,7 +12,6 @@ runtime_override: never
 docs_spec_only: true
 ---
 
-
 ## Seed-library adaptation boundary
 
 This file is optional workspace reference knowledge imported from the old `HODLKONG64/SWARMSY` repository. It is preserved for SPARKY Wiki continuity as **draft reference** and does not override current DIZ-A-REMIX app truth, Sparky identity, provider routing, privacy boundaries, or runtime behavior.
@@ -25,25 +24,33 @@ Safety boundary: use only lawful, permission-based, local-first planning. This p
 
 ## Requirements
 
-- Node.js 22+
-- npm
+- Node.js >=18 (see root `package.json` > `engines`)
+- `yarn` preferred; current DIZ-A-REMIX repo scripts are yarn-based
 
 ## Setup
 
-1. `npm install`
-2. `npm run start`
+1. `yarn setup`
+2. Start dev: `yarn dev:all`
+
+Or run services separately:
+
+- Server/API: `yarn dev:server`
+- Frontend: `yarn dev:frontend`
+- Collector: `yarn dev:collector`
 
 ## Common Commands
 
-- Mobile/dev server: `npm run start`
-- Web: `npm run web`
-- Android: `npm run android`
-- iOS: `npm run ios`
-- Desktop (dev): `npm run desktop:dev`
+- Server/API: `yarn dev:server`
+- Frontend: `yarn dev:frontend`
+- Collector: `yarn dev:collector`
+- All-in-one: `yarn dev:all`
+- Desktop dev: `yarn desktop:dev`
+
+## Legacy mobile note
+
+Old SWARMSY mobile/Android/iOS commands are historical only and are not current DIZ-A-REMIX setup guidance. Do not use old Expo/mobile commands unless a future current DIZ-A-REMIX source explicitly restores them.
 
 ## Quality Gates
 
-- `npm run typecheck`
-- `npm test -- --watch=false`
-- `npm run check:current-truth`
-- `npm run check:brand-canon`
+- `yarn lint`
+- `yarn test`

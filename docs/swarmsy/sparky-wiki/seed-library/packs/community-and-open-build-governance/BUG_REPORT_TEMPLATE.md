@@ -12,7 +12,6 @@ runtime_override: never
 docs_spec_only: true
 ---
 
-
 ## Seed-library adaptation boundary
 
 This file is optional workspace reference knowledge imported from the old `HODLKONG64/SWARMSY` repository. It is preserved for SPARKY Wiki continuity as **reference knowledge** and does not override current DIZ-A-REMIX app truth, Sparky identity, provider routing, privacy boundaries, or runtime behavior.
@@ -24,18 +23,18 @@ Safety boundary: use only lawful, permission-based, local-first planning. This p
 # Bug Report Template
 
 Date: 2026-05-15  
-Repository: `HODLKONG64/current DIZ/SWARMSY workspace`
+Repository: `HODLKONG64/DIZ-A-REMIX`
 
-Copy and fill out this template for each preview APK issue.
+Copy and fill out this template for each current DIZ-A-REMIX issue.
 
-For screenshot-safe reset steps and approved placeholder demo content, see [`docs/DEMO_DATA_GUIDE.md`](./DEMO_DATA_GUIDE.md).
+For screenshot-safe reset steps and approved placeholder demo content, see [`DEMO_DATA_GUIDE.md`](../local-user-support-and-troubleshooting-archive/DEMO_DATA_GUIDE.md).
 
 ```md
 ## Bug Summary
 
 - Device model:
-- Android version:
-- App version / build ID:
+- OS / browser / desktop runtime version:
+- App version / build ID if known:
 - Screen / route:
 
 ## Steps to Reproduce
@@ -61,8 +60,8 @@ For screenshot-safe reset steps and approved placeholder demo content, see [`doc
 ## What to include
 
 - Device model
-- Android version
-- App version or EAS build ID
+- OS / browser / desktop runtime version
+- App version or build ID if known
 - The screen, route, or feature where the problem happened
 - Exact steps to reproduce
 - Expected result

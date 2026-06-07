@@ -485,6 +485,10 @@ describe("SPARKY Wiki seed pack registry", () => {
     const fs = require("fs");
     const forbiddenPathPattern =
       /C:\\Users|Users\\GOD|swarmsy-APP|OPENAI_API_KEY\s*=\s*[^\s]+|ANTHROPIC_API_KEY\s*=\s*[^\s]+|GITHUB_TOKEN\s*=\s*[^\s]+/i;
+    const staleCurrentGuidancePattern =
+      /npm install|npm run|npm test|npm run start|npm run web|npm run android|npm run ios|npm run typecheck|npm run check:current-truth|npm run check:brand-canon|npm run stress:sandbox|npm test -- --watch=false|scripts\/system-sync-stress-sandbox\.mjs|desktop:build:web|desktop:build:win|Graffiti Kings app|GRAFFITI-KINGS-APP|HODLKONG64\/current DIZ\/SWARMSY workspace/i;
+    const brokenDemoGuideLinkPattern =
+      /\[[^\]]*docs\/DEMO_DATA_GUIDE\.md[^\]]*\]\((?:\.\/)?DEMO_DATA_GUIDE\.md\)/i;
 
     for (const pack of listSparkyWikiSeedPacks()) {
       expect(pack.sourcePath).not.toMatch(/repo_enhanced_copies|\.\./);
@@ -501,6 +505,8 @@ describe("SPARKY Wiki seed pack registry", () => {
         expect(file.path).not.toMatch(/repo_enhanced_copies|\.\./);
         const raw = fs.readFileSync(file.absolutePath, "utf8");
         expect(raw).not.toMatch(forbiddenPathPattern);
+        expect(raw).not.toMatch(staleCurrentGuidancePattern);
+        expect(raw).not.toMatch(brokenDemoGuideLinkPattern);
         if (pack.id !== "identity-empire") {
           expect(raw).toMatch(/does not override|runtime_override/i);
         }

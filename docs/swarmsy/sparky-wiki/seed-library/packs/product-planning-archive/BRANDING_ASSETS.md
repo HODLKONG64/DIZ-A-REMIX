@@ -12,7 +12,6 @@ runtime_override: never
 docs_spec_only: true
 ---
 
-
 ## Seed-library adaptation boundary
 
 This file is optional workspace reference knowledge imported from the old `HODLKONG64/SWARMSY` repository. It is preserved for SPARKY Wiki continuity as **draft reference** and does not override current DIZ-A-REMIX app truth, Sparky identity, provider routing, privacy boundaries, or runtime behavior.
@@ -24,7 +23,7 @@ Safety boundary: use only lawful, permission-based, local-first planning. This p
 # BRANDING ASSETS
 
 Date: 2026-05-15  
-Repository: `HODLKONG64/current DIZ/SWARMSY workspace`
+Repository: `HODLKONG64/DIZ-A-REMIX`
 
 ## Current status
 

@@ -12,7 +12,6 @@ runtime_override: never
 docs_spec_only: true
 ---
 
-
 ## Seed-library adaptation boundary
 
 This file is optional workspace reference knowledge imported from the old `HODLKONG64/SWARMSY` repository. It is preserved for SPARKY Wiki continuity as **draft reference** and does not override current DIZ-A-REMIX app truth, Sparky identity, provider routing, privacy boundaries, or runtime behavior.
@@ -27,7 +26,6 @@ Safety boundary: use only lawful, permission-based, local-first planning. This p
 
 **If this document conflicts with the root canon files, the root canon files win.**
 
-
 > **This is the Desktop Alpha release** (`v1.0.0-desktop-alpha`). Expect rough edges.
 
 This guide is for normal users who want to run Street Swarm on Windows.
@@ -39,9 +37,9 @@ You do **not** need GitHub clone, npm, VS Code, Electron, CMD, or developer buil
 **Alpha release:** `v1.0.0-desktop-alpha`
 
 - Artifact: `Street Swarm 1.0.0.exe`
-- GitHub Releases: [v1.0.0-desktop-alpha](https://github.com/HODLKONG64/current DIZ/SWARMSY workspace/releases/tag/v1.0.0-desktop-alpha)
+- GitHub Releases: [v1.0.0-desktop-alpha](https://github.com/HODLKONG64/DIZ-A-REMIX/releases/tag/v1.0.0-desktop-alpha)
 
-1. Go to the [GitHub Releases page](https://github.com/HODLKONG64/current DIZ/SWARMSY workspace/releases/tag/v1.0.0-desktop-alpha).
+1. Go to the [GitHub Releases page](https://github.com/HODLKONG64/DIZ-A-REMIX/releases/tag/v1.0.0-desktop-alpha).
 2. Download `Street Swarm 1.0.0.exe`.
 3. Double-click the `.exe`.
 4. Street Swarm starts a local app server and opens the supported browser UI.

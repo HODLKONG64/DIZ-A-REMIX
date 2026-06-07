@@ -12,7 +12,6 @@ runtime_override: never
 docs_spec_only: true
 ---
 
-
 ## Seed-library adaptation boundary
 
 This file is optional workspace reference knowledge imported from the old `HODLKONG64/SWARMSY` repository. It is preserved for SPARKY Wiki continuity as **reference knowledge** and does not override current DIZ-A-REMIX app truth, Sparky identity, provider routing, privacy boundaries, or runtime behavior.
@@ -28,17 +27,14 @@ SWARMSY is open for community rebuilding and co-building.
 ## Quick Start
 
 - Fork or clone the repo.
-- Install dependencies: `npm install`
-- Start app: `npm run start`
-- Start web: `npm run web`
-- Desktop dev shell: `npm run desktop:dev`
+- Install dependencies: `yarn setup`
+- Start dev/all services: `yarn dev:all`
+- Desktop dev shell: `yarn desktop:dev`
 
 ## Before You Open a PR
 
-- `npm run typecheck`
-- `npm run check:current-truth`
-- `npm run check:brand-canon`
-- `npm test -- --watch=false`
+- `yarn lint`
+- `yarn test`
 
 ## Contribution Rules
 
@@ -53,8 +49,8 @@ SWARMSY is open for community rebuilding and co-building.
 - Sparky orchestration and routing
 - Agent Studio usability and reliability
 
-
 ## Sandbox validation before PR
-- Run `npm run stress:sandbox` in addition to typecheck/truth/hygiene/tests before opening a PR for workspace shell or provider routing changes.
+
+- For desktop/runtime validation, run `yarn desktop:smoke`. When testing desktop plus runtime services together, use `yarn desktop:runtime:dev`.
 
 - Adapted reference-inspired workspace settings/runtime persistence patterns are tracked in workspaceStorage and require MIT attribution continuity.

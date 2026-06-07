@@ -12,7 +12,6 @@ runtime_override: never
 docs_spec_only: true
 ---
 
-
 ## Seed-library adaptation boundary
 
 This file is optional workspace reference knowledge imported from the old `HODLKONG64/SWARMSY` repository. It is preserved for SPARKY Wiki continuity as **historical reference** and does not override current DIZ-A-REMIX app truth, Sparky identity, provider routing, privacy boundaries, or runtime behavior.
@@ -24,19 +23,24 @@ Safety boundary: use only lawful, permission-based, local-first planning. This p
 # STREET SWARM — CURRENT TRUTH
 
 See also:
+
 - `docs/HOW_TO_USE.md`
 - `docs/safety/SAFETY_BOUNDARIES.md`
 
 ## 1) Brand truth
+
 - Official app/product/runtime brand: **SWARMSY**.
 - Street Swarm is the doctrine/network/project layer only.
 
 ## 2) What SWARMSY is now
+
 - SWARMSY is a workspace-first **Command Centre** shell.
 - It runs operator workflows across chat, workspace memory, sources, and agent tools.
 
 ## 3) Status label canon
+
 Use these labels in active docs:
+
 - working now
 - partial/foundation
 - planned
@@ -47,6 +51,7 @@ Use these labels in active docs:
 - docs-only concept
 
 ## 4) Working now
+
 - Workspace-first Sparky Chat with persisted sessions and workspace-scoped routing.
 - Main Command Centre shell and workspace navigation.
 - Agent Studio controls (single tap select / double tap manage).
@@ -65,6 +70,7 @@ Use these labels in active docs:
 - Windows desktop release packaging now cleans `release/` before `electron-builder`, fails if `Street Swarm*.exe` appears, fails if `SWARMSY*.exe` is missing, and uploads artifact `swarmsy-windows-exe`.
 
 ## 5) Planned
+
 - Additional provider and connector expansion.
 - Floating Sparky feature expansion.
 - Open Runtime / source editing / plugin execution.
@@ -72,53 +78,60 @@ Use these labels in active docs:
 - Auto-PR and auto-merge decision lanes are planned/dry-run-first experimental maintenance features, not locked production automation.
 
 ## 6) Disabled
+
 - Rewards/backend/Telegram runtime sync.
 - Any fake provider output paths.
 
 ## 7) Requires provider/API key
+
 - Cloud provider routing paths require valid provider credentials.
 
 ## 8) Requires local provider
+
 - Local Brain routes require reachable local provider endpoint and model.
 
 ## 9) docs-only concept
+
 - Open Cultural Intelligence doctrine (agent-readable).
 - Multi-Layer Conversational Depth Engine doctrine.
 - AI WYSIWYG Autopilot Builder doctrine is documented as planned/foundation only.
 
 ## 10) Provider truth
+
 - No fake cloud success.
 - If provider routing is unavailable or unimplemented, runtime must return explicit unavailable/planned truth.
 - Offline and local routes are explicit and separate from provider-backed routes.
 
 ## 11) Community open-build truth
+
 - Upstream official runtime stays SWARMSY.
 - Community forks can rename/remix/rebuild independently.
 
 ## 12) Guard scripts
-- `npm run check:current-truth`
-- `npm run check:brand-canon`
-- `npm run check:hygiene`
+
+- `yarn lint`
+- `yarn test`
+- `yarn lint`
 
 ## 13) Validation commands
-- `npm run typecheck`
-- `npm run check:current-truth`
-- `npm run check:brand-canon`
-- `npm run check:hygiene`
-- `npm test -- --watch=false`
+
+- `yarn lint`
+- `yarn lint`
+- `yarn test`
+- `yarn lint`
+- `yarn test`
 - `python -m pytest -q`
 - `git --no-pager diff --check`
 
-
 ## Sandbox stress routine
-- working now: `npm run stress:sandbox` runs targeted workspace shell/provider/sync guard tests before PR creation.
-- required: run this routine before PRs that modify workspace/RAG shell, provider routing, sync transport truth, or related guard/test logic.
 
+- current DIZ-A-REMIX baseline: run `yarn lint`, `yarn test`, and `yarn desktop:smoke` when desktop/runtime behavior is relevant.
+- required: run this routine before PRs that modify workspace/RAG shell, provider routing, sync transport truth, or related guard/test logic.
 
 - Desktop Sparky chat now shows workspace search, per-workspace upload/settings icons, and expanded default/new thread controls in the left workspace sidebar.
 
-
 ## Workspace/chat/documents parity status (May 27, 2026)
+
 - **partial/foundation:** Desktop chat sidebar now has workspace search, row action icons, and default/new thread affordances.
 - **not complete yet:** Full workspace/chat/documents/connectors/settings parity is still in progress.
 - **next required scope:** Documents modal parity, Data Connectors modal parity, and full workspace settings tabs (General/Chat/Vector/Agent) in the primary chat experience.

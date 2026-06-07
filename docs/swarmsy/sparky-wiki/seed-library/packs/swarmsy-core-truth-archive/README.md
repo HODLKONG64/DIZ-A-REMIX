@@ -12,7 +12,6 @@ runtime_override: never
 docs_spec_only: true
 ---
 
-
 ## Seed-library adaptation boundary
 
 This file is optional workspace reference knowledge imported from the old `HODLKONG64/SWARMSY` repository. It is preserved for SPARKY Wiki continuity as **historical reference** and does not override current DIZ-A-REMIX app truth, Sparky identity, provider routing, privacy boundaries, or runtime behavior.
@@ -85,11 +84,12 @@ SWARMSY is resistance through identity amplification.
 Key line: **Friction creates soul.**
 
 ## Current Truth Doc Enforcement
-- Run `npm run check:current-truth` before opening a PR.
+
+- For current DIZ-A-REMIX checks, run `yarn lint` and `yarn test` before opening a PR.
 - If user-facing paths change, you must update BOTH `docs/STREET_SWARM_CURRENT_TRUTH.md` and `docs/HOW_TO_USE.md`.
 
-
 ## Open-Source Community Editing
+
 - [CONTRIBUTING.md](./CONTRIBUTING.md)
 - [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
 - [docs/ROADMAP.md](./docs/ROADMAP.md)
@@ -97,7 +97,7 @@ Key line: **Friction creates soul.**
 - [docs/SANDBOX_STRESS_TEST_PLAN.md](./docs/SANDBOX_STRESS_TEST_PLAN.md)
 - [docs/community/ARCHIVE_EDITING_RULES.md](./docs/community/ARCHIVE_EDITING_RULES.md)
 - [docs/COMMUNITY_BUILD_GUIDE.md](./docs/COMMUNITY_BUILD_GUIDE.md)
-- Run quality checks: `npm run typecheck`, `npm run check:current-truth`, `npm run check:brand-canon`, `npm test -- --watch=false`, `python -m pytest -q`, `node scripts/system-sync-stress-sandbox.mjs`.
+- Run current DIZ-A-REMIX quality checks: `yarn lint`, `yarn test`, and focused tests relevant to the change.
 
 ## Experimental Agent Baseline
 
@@ -105,8 +105,8 @@ SWARMSY preserves self-evolution, architecture planning, auto-PR rehearsal, auto
 
 Guardrails should prevent accidental damage, not make the project boring. Agents and contributors should name the target repo, keep writes inside SWARMSY or sandbox fixtures, redact secrets, leave audit notes, and include rollback notes for real patches.
 
-
 ## PR135 UX Truth
+
 - single tap = preview, double tap = open full folder route
 - workspace chat scoping is enforced
 - folder/agent scoping is foundation

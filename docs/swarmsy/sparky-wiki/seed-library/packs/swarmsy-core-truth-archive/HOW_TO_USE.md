@@ -12,7 +12,6 @@ runtime_override: never
 docs_spec_only: true
 ---
 
-
 ## Seed-library adaptation boundary
 
 This file is optional workspace reference knowledge imported from the old `HODLKONG64/SWARMSY` repository. It is preserved for SPARKY Wiki continuity as **historical reference** and does not override current DIZ-A-REMIX app truth, Sparky identity, provider routing, privacy boundaries, or runtime behavior.
@@ -24,48 +23,58 @@ Safety boundary: use only lawful, permission-based, local-first planning. This p
 # HOW TO USE SWARMSY
 
 See also:
+
 - `docs/STREET_SWARM_CURRENT_TRUTH.md`
 - `docs/safety/SAFETY_BOUNDARIES.md`
 
 ## Starting the app
-- Install dependencies: `npm install`
-- Run app shell: `npm run start`
-- Run web shell: `npm run web`
-- Run desktop dev shell: `npm run desktop:dev`
+
+- Install dependencies: `yarn setup`
+- Run all dev services: `yarn dev:all`
+- Or run services separately: `yarn dev:server`, `yarn dev:frontend`, and `yarn dev:collector`
+- Run desktop dev shell: `yarn desktop:dev`
 
 ## Main Command Centre
+
 - Open or create a workspace first.
 - Use the workspace shell as your main operator surface.
 - Keep workspace context selected before running chat or agent actions.
 
 ## Sparky Chat
+
 - Main Sparky Chat is the primary response channel.
 - Sessions persist and route by workspace.
 - Use workspace-linked sessions for scoped context.
 
 ## Floating Sparky status
+
 - **Working now:** floating helper UI is available as a helper surface.
 - **Planned:** expanded automation and deeper tool orchestration.
 
 ## Workspace Brain
+
 - Local ingestion and retrieval flows are available now.
 - Use Workspace Brain for local knowledge capture and retrieval.
 
 ## Agent Studio
+
 - Single tap selects an agent profile.
 - Double tap opens manage/config flow.
 - Agent actions should be run inside the active workspace context.
 - Planned Doctor/repair agent work should target `HODLKONG64/SWARMSY`, use sandbox rehearsal for risky flows, and leave rollback/audit notes.
 
 ## `/ai` tab stability truth
+
 - The `/ai` screen must run all hooks and hook-dependent derived values before any loading early return.
 - `statusTiles` and related derived values are computed before loading UI, so loading state must never conditionally add hooks.
 
 ## Settings
+
 - Configure appearance and runtime options in Settings.
 - Refresh AI/provider status after network or key changes.
 
 ## Providers
+
 - Provider status must be truthful.
 - Cloud routes require valid provider/API key.
 - Local Brain routes require reachable local provider.
@@ -73,39 +82,45 @@ See also:
 - Provider failures return explicit errors.
 
 ## Backup/export/import
+
 - Export produces SWARMSY backup payloads.
 - Import validates `appName: "swarmsy"` before applying backup data.
 - Use backup export/import when moving data between installs.
 
 ## Community build/fork path
+
 - Official upstream runtime identity remains SWARMSY.
 - Community forks can rename/remix/rebuild independently.
 - Use `CONTRIBUTING.md` and `docs/COMMUNITY_BUILD_GUIDE.md` for contribution flow.
 - Use `docs/AGENT_GUARDRAILS.md`, `docs/SANDBOX_STRESS_TEST_PLAN.md`, and `sandbox/` for agent-led maintenance or destructive-style rehearsal.
 
 ## Windows release artifact truth
+
 - `desktop-windows-release` must clean `release/` before `electron-builder` to prevent stale EXE carryover.
 - The release sanity check must fail if any `Street Swarm*.exe` is present.
 - The release sanity check must fail if no `SWARMSY*.exe` is produced.
 - Windows EXE artifact name is `swarmsy-windows-exe`.
 
 ## How contributors must update Current Truth and How To Use
+
 When user-facing runtime behavior changes, update both:
+
 - `docs/STREET_SWARM_CURRENT_TRUTH.md`
 - `docs/HOW_TO_USE.md`
 
 ## Validation commands
-- `npm run stress:sandbox`
-- `npm run typecheck`
-- `npm run check:current-truth`
-- `npm run check:brand-canon`
-- `npm run check:hygiene`
-- `npm test -- --watch=false`
+
+- `yarn desktop:smoke`
+- `yarn lint`
+- `yarn lint`
+- `yarn test`
+- `yarn lint`
+- `yarn test`
 - `python -m pytest -q`
 - `git --no-pager diff --check`
 
-
 ## Workspace RAG shell truth labels
+
 - **working now:** create/select workspace, workspace documents panel, public GitHub import, URL fetch import, text/markdown import, document assignment persistence, workspace settings tabs, and Sparky workspace-scoped routing.
 - **partial/foundation:** Vector Database visibility, Agent Configuration profile flow, and connector controls that rely on existing local import foundations.
 - **planned:** private GitHub token import, GitLab, YouTube transcript, Obsidian, Confluence, Drupal, and Paperless-ngX connectors.
@@ -113,11 +128,10 @@ When user-facing runtime behavior changes, update both:
 - **requires provider/API key:** OpenAI provider calls.
 - **requires local provider:** Local Brain routes.
 
-
 - Desktop Sparky chat now shows workspace search, per-workspace upload/settings icons, and expanded default/new thread controls in the left workspace sidebar.
 
-
 ## Workspace UX rollout status (May 27, 2026)
+
 - Current desktop chat includes workspace search and quick row actions (upload/settings/connectors) plus default/new-thread affordances.
 - This is an incremental slice, not full modal/settings parity yet.
 - For full parity acceptance, continue implementing Documents + Data Connectors modal and complete workspace settings tabs in chat flow.
