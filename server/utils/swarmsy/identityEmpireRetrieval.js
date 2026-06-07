@@ -3,6 +3,7 @@ const {
   discoverRelevantIdentityEmpireSections,
   discoverRelevantOptionalSeedPackSections,
   getWorkspaceSeedPackFiles,
+  optionalCampaignPackPromptMatches,
 } = require("./sparkyWikiSeedPacks");
 
 const IDENTITY_EMPIRE_PACK_ID = "identity-empire";
@@ -101,10 +102,7 @@ function modeRetrievalFocus(mode = "") {
 }
 
 function shouldCheckOptionalCampaignPacks(prompt = "") {
-  const text = String(prompt || "").toLowerCase();
-  return /campaign|launch|brand|public signal|earned media|stunt|spectacle|scarcity|drop|meme|\barg\b|viral|culture|press|\bpr\b|case stud|nike|banksy|supreme|red bull|apple 1984|bernays|berneys|ogilvy/.test(
-    text
-  );
+  return optionalCampaignPackPromptMatches(prompt);
 }
 
 function isIdentityEmpirePrompt(prompt = "") {

@@ -11,6 +11,11 @@ jest.mock("../../../models/documents", () => ({
 jest.mock("../../../utils/swarmsy/sparkyWikiSeedPacks", () => ({
   discoverRelevantOptionalSeedPackSections: jest.fn(() => []),
   getWorkspaceSeedPackFiles: jest.fn(() => new Map()),
+  optionalCampaignPackPromptMatches: jest.fn((prompt = "") =>
+    /campaign|launch|brand|public signal|public relations|earned media|advertising|copy|positioning|propaganda|persuasion|media|stunt|spectacle|scarcity|drop|limited|queue|hype|meme|\barg\b|viral|culture|press|\bpr\b|case stud|nike|just do it|slogan|identity compression|banksy|street art|mystery|archive|supreme|red bull|stratos|event|world record|apple 1984|apple|1984|category|enemy|disrupt|bernays|berneys|public opinion|ogilvy/i.test(
+      String(prompt || "")
+    )
+  ),
   discoverRelevantIdentityEmpireSections: jest.fn(
     ({ prompt = "", mode = "" }) => {
       const text = `${prompt} ${mode}`.toLowerCase();
@@ -249,11 +254,18 @@ describe("Identity Empire retrieval planning", () => {
   );
 
   it.each([
+    ["advertising copy", true],
+    ["public relations ethics", true],
+    ["positioning strategy", true],
+    ["propaganda analysis", true],
     ["build a PR angle for my campaign", true],
     ["make an ARG mystery trail campaign", true],
+    ["What should Bernays teach this launch?", true],
+    ["Use Ogilvy research for this offer", true],
     ["private hidden identity project", false],
     ["what is the target audience?", false],
     ["privacy boundary for hidden identity", false],
+    ["How do I measure privacy risk in this project?", false],
     ["How do I measure voltage from this document?", false],
   ])(
     "checks optional campaign pack keyword gate for %s",
@@ -354,8 +366,14 @@ describe("Identity Empire retrieval planning", () => {
   });
 
   it.each([
+    "advertising copy",
+    "public relations ethics",
+    "positioning strategy",
+    "propaganda analysis",
     "build a PR angle for my campaign",
     "make an ARG mystery trail campaign",
+    "What should Bernays teach this launch?",
+    "Use Ogilvy research for this offer",
   ])(
     "queries optional campaign packs for relevant prompt: %s",
     async (prompt) => {

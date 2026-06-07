@@ -149,6 +149,13 @@ const SWARMSY_SUPPORT_AND_PROVIDER_HELP_FILES = Object.freeze([
 
 const seedPackPath = (packId) => `${SEED_PACK_SOURCE_ROOT}/${packId}`;
 
+const OPTIONAL_CAMPAIGN_PACK_TRIGGER_PATTERN =
+  /campaign|launch|brand|public signal|public relations|earned media|advertising|copy|positioning|propaganda|persuasion|media|stunt|spectacle|scarcity|drop|limited|queue|hype|meme|\barg\b|viral|culture|press|\bpr\b|case stud|nike|just do it|slogan|identity compression|banksy|street art|mystery|archive|supreme|red bull|stratos|event|world record|apple 1984|apple|1984|category|enemy|disrupt|bernays|berneys|public opinion|ogilvy/i;
+
+function optionalCampaignPackPromptMatches(prompt = "") {
+  return OPTIONAL_CAMPAIGN_PACK_TRIGGER_PATTERN.test(String(prompt || ""));
+}
+
 const SAFETY_BOUNDARIES = Object.freeze([
   "Local-first reference knowledge only; not required doctrine.",
   "No autonomous runtime agents are created by importing this pack.",
@@ -524,11 +531,7 @@ function discoverRelevantOptionalSeedPackSections({
     });
   };
 
-  if (
-    /campaign|launch|brand|public signal|earned media|stunt|spectacle|scarcity|drop|meme|\barg\b|viral|culture|press|\bpr\b/i.test(
-      text
-    )
-  ) {
+  if (optionalCampaignPackPromptMatches(text)) {
     add(
       "cultural-protocols",
       "BANKSY_STYLE_PUBLIC_SIGNAL_PROTOCOL.md",
@@ -594,7 +597,7 @@ function discoverRelevantOptionalSeedPackSections({
       "identity compression case study"
     );
   }
-  if (/bernays|public opinion|propaganda|pr\b|public relations/.test(text)) {
+  if (/bernays|public opinion|propaganda|\bpr\b|public relations/.test(text)) {
     add(
       "cultural-protocols",
       "BERNAYS_PUBLIC_OPINION_PROTOCOL.md",
@@ -903,6 +906,7 @@ module.exports = {
   IDENTITY_EMPIRE_FILES,
   OFFLINE_WIKI_LEDGER_STANDARDS_FILES,
   OPEN_CULTURAL_INTELLIGENCE_FILES,
+  OPTIONAL_CAMPAIGN_PACK_TRIGGER_PATTERN,
   SWARMSY_PRODUCT_OPERATOR_DOCTRINE_FILES,
   SWARMSY_SUPPORT_AND_PROVIDER_HELP_FILES,
   WIKI_DEPTH_AND_PROVENANCE_FILES,
@@ -918,6 +922,7 @@ module.exports = {
   listSparkyWikiSeedPacks,
   parseJsonMetadata,
   parseMarkdownFrontmatter,
+  optionalCampaignPackPromptMatches,
   parseSeedPackMetadata,
   seedPackDocFile,
   validateSeedPackFiles,

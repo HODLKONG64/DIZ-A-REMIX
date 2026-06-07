@@ -415,6 +415,37 @@ describe("SPARKY Wiki seed pack registry", () => {
     });
 
     it.each([
+      ["advertising copy", ["campaign-case-studies/OGILVY.md"]],
+      [
+        "public relations ethics",
+        [
+          "cultural-protocols/BERNAYS_PUBLIC_OPINION_PROTOCOL.md",
+          "campaign-case-studies/EDWARD_BERNAYS.md",
+        ],
+      ],
+      ["positioning strategy", ["campaign-case-studies/OGILVY.md"]],
+      [
+        "propaganda analysis",
+        [
+          "cultural-protocols/BERNAYS_PUBLIC_OPINION_PROTOCOL.md",
+          "campaign-case-studies/EDWARD_BERNAYS.md",
+        ],
+      ],
+      [
+        "What should Bernays teach this launch?",
+        ["campaign-case-studies/EDWARD_BERNAYS.md"],
+      ],
+      [
+        "Use Ogilvy research for this offer",
+        ["campaign-case-studies/OGILVY.md"],
+      ],
+    ])("matches downstream optional discovery term: %s", (prompt, expected) => {
+      expect(matchedSectionIds(prompt)).toEqual(
+        expect.arrayContaining(expected)
+      );
+    });
+
+    it.each([
       "private hidden identity project",
       "what is the target audience?",
       "privacy boundary for hidden identity",
