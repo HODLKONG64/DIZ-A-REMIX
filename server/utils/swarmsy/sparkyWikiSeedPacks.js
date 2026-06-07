@@ -384,7 +384,7 @@ function discoverRelevantOptionalSeedPackSections({
   };
 
   if (
-    /campaign|launch|brand|identity|public signal|earned media|stunt|spectacle|scarcity|drop|meme|arg|viral|culture|press|pr/.test(
+    /campaign|launch|brand|public signal|earned media|stunt|spectacle|scarcity|drop|meme|\barg\b|viral|culture|press|\bpr\b/i.test(
       text
     )
   ) {

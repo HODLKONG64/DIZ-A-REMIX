@@ -100,6 +100,13 @@ function modeRetrievalFocus(mode = "") {
   }
 }
 
+function shouldCheckOptionalCampaignPacks(prompt = "") {
+  const text = String(prompt || "").toLowerCase();
+  return /campaign|launch|brand|public signal|earned media|stunt|spectacle|scarcity|drop|meme|\barg\b|viral|culture|press|\bpr\b|case stud|nike|banksy|supreme|red bull|apple 1984|bernays|berneys|ogilvy/.test(
+    text
+  );
+}
+
 function isIdentityEmpirePrompt(prompt = "") {
   const text = String(prompt || "").toLowerCase();
   const strongIdentityEmpireTerms =
@@ -138,14 +145,17 @@ async function buildIdentityEmpireRetrievalPlan({
     prompt,
     mode: resolvedMode,
   }).filter((section) => workspaceFiles.has(section.file));
-  const optionalPackFiles = await getWorkspaceSeedPackFiles(workspace, [
-    "cultural-protocols",
-    "campaign-case-studies",
-  ]);
-  const supportingSections = discoverRelevantOptionalSeedPackSections({
-    prompt,
-    packFiles: optionalPackFiles,
-  });
+  let supportingSections = [];
+  if (shouldCheckOptionalCampaignPacks(prompt)) {
+    const optionalPackFiles = await getWorkspaceSeedPackFiles(workspace, [
+      "cultural-protocols",
+      "campaign-case-studies",
+    ]);
+    supportingSections = discoverRelevantOptionalSeedPackSections({
+      prompt,
+      packFiles: optionalPackFiles,
+    });
+  }
 
   if (!isIdentityEmpirePrompt(prompt)) {
     return {
@@ -197,4 +207,5 @@ module.exports = {
   isIdentityEmpirePrompt,
   modeRetrievalFocus,
   resolveSparkyMode,
+  shouldCheckOptionalCampaignPacks,
 };

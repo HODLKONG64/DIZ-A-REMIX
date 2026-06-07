@@ -308,28 +308,60 @@ describe("SPARKY Wiki seed pack registry", () => {
     }
   });
 
-  it("discovers relevant optional campaign and protocol support sections", () => {
-    const packFiles = new Map([
-      ["cultural-protocols", new Set(CULTURAL_PROTOCOLS_FILES)],
-      ["campaign-case-studies", new Set(CAMPAIGN_CASE_STUDIES_FILES)],
-    ]);
-    const sections = discoverRelevantOptionalSeedPackSections({
-      prompt:
-        "Build a lawful scarcity drop and public signal campaign with Nike-style identity compression.",
-      packFiles,
+  describe("optional campaign/protocol matching", () => {
+    const allOptionalPackFiles = () =>
+      new Map([
+        ["cultural-protocols", new Set(CULTURAL_PROTOCOLS_FILES)],
+        ["campaign-case-studies", new Set(CAMPAIGN_CASE_STUDIES_FILES)],
+      ]);
+
+    const matchedSectionIds = (prompt) =>
+      discoverRelevantOptionalSeedPackSections({
+        prompt,
+        packFiles: allOptionalPackFiles(),
+      }).map((section) => `${section.packId}/${section.file}`);
+
+    it("discovers relevant optional campaign and protocol support sections", () => {
+      const sections = matchedSectionIds(
+        "Build a lawful scarcity drop and public signal campaign with Nike-style identity compression."
+      );
+
+      expect(sections).toEqual(
+        expect.arrayContaining([
+          "cultural-protocols/SUPREME_DROP_SCARCITY_PROTOCOL.md",
+          "cultural-protocols/BANKSY_STYLE_PUBLIC_SIGNAL_PROTOCOL.md",
+          "cultural-protocols/NIKE_IDENTITY_COMPRESSION_PROTOCOL.md",
+          "campaign-case-studies/SUPREME_DROP_CULTURE.md",
+          "campaign-case-studies/NIKE_JUST_DO_IT.md",
+        ])
+      );
     });
 
-    expect(
-      sections.map((section) => `${section.packId}/${section.file}`)
-    ).toEqual(
-      expect.arrayContaining([
-        "cultural-protocols/SUPREME_DROP_SCARCITY_PROTOCOL.md",
-        "cultural-protocols/BANKSY_STYLE_PUBLIC_SIGNAL_PROTOCOL.md",
-        "cultural-protocols/NIKE_IDENTITY_COMPRESSION_PROTOCOL.md",
-        "campaign-case-studies/SUPREME_DROP_CULTURE.md",
-        "campaign-case-studies/NIKE_JUST_DO_IT.md",
-      ])
-    );
+    it("matches bounded PR campaign prompts", () => {
+      expect(matchedSectionIds("build a PR angle for my campaign")).toEqual(
+        expect.arrayContaining([
+          "cultural-protocols/BANKSY_STYLE_PUBLIC_SIGNAL_PROTOCOL.md",
+          "campaign-case-studies/MASTER_MARKETERS_OVERVIEW.md",
+        ])
+      );
+    });
+
+    it("matches bounded ARG mystery trail campaign prompts", () => {
+      expect(matchedSectionIds("make an ARG mystery trail campaign")).toEqual(
+        expect.arrayContaining([
+          "cultural-protocols/BANKSY_STYLE_PUBLIC_SIGNAL_PROTOCOL.md",
+          "campaign-case-studies/MASTER_MARKETERS_OVERVIEW.md",
+        ])
+      );
+    });
+
+    it.each([
+      "private hidden identity project",
+      "what is the target audience?",
+      "privacy boundary for hidden identity",
+    ])("does not match optional packs from substring noise: %s", (prompt) => {
+      expect(matchedSectionIds(prompt)).toEqual([]);
+    });
   });
 
   it("discovers relevant Identity Empire sections for identity-building prompts", () => {
