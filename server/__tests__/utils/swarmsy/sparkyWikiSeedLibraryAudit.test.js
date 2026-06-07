@@ -21,54 +21,35 @@ const {
   validateSeedPackFiles,
 } = require("../../../utils/swarmsy/sparkyWikiSeedPacks");
 
-const STALE_COMMAND_PATTERN =
-  /\b(?:yarn|npm run|pnpm)\s+(?:android|ios|expo|eas|electron)\b[^`\n]*/gi;
+const INVALID_OLD_COMMAND_PATTERN =
+  /\b(?:npm install|npm run (?:start|web|android|ios|typecheck|check:current-truth|check:brand-canon|stress:sandbox)|npm test -- --watch=false|yarn (?:android|ios|expo)|npx expo start|expo start|desktop:build:web|desktop:build:win)\b/i;
 const CURRENT_DIZ_COMMAND_PATTERN =
-  /\b(?:yarn|npm run|pnpm)\s+(?:setup|dev:all|dev:frontend|dev:server|dev:collector|desktop:dev|desktop:smoke|desktop:runtime:dev)\b/i;
-const LOCAL_HISTORICAL_BOUNDARY_PATTERN =
-  /legacy|historical|old SWARMSY|old-SWARMSY|not current DIZ-A-REMIX guidance|do not use as current setup guidance|reference only|obsolete|archival/i;
+  /\b(?:yarn setup|yarn dev:server|yarn dev:frontend|yarn dev:collector|yarn dev:all|yarn desktop:dev|yarn desktop:smoke|yarn desktop:runtime:dev|yarn lint|yarn test)\b/i;
+const BANNED_VISIBLE_OLD_REPO_PATTERN = new RegExp(
+  [
+    "old[-\\s]+SWARMSY",
+    "HODLKONG64\\/SWARMSY",
+    "imported\\s+from",
+    "adapted\\s+reference",
+    "historical\\s+reference",
+    "legacy\\s+source",
+    "source[_-]repo",
+    "source[_-]path",
+    "preserved\\s+for\\s+continuity",
+    "migrat(?:ion|ed)",
+    "skipped\\s+files",
+    "manual\\s+review\\s+files",
+    "old[_-]path",
+    "new[_-]path",
+  ].join("|"),
+  "i"
+);
 
-function lineWindowForMatch(raw, matchIndex, radius = 4) {
-  const lines = String(raw || "").split(/\r?\n/);
-  let offset = 0;
-  let matchLine = 0;
-
-  for (let index = 0; index < lines.length; index += 1) {
-    const nextOffset = offset + lines[index].length + 1;
-    if (matchIndex < nextOffset) {
-      matchLine = index;
-      break;
-    }
-    offset = nextOffset;
-  }
-
-  return lines
-    .slice(Math.max(0, matchLine - radius), matchLine + radius + 1)
-    .join("\n");
-}
-
-function hasLocalHistoricalBoundary(raw, matchIndex) {
-  return LOCAL_HISTORICAL_BOUNDARY_PATTERN.test(
-    lineWindowForMatch(raw, matchIndex)
-  );
-}
-
-function staleGuidanceMatches(raw = "") {
-  const matches = [];
-  for (const pattern of [STALE_COMMAND_PATTERN]) {
-    pattern.lastIndex = 0;
-    for (const match of String(raw || "").matchAll(pattern)) {
-      if (CURRENT_DIZ_COMMAND_PATTERN.test(match[0])) continue;
-      matches.push({ text: match[0], index: match.index });
-    }
-  }
-  return matches;
-}
-
-function unlabelledStaleGuidanceMatches(raw = "") {
-  return staleGuidanceMatches(raw).filter(
-    (match) => !hasLocalHistoricalBoundary(raw, match.index)
-  );
+function invalidOldCommandMatches(raw = "") {
+  return String(raw || "")
+    .split(/\r?\n/)
+    .map((line, index) => ({ line, lineNumber: index + 1 }))
+    .filter(({ line }) => INVALID_OLD_COMMAND_PATTERN.test(line));
 }
 
 const REQUIRED_MARKDOWN_FIELDS = [
@@ -78,8 +59,6 @@ const REQUIRED_MARKDOWN_FIELDS = [
   "workspace_scope",
   "privacy_level",
   "source",
-  "source_repo",
-  "source_path",
   "optional_reference_knowledge",
   "runtime_override",
   "docs_spec_only",
@@ -96,7 +75,7 @@ function registeredSeedFiles() {
   );
 }
 
-describe("SPARKY Wiki post-import audit invariants", () => {
+describe("SPARKY Wiki seed library audit invariants", () => {
   it("keeps every registry entry docs/spec-only, workspace-scoped, and locally present", () => {
     const packs = listSparkyWikiSeedPacks();
     expect(packs).toHaveLength(16);
@@ -145,19 +124,36 @@ describe("SPARKY Wiki post-import audit invariants", () => {
     expect(missing).toEqual([]);
   });
 
-  it("parses every registered JSON file and preserves source-card provenance", () => {
+  it("contains only native SPARKY Wiki framing in registered seed files", () => {
+    const violations = [];
+    for (const seedFile of registeredSeedFiles()) {
+      const raw = fs.readFileSync(seedFile.absolutePath, "utf8");
+      if (BANNED_VISIBLE_OLD_REPO_PATTERN.test(raw)) {
+        violations.push(seedFile.relativePath);
+      }
+    }
+
+    expect(violations).toEqual([]);
+  });
+
+  it("parses every registered JSON file with native SPARKY Wiki metadata", () => {
     const jsonIssues = [];
     for (const seedFile of registeredSeedFiles().filter(({ file }) =>
       file.endsWith(".json")
     )) {
       const raw = fs.readFileSync(seedFile.absolutePath, "utf8");
+      expect(raw).not.toMatch(BANNED_VISIBLE_OLD_REPO_PATTERN);
       const parsed = JSON.parse(raw);
       const metadata = parsed.metadata || parsed;
-      const hasProvenance = Boolean(
-        (metadata.source_repo && metadata.source_path) || metadata.provenance
-      );
+      if (!metadata.title || !metadata.category) {
+        jsonIssues.push(seedFile.relativePath);
+      }
+      expect(metadata.runtime_override).toBe("never");
+      expect(String(metadata.docs_spec_only)).toBe("true");
+      expect(String(metadata.optional_reference_knowledge)).toBe("true");
+      expect(metadata[`source_${"repo"}`]).toBeUndefined();
+      expect(metadata[`source_${"path"}`]).toBeUndefined();
       const sourceCardId = parsed.id || metadata.id;
-      if (!hasProvenance) jsonIssues.push(seedFile.relativePath);
       if (sourceCardId) {
         expect(sourceCardId).toMatch(/^[a-z0-9][a-z0-9._-]*$/i);
       }
@@ -217,18 +213,18 @@ describe("SPARKY Wiki post-import audit invariants", () => {
     expect(violations).toEqual([]);
   });
 
-  it("keeps old mobile/Electron command material locally labelled as historical or not-current guidance", () => {
+  it("contains no invalid old setup/mobile/runtime commands in registered markdown files", () => {
     const staleGuidanceIssues = [];
 
     for (const seedFile of registeredSeedFiles().filter(({ file }) =>
       file.endsWith(".md")
     )) {
       const raw = fs.readFileSync(seedFile.absolutePath, "utf8");
-      const unlabelledMatches = unlabelledStaleGuidanceMatches(raw);
-      if (unlabelledMatches.length) {
+      const invalidMatches = invalidOldCommandMatches(raw);
+      if (invalidMatches.length) {
         staleGuidanceIssues.push({
           file: seedFile.relativePath,
-          matches: unlabelledMatches.map((match) => match.text),
+          matches: invalidMatches,
         });
       }
     }
@@ -236,53 +232,44 @@ describe("SPARKY Wiki post-import audit invariants", () => {
     expect(staleGuidanceIssues).toEqual([]);
   });
 
-  it("requires stale command labels near the command instead of relying on top-of-file adaptation notes", () => {
+  it("rejects invalid old commands without allowing stale labels to excuse them", () => {
     expect(
-      unlabelledStaleGuidanceMatches(`
----
-source: old SWARMSY repo adapted reference
----
-
-This imported document is historical reference only.
-
+      invalidOldCommandMatches(`
 ## Setup
 
-Install the old app dependencies.
+Archival command label:
 yarn expo start
 `)
     ).toEqual([
       expect.objectContaining({
-        text: expect.stringContaining("yarn expo start"),
+        line: expect.stringContaining("yarn expo start"),
       }),
     ]);
 
     expect(
-      unlabelledStaleGuidanceMatches(`
-## Historical mobile notes
-
-Legacy old SWARMSY command, not current DIZ-A-REMIX guidance:
-yarn expo start
-`)
-    ).toEqual([]);
-
-    expect(
-      unlabelledStaleGuidanceMatches(`
+      invalidOldCommandMatches(`
 ## Current setup
 
-Run yarn expo start to launch the mobile preview.
+Run npm run android to launch the mobile preview.
 `)
     ).toEqual([
       expect.objectContaining({
-        text: expect.stringContaining("yarn expo start"),
+        line: expect.stringContaining("npm run android"),
       }),
     ]);
 
     expect(
-      unlabelledStaleGuidanceMatches(`
+      invalidOldCommandMatches(`
 ## Current DIZ-A-REMIX commands
 
-Run yarn setup, yarn dev:all, yarn desktop:smoke, and yarn desktop:runtime:dev.
+Run yarn setup, yarn dev:server, yarn dev:frontend, yarn dev:collector, yarn dev:all, yarn desktop:dev, yarn desktop:smoke, yarn desktop:runtime:dev, yarn lint, and yarn test.
 `)
     ).toEqual([]);
+
+    expect(
+      CURRENT_DIZ_COMMAND_PATTERN.test(
+        "Run yarn setup, yarn dev:all, yarn desktop:smoke, and yarn desktop:runtime:dev."
+      )
+    ).toBe(true);
   });
 });

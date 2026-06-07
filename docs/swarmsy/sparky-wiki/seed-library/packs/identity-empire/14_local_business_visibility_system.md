@@ -1,12 +1,10 @@
 ---
 title: Local Business Visibility System
 category: identity empire seed pack
-status_label: Docs/spec only
+status_label: Reference knowledge
 workspace_scope: current workspace only
 privacy_level: workspace reference
 source: SPARKY Wiki seed library
-source_repo: HODLKONG64/DIZ-A-REMIX
-source_path: docs/swarmsy/sparky-wiki/seed-library/packs/identity-empire/14_local_business_visibility_system.md
 optional_reference_knowledge: true
 runtime_override: never
 docs_spec_only: true
