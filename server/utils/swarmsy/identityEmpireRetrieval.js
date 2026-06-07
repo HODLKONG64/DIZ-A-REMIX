@@ -114,7 +114,7 @@ function isIdentityEmpirePrompt(prompt = "") {
   if (strongIdentityEmpireTerms.test(text)) return true;
 
   const hasIdentityContext =
-    /identity|brand|campaign|launch|pr|press|slogan|audience|offer|creator|artist|business|visibility|swarm|story/.test(
+    /identity|brand|campaign|launch|\bpr\b|press|slogan|audience|offer|creator|artist|business|visibility|swarm|story/.test(
       text
     );
   const hasAmbiguousSignalTerm =

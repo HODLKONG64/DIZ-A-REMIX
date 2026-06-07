@@ -269,6 +269,8 @@ describe("Identity Empire retrieval planning", () => {
     ["How do I measure voltage from this document?", false],
     ["How do I measure latency from this doc?", false],
     ["What does this signal value mean in the dataset?", false],
+    ["How do I measure privacy risk in this project?", false],
+    ["What PR metrics should I measure?", true],
     ["What brand metrics should I measure?", true],
     ["What campaign signals should I track?", true],
   ])(
