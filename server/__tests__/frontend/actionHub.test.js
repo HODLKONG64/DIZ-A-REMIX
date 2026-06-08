@@ -265,6 +265,12 @@ describe("SWARMSY HIVE action hub", () => {
     expect(pathsBlock).toContain('"server/**"');
     expect(pathsBlock).toContain('"collector/**"');
     expect(pathsBlock).not.toContain(".nvmrc");
+    expect(workflow).toContain(
+      "path: desktop/artifacts/swarmsy-desktop-win32-x64.zip"
+    );
+    expect(workflow).toContain("compression-level: 0");
+    expect(workflow).not.toContain(`path: |
+            desktop/artifacts/swarmsy-desktop-win32-x64`);
   });
 
   it("keeps the onboarding model on user-safe routes only", () => {

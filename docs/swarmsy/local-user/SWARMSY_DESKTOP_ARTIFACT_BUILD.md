@@ -27,7 +27,7 @@ The Windows-first job performs these stages:
 
 ## Artifact contents
 
-The uploaded artifact is named `swarmsy-desktop-win32-x64` and includes both the packaged directory and a zip archive under `desktop/artifacts/`.
+The uploaded artifact is named `swarmsy-desktop-win32-x64` and contains only the already-zipped portable archive `desktop/artifacts/swarmsy-desktop-win32-x64.zip`. The workflow still creates the extracted packaged directory locally under `desktop/artifacts/` so smoke validation can inspect it before upload without sending tens of thousands of files to GitHub artifact storage.
 
 Expected contents include:
 
