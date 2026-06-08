@@ -177,6 +177,8 @@ const SwarmsyOnboarding = {
           available: false,
           engine: "comfyui",
           url: "http://localhost:8188",
+          configuredBy: "default",
+          explanation: "Desktop/local mode checks ComfyUI on this computer.",
           source: "fallback",
           message: "Failed to resolve SWARMSY local image engine status.",
         };

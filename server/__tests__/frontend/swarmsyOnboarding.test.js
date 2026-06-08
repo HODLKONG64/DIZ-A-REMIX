@@ -5,7 +5,10 @@ const vm = require("vm");
 function loadSwarmsyOnboardingModule(fetchImpl) {
   const source = fs
     .readFileSync(
-      path.resolve(__dirname, "../../../frontend/src/models/swarmsyOnboarding.js"),
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/models/swarmsyOnboarding.js"
+      ),
       "utf8"
     )
     .replace(/import\s*{[\s\S]*?}\s*from\s*".*?";\r?\n/g, "")
@@ -62,6 +65,8 @@ describe("Swarmsy onboarding model", () => {
       available: false,
       engine: "comfyui",
       url: "http://localhost:8188",
+      configuredBy: "default",
+      explanation: "Desktop/local mode checks ComfyUI on this computer.",
       source: "fallback",
       message: "Failed to resolve SWARMSY local image engine status.",
     });
@@ -88,7 +93,8 @@ describe("Swarmsy onboarding model", () => {
     });
     const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
 
-    const response = await onboardingModel.localUserImageEngineGenerate(payload);
+    const response =
+      await onboardingModel.localUserImageEngineGenerate(payload);
 
     expect(response.status).toBe("completed");
     expect(fetchImpl).toHaveBeenCalledWith(

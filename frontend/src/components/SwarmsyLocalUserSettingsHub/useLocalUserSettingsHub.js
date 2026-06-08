@@ -90,14 +90,20 @@ function localOllamaStatusTitle(status = "checking") {
 }
 
 function normalizeLocalImageEngineStatus(response = null) {
-  if (response?.mode !== "local_user" || response?.source === "fallback") {
+  if (
+    !["local_user", "hosted_server"].includes(response?.mode) ||
+    response?.source === "fallback"
+  ) {
     return null;
   }
 
   return {
+    mode: response?.mode || "local_user",
     available: response?.available === true,
     engine: response?.engine || "comfyui",
     url: response?.url || "http://localhost:8188",
+    configuredBy: response?.configuredBy || "default",
+    explanation: response?.explanation || null,
     message:
       response?.message ||
       "ComfyUI is not reachable. Start ComfyUI locally before image generation.",
@@ -136,6 +142,8 @@ export function useLocalUserSettingsHub() {
     available: false,
     engine: "comfyui",
     url: "http://localhost:8188",
+    configuredBy: "default",
+    explanation: "Desktop/local mode checks ComfyUI on this computer.",
     message: "Checking local image engine status...",
   });
   const [selectedLocalOllamaModel, setSelectedLocalOllamaModel] = useState("");
@@ -438,20 +446,23 @@ export function useLocalUserSettingsHub() {
     if (isHostedAdminMode) {
       setIsLocalUserMode(false);
       setIsCheckingLocalOllama(false);
-      setIsCheckingLocalImageEngine(false);
       setLocalOllamaStatus({
         status: "error",
         models: [],
         endpoint: null,
         message: null,
       });
-      setLocalImageEngineStatus({
-        available: false,
-        engine: "comfyui",
-        url: "http://localhost:8188",
-        message: null,
+
+      const imageController = beginLocalImageEngineRequest();
+      syncLocalImageEngineStatus({
+        signal: imageController.signal,
+      }).finally(() => {
+        releaseLocalImageEngineRequest(imageController);
       });
-      return;
+      return () => {
+        imageController.abort();
+        releaseLocalImageEngineRequest(imageController);
+      };
     }
 
     const controller = beginLocalUserOllamaRequest();
