@@ -14,14 +14,22 @@ function normalizeComfyUiBaseUrl(value) {
     .replace(/\/+$/, "");
 }
 
-function resolveLocalImageEngineConfig(url) {
+function explanationForMode(mode) {
+  return mode === "hosted_server"
+    ? COMFYUI_HOSTED_EXPLANATION
+    : COMFYUI_LOCAL_EXPLANATION;
+}
+
+function resolveLocalImageEngineConfig(url, { mode = null } = {}) {
+  const resolvedMode =
+    mode === "hosted_server" ? "hosted_server" : "local_user";
   const explicitUrl = normalizeComfyUiBaseUrl(url);
   if (explicitUrl) {
     return {
       url: explicitUrl,
-      mode: "local_user",
+      mode: resolvedMode,
       configuredBy: "default",
-      explanation: COMFYUI_LOCAL_EXPLANATION,
+      explanation: explanationForMode(resolvedMode),
     };
   }
 
@@ -49,14 +57,14 @@ function resolveLocalImageEngineConfig(url) {
 
   return {
     url: DEFAULT_LOCAL_IMAGE_ENGINE_URL,
-    mode: "local_user",
+    mode: resolvedMode,
     configuredBy: "default",
-    explanation: COMFYUI_LOCAL_EXPLANATION,
+    explanation: explanationForMode(resolvedMode),
   };
 }
 
-function resolveLocalImageEngineUrl(url) {
-  return resolveLocalImageEngineConfig(url).url;
+function resolveLocalImageEngineUrl(url, options = {}) {
+  return resolveLocalImageEngineConfig(url, options).url;
 }
 
 function withComfyUiStatusMetadata(result, config) {
@@ -128,8 +136,9 @@ async function detectLocalImageEngine({
   url,
   fetchImpl = global.fetch,
   timeoutMs = DEFAULT_TIMEOUT_MS,
+  mode = null,
 } = {}) {
-  const config = resolveLocalImageEngineConfig(url);
+  const config = resolveLocalImageEngineConfig(url, { mode });
   const resolvedUrl = config.url;
   if (typeof fetchImpl !== "function") {
     return unavailableResult(

@@ -273,9 +273,10 @@ export function useLocalUserSettingsHub() {
       }));
 
       try {
-        const response = await SwarmsyOnboarding.localUserImageEngineStatus({
-          signal,
-        });
+        const statusRequest = isHostedAdminMode
+          ? SwarmsyOnboarding.hostedImageEngineStatus
+          : SwarmsyOnboarding.localUserImageEngineStatus;
+        const response = await statusRequest({ signal });
         if (signal?.aborted || !isLatestLocalImageEngineRequest(signal))
           return null;
 
@@ -309,7 +310,7 @@ export function useLocalUserSettingsHub() {
         }
       }
     },
-    [isLatestLocalImageEngineRequest]
+    [isHostedAdminMode, isLatestLocalImageEngineRequest]
   );
 
   const checkLocalImageEngine = useCallback(async () => {

@@ -76,6 +76,34 @@ describe("Swarmsy onboarding model", () => {
     );
   });
 
+  it("calls the hosted ComfyUI status endpoint without API keys", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        success: true,
+        mode: "hosted_server",
+        available: false,
+        engine: "comfyui",
+        url: "http://comfyui:8188",
+        configuredBy: "SWARMSY_LOCAL_COMFYUI_URL",
+        explanation:
+          "Hosted/server mode checks the configured server-side ComfyUI URL.",
+      }),
+    });
+    const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+
+    const response = await onboardingModel.hostedImageEngineStatus();
+
+    expect(response).toMatchObject({
+      mode: "hosted_server",
+      configuredBy: "SWARMSY_LOCAL_COMFYUI_URL",
+    });
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://localhost/api/swarmsy/hosted/image-engine/status",
+      expect.objectContaining({ headers: {} })
+    );
+  });
+
   it("posts local ComfyUI generation requests without API keys", async () => {
     const payload = {
       prompt: "street art poster",

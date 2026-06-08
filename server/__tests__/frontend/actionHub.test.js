@@ -700,9 +700,11 @@ describe("SWARMSY HIVE action hub", () => {
     );
     expect(source).toContain("Start ComfyUI locally at http://localhost:8188.");
     expect(source).toContain("Check image engine");
+    expect(hookSource).toContain("SwarmsyOnboarding.hostedImageEngineStatus");
     expect(hookSource).toContain(
       "SwarmsyOnboarding.localUserImageEngineStatus"
     );
+    expect(hookSource).toContain("isHostedAdminMode");
     expect(hookSource).toContain('url: "http://localhost:8188"');
   });
 
