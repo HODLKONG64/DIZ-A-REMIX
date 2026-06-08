@@ -10,8 +10,8 @@ The workflow is intentionally build/distribution infrastructure only. It preserv
 
 The dedicated workflow lives at `.github/workflows/desktop-artifact-build.yml` and runs on:
 
-- `pull_request`
-- `workflow_dispatch`
+- `workflow_dispatch` for maintainer-triggered manual artifact builds.
+- `pull_request` only when desktop, package, frontend, server, collector, or this workflow file changes. Docs-only, wiki-only, prompt-only, and other non-packaging PRs do not run this slow Windows artifact build.
 
 The Windows-first job performs these stages:
 
@@ -66,7 +66,7 @@ This artifact deliberately does **not** include:
 1. Open the GitHub repository in a browser.
 2. Go to **Actions**.
 3. Select the **Windows Desktop Artifact Build** workflow.
-4. Open a completed workflow run for the pull request or manual dispatch.
+4. Open a completed manual dispatch run, or a pull request run that changed desktop/package-impacting paths.
 5. Download the `swarmsy-desktop-win32-x64` artifact from the run summary.
 6. Extract the downloaded artifact locally.
 7. Launch `SWARMSY Desktop.exe` from the extracted packaged directory.

@@ -7,6 +7,14 @@ concurrency:
 on:
   pull_request:
     types: [opened, synchronize, reopened]
+    paths:
+      - ".github/workflows/desktop-artifact-build.yml"
+      - "desktop/**"
+      - "frontend/**"
+      - "server/**"
+      - "collector/**"
+      - "package.json"
+      - "package-lock.json"
   workflow_dispatch:
 
 jobs:
