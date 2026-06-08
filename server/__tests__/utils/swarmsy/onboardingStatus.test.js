@@ -27,6 +27,18 @@ jest.mock("../../../utils/http", () => ({
 
 jest.mock("../../../utils/swarmsy/applyWorkspacePreset", () => ({
   PRESET_NAME: "SWARMSY HIVE",
+  getSparkyPromptStatus: jest.fn((workspace) => ({
+    applied: workspace?.openAiPrompt === "SPARKY",
+    missing: workspace?.openAiPrompt !== "SPARKY",
+    status:
+      workspace?.openAiPrompt === "GENERIC"
+        ? "generic_default"
+        : "custom_prompt",
+    label:
+      workspace?.openAiPrompt === "SPARKY"
+        ? "SPARKY prompt applied"
+        : "SPARKY prompt not applied",
+  })),
 }));
 
 jest.mock("../../../utils/swarmsy/requiredDocs", () => ({
@@ -91,6 +103,7 @@ describe("swarmsy onboarding status helper", () => {
         id: true,
         slug: true,
         name: true,
+        openAiPrompt: true,
         documents: {
           select: {
             metadata: true,
@@ -210,6 +223,49 @@ describe("swarmsy onboarding status helper", () => {
       status: "not_added",
       label: "No Identity Empire knowledge added yet",
       filesAttached: 0,
+    });
+  });
+
+  it("surfaces missing SPARKY prompt when existing HIVE still has the generic default", async () => {
+    Workspace._findFirst.mockResolvedValue({
+      id: 12,
+      slug: "swarmsy-hive",
+      name: "SWARMSY HIVE",
+      openAiPrompt: "GENERIC",
+      documents: [],
+    });
+
+    const status = await getSwarmsyOnboardingStatus({
+      user: { id: 12 },
+      doctrineStatus,
+    });
+
+    expect(status.sparkyPrompt).toMatchObject({
+      applied: false,
+      missing: true,
+      status: "generic_default",
+      label: "SPARKY prompt not applied",
+    });
+  });
+
+  it("surfaces applied SPARKY prompt when the HIVE prompt matches the preset", async () => {
+    Workspace._findFirst.mockResolvedValue({
+      id: 13,
+      slug: "swarmsy-hive",
+      name: "SWARMSY HIVE",
+      openAiPrompt: "SPARKY",
+      documents: [],
+    });
+
+    const status = await getSwarmsyOnboardingStatus({
+      user: { id: 13 },
+      doctrineStatus,
+    });
+
+    expect(status.sparkyPrompt).toMatchObject({
+      applied: true,
+      missing: false,
+      label: "SPARKY prompt applied",
     });
   });
 
