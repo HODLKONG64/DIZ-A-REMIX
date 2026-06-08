@@ -1457,16 +1457,18 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
             </ActionButton>
           )}
 
-          {activeStatus?.workspace?.exists && sparkyPromptStatus?.missing && (
-            <ActionButton
-              icon={CheckCircle}
-              busy={busyAction === "sparky-prompt"}
-              disabled={Boolean(busyAction) && busyAction !== "sparky-prompt"}
-              onClick={applySparkyPrompt}
-            >
-              Apply/Repair SPARKY prompt
-            </ActionButton>
-          )}
+          {activeStatus?.workspace?.exists &&
+            sparkyPromptStatus?.missing &&
+            sparkyPromptStatus?.available && (
+              <ActionButton
+                icon={CheckCircle}
+                busy={busyAction === "sparky-prompt"}
+                disabled={Boolean(busyAction) && busyAction !== "sparky-prompt"}
+                onClick={applySparkyPrompt}
+              >
+                Apply/Repair SPARKY prompt
+              </ActionButton>
+            )}
 
           {activeStatus?.workspace?.exists &&
             !activeStatus?.workspace?.ready &&

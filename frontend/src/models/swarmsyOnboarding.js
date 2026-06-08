@@ -37,7 +37,7 @@ const SwarmsyOnboarding = {
         message: "Failed to create SWARMSY HIVE.",
       }));
   },
-  applySparkyPrompt: async function (workspaceSlug, confirmApply = true) {
+  applySparkyPrompt: async function (workspaceSlug, confirmApply = false) {
     return await fetch(
       `${API_BASE}/swarmsy/workspaces/${encodeURIComponent(
         workspaceSlug

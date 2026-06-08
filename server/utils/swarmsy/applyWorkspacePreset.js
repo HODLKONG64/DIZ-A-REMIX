@@ -116,6 +116,16 @@ async function applySparkyPromptToWorkspace(workspace, user = null) {
     };
   }
 
+  if (!before.available) {
+    return {
+      success: false,
+      applied: false,
+      before,
+      after: before,
+      message: "SPARKY system prompt is unavailable; no changes were applied.",
+    };
+  }
+
   await writePromptHistoryIfAvailable(workspace, user);
   const { workspace: updatedWorkspace, message } = await Workspace.update(
     workspace.id,

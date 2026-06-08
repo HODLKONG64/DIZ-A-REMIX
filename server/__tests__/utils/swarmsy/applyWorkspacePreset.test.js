@@ -156,6 +156,49 @@ describe("SWARMSY HIVE workspace preset", () => {
     expect(Workspace.update).not.toHaveBeenCalled();
   });
 
+  it("blocks SPARKY prompt repair when the preset prompt is unavailable", async () => {
+    const preset = loadSwarmsyHivePreset();
+    const originalSystemPrompt = preset.systemPrompt;
+    preset.systemPrompt = "";
+
+    try {
+      const workspace = {
+        id: 4,
+        name: "SWARMSY HIVE",
+        slug: "swarmsy-hive",
+        openAiPrompt: "Keep this custom prompt safe.",
+      };
+
+      const result = await applySparkyPromptToWorkspace(workspace, {
+        id: 99,
+        role: "admin",
+      });
+
+      expect(Workspace.update).not.toHaveBeenCalled();
+      expect(PromptHistory.new).not.toHaveBeenCalled();
+      expect(result).toMatchObject({
+        success: false,
+        applied: false,
+        before: {
+          available: false,
+          applied: false,
+          missing: true,
+          status: "unavailable",
+        },
+        after: {
+          available: false,
+          applied: false,
+          missing: true,
+          status: "unavailable",
+        },
+        message:
+          "SPARKY system prompt is unavailable; no changes were applied.",
+      });
+    } finally {
+      preset.systemPrompt = originalSystemPrompt;
+    }
+  });
+
   it("repairs an existing SWARMSY HIVE with the generic prompt and records prompt history", async () => {
     const workspace = {
       id: 3,
