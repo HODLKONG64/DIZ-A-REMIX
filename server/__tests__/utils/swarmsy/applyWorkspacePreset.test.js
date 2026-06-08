@@ -73,6 +73,48 @@ describe("SWARMSY HIVE workspace preset", () => {
     );
   });
 
+  it("reports unavailable when the preset SPARKY system prompt is missing", () => {
+    const preset = loadSwarmsyHivePreset();
+    const originalSystemPrompt = preset.systemPrompt;
+    preset.systemPrompt = "";
+
+    try {
+      const status = getSparkyPromptStatus({
+        id: 1,
+        name: "SWARMSY HIVE",
+        slug: "swarmsy-hive",
+        openAiPrompt: "",
+      });
+
+      expect(status).toMatchObject({
+        available: false,
+        applied: false,
+        missing: true,
+        status: "unavailable",
+        label: "SPARKY prompt not applied",
+      });
+    } finally {
+      preset.systemPrompt = originalSystemPrompt;
+    }
+  });
+
+  it("reports applied only when an available SPARKY prompt matches the workspace prompt", () => {
+    const status = getSparkyPromptStatus({
+      id: 1,
+      name: "SWARMSY HIVE",
+      slug: "swarmsy-hive",
+      openAiPrompt: loadSwarmsyHivePreset().systemPrompt,
+    });
+
+    expect(status).toMatchObject({
+      available: true,
+      applied: true,
+      missing: false,
+      status: "applied",
+      label: "SPARKY prompt applied",
+    });
+  });
+
   it("detects an existing generic workspace as missing SPARKY without changing it", () => {
     const workspace = {
       id: 1,
@@ -84,6 +126,7 @@ describe("SWARMSY HIVE workspace preset", () => {
     const status = getSparkyPromptStatus(workspace);
 
     expect(status).toMatchObject({
+      available: true,
       applied: false,
       missing: true,
       isGenericDefault: true,
@@ -104,6 +147,7 @@ describe("SWARMSY HIVE workspace preset", () => {
     const status = getSparkyPromptStatus(workspace);
 
     expect(status).toMatchObject({
+      available: true,
       applied: false,
       missing: true,
       isGenericDefault: false,

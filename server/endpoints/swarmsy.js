@@ -199,9 +199,10 @@ async function swarmsyOnboardingIngestRequiredDocs(request, response) {
       return response.status(404).json(swarmsyMissingHiveForDocsIngestion());
     }
 
+    const fallbackUserId = response.locals?.user?.id ?? null;
     const result = await ingestSwarmsyRequiredDocs({
       workspace,
-      userId: user?.id ? Number(user.id) : (response.locals?.user?.id ?? null),
+      userId: user?.id ? Number(user.id) : fallbackUserId,
     });
 
     if (result.errorCode === "COLLECTOR_OFFLINE") {

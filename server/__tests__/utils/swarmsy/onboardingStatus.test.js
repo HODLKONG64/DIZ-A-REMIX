@@ -27,18 +27,32 @@ jest.mock("../../../utils/http", () => ({
 
 jest.mock("../../../utils/swarmsy/applyWorkspacePreset", () => ({
   PRESET_NAME: "SWARMSY HIVE",
-  getSparkyPromptStatus: jest.fn((workspace) => ({
-    applied: workspace?.openAiPrompt === "SPARKY",
-    missing: workspace?.openAiPrompt !== "SPARKY",
-    status:
-      workspace?.openAiPrompt === "GENERIC"
-        ? "generic_default"
-        : "custom_prompt",
-    label:
-      workspace?.openAiPrompt === "SPARKY"
-        ? "SPARKY prompt applied"
-        : "SPARKY prompt not applied",
-  })),
+  getSparkyPromptStatus: jest.fn((workspace) => {
+    if (workspace?.openAiPrompt === "SPARKY") {
+      return {
+        applied: true,
+        missing: false,
+        status: "applied",
+        label: "SPARKY prompt applied",
+      };
+    }
+
+    if (workspace?.openAiPrompt === "GENERIC") {
+      return {
+        applied: false,
+        missing: true,
+        status: "generic_default",
+        label: "SPARKY prompt not applied",
+      };
+    }
+
+    return {
+      applied: false,
+      missing: true,
+      status: "custom_prompt",
+      label: "SPARKY prompt not applied",
+    };
+  }),
 }));
 
 jest.mock("../../../utils/swarmsy/requiredDocs", () => ({

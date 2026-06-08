@@ -40,30 +40,37 @@ function loadSwarmsyHivePreset() {
 
 function getSparkyPromptStatus(workspace = null) {
   const preset = loadSwarmsyHivePreset();
+  const sparkyPrompt = String(preset.systemPrompt || "");
+  const available = Boolean(sparkyPrompt.trim());
   const currentPrompt = workspace?.openAiPrompt || "";
   const currentNormalized = normalizePrompt(currentPrompt);
-  const sparkyNormalized = normalizePrompt(preset.systemPrompt);
+  const sparkyNormalized = normalizePrompt(sparkyPrompt);
   const genericNormalized = normalizePrompt(GENERIC_ANYTHINGLLM_PROMPT);
-  const applied = currentNormalized === sparkyNormalized;
+  const applied = available && currentNormalized === sparkyNormalized;
+  const missing = available ? !applied : true;
   const isGenericDefault =
     !currentNormalized || currentNormalized === genericNormalized;
 
   return {
-    available: Boolean(preset.systemPrompt),
+    available,
     applied,
-    missing: !applied,
+    missing,
     isGenericDefault,
-    status: applied
-      ? "applied"
-      : isGenericDefault
-        ? "generic_default"
-        : "custom_prompt",
+    status: !available
+      ? "unavailable"
+      : applied
+        ? "applied"
+        : isGenericDefault
+          ? "generic_default"
+          : "custom_prompt",
     label: applied ? "SPARKY prompt applied" : "SPARKY prompt not applied",
     message: applied
       ? "This workspace is using the SWARMSY HIVE SPARKY system prompt."
-      : isGenericDefault
-        ? "This workspace is still using the generic AnythingLLM default system prompt."
-        : "This workspace has a custom system prompt. Apply SPARKY only if you explicitly want to replace it.",
+      : !available
+        ? "The SWARMSY HIVE SPARKY system prompt is unavailable."
+        : isGenericDefault
+          ? "This workspace is still using the generic AnythingLLM default system prompt."
+          : "This workspace has a custom system prompt. Apply SPARKY only if you explicitly want to replace it.",
   };
 }
 
