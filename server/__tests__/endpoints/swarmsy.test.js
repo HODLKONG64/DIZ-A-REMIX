@@ -102,6 +102,8 @@ const {
   swarmsyOnboardingCreateHive,
   swarmsyOnboardingIngestRequiredDocs,
   swarmsyOnboardingStatus,
+  swarmsyPublicNpcBridge,
+  swarmsyPublicNpcChat,
   swarmsySparkyWikiSeedPackImport,
   swarmsyWorkspaceSparkyPromptApply,
   swarmsyWorkspaceSparkyPromptStatus,
@@ -1098,5 +1100,122 @@ describe("swarmsy endpoints", () => {
       workspace: { exists: false },
       message: "No current workspace exists for SPARKY Wiki seed pack import.",
     });
+  });
+});
+
+describe("SWARMSY website NPC public bridge", () => {
+  const previousBridgeToken = process.env.SWARMSY_BRIDGE_TOKEN;
+  const previousOrigins = process.env.SWARMSY_PUBLIC_ALLOWED_ORIGINS;
+  const {
+    __resetWebsiteNpcConfigForTests,
+    __setNpcChatRunnerForTests,
+    saveNpc,
+  } = require("../../utils/swarmsy/websiteNpcControl");
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    process.env.SWARMSY_BRIDGE_TOKEN = "test-bridge-token";
+    process.env.SWARMSY_PUBLIC_ALLOWED_ORIGINS = "https://cryptomoonboys.com";
+    __resetWebsiteNpcConfigForTests();
+    __setNpcChatRunnerForTests(async ({ workspace }) => ({
+      reply: `live reply from ${workspace.slug}`,
+      sourceSummary: "mocked live workspace grounding",
+    }));
+  });
+
+  afterAll(() => {
+    if (previousBridgeToken === undefined) delete process.env.SWARMSY_BRIDGE_TOKEN;
+    else process.env.SWARMSY_BRIDGE_TOKEN = previousBridgeToken;
+    if (previousOrigins === undefined) delete process.env.SWARMSY_PUBLIC_ALLOWED_ORIGINS;
+    else process.env.SWARMSY_PUBLIC_ALLOWED_ORIGINS = previousOrigins;
+  });
+
+  function request(body = {}, token = "test-bridge-token") {
+    return {
+      body,
+      ip: "127.0.0.1",
+      header: jest.fn((name) => {
+        if (name.toLowerCase() === "x-swarmsy-bridge-token") return token;
+        if (name.toLowerCase() === "origin") return "https://cryptomoonboys.com";
+        return null;
+      }),
+    };
+  }
+
+  it("rejects missing bridge token", async () => {
+    const response = responseMock();
+    await swarmsyPublicNpcChat(request({ npcId: "paperclip", message: "hello" }, ""), response);
+
+    expect(response.status).toHaveBeenCalledWith(401);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ error: "unauthorized_bridge" }));
+  });
+
+  it("rejects invalid bridge token", async () => {
+    const response = responseMock();
+    await swarmsyPublicNpcChat(request({ npcId: "paperclip", message: "hello" }, "wrong"), response);
+
+    expect(response.status).toHaveBeenCalledWith(401);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ error: "unauthorized_bridge" }));
+  });
+
+  it("rejects unknown NPC id", async () => {
+    const response = responseMock();
+    await swarmsyPublicNpcChat(request({ npcId: "unknown", message: "hello" }), response);
+
+    expect(response.status).toHaveBeenCalledWith(404);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ success: false, error: "Unknown NPC id." }));
+  });
+
+  it("rejects disabled NPCs", async () => {
+    await saveNpc({ npcId: "paperclip", displayName: "Paperclip", enabled: false, workspaceSlug: "website-paperclip" });
+    const response = responseMock();
+
+    await swarmsyPublicNpcChat(request({ npcId: "paperclip", message: "hello" }), response);
+
+    expect(response.status).toHaveBeenCalledWith(403);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ success: false, error: "This NPC is currently disabled." }));
+  });
+
+  it("routes Paperclip to the Paperclip workspace", async () => {
+    Workspace.get.mockResolvedValue({ id: 1, slug: "website-paperclip", name: "Website Paperclip Workspace", chatMode: "automatic" });
+    const response = responseMock();
+
+    await swarmsyPublicNpcChat(request({ npcId: "paperclip", message: "what is this?", pagePath: "/paperclip.html" }), response);
+
+    expect(Workspace.get).toHaveBeenCalledWith({ slug: "website-paperclip" });
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ success: true, npcId: "paperclip", workspaceSlug: "website-paperclip", reply: "live reply from website-paperclip" }));
+  });
+
+  it("routes Sparky to the Sparky workspace", async () => {
+    Workspace.get.mockResolvedValue({ id: 2, slug: "website-sparky", name: "Website Sparky Workspace", chatMode: "automatic" });
+    const response = responseMock();
+
+    await swarmsyPublicNpcChat(request({ npcId: "sparky", message: "help me", pagePath: "/paperclip.html" }), response);
+
+    expect(Workspace.get).toHaveBeenCalledWith({ slug: "website-sparky" });
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ success: true, npcId: "sparky", workspaceSlug: "website-sparky", reply: "live reply from website-sparky" }));
+  });
+
+  it("returns a safe setup-needed error for missing workspaces", async () => {
+    Workspace.get.mockResolvedValue(null);
+    const response = responseMock();
+
+    await swarmsyPublicNpcChat(request({ npcId: "paperclip", message: "hello", pagePath: "/paperclip.html" }), response);
+
+    expect(response.status).toHaveBeenCalledWith(424);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ success: false, error: "missing_workspace", reply: expect.stringContaining("workspace") }));
+  });
+
+  it("allows the public bridge to send a mocked website message without exposing the bridge token", async () => {
+    Workspace.get.mockResolvedValue({ id: 1, slug: "website-paperclip", name: "Website Paperclip Workspace", chatMode: "automatic" });
+    const response = responseMock();
+
+    await swarmsyPublicNpcBridge(request({ npcId: "paperclip", message: "hello", pagePath: "/paperclip.html" }, null), response);
+
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith(expect.objectContaining({ success: true, workspaceSlug: "website-paperclip" }));
+    expect(response.json.mock.calls[0][0]).not.toHaveProperty("bridgeToken");
   });
 });
