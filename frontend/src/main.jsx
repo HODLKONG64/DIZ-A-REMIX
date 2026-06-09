@@ -139,7 +139,7 @@ const router = createBrowserRouter([
           const { default: WebsiteNpcsAdmin } = await import(
             "@/pages/Admin/WebsiteNpcs"
           );
-          return { element: <AdminRoute Component={WebsiteNpcsAdmin} /> };
+          return { element: <ManagerRoute Component={WebsiteNpcsAdmin} /> };
         },
       },
       {

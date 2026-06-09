@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const { EventEmitter } = require("events");
 const { Workspace } = require("../../models/workspace");
 
 const STORAGE_ROOT =
@@ -12,6 +13,7 @@ const STORAGE_ROOT =
 const NPC_CONFIG_FILE = path.join(STORAGE_ROOT, "website-npcs.json");
 const PUBLIC_LOG_FILE = path.join(STORAGE_ROOT, "website-npc-public-logs.json");
 const MAX_LOGS = 100;
+const DEFAULT_PUBLIC_NPC_BUCKET_CAP = 1_000;
 
 const DEFAULT_SUBJECT_WORKSPACES = [
   {
@@ -326,6 +328,8 @@ async function repairDefaultWorkspaces() {
         slug: workspaceSpec.slug,
         created: false,
         exists: true,
+        success: true,
+        error: null,
         workspace: {
           id: existing.id,
           name: existing.name,
@@ -335,7 +339,7 @@ async function repairDefaultWorkspaces() {
       continue;
     }
 
-    const { workspace, message } = await Workspace.upsert(
+    const { workspace, error } = await Workspace.upsert(
       { slug: workspaceSpec.slug },
       {
         name: workspaceSpec.name,
@@ -351,13 +355,17 @@ async function repairDefaultWorkspaces() {
       slug: workspaceSpec.slug,
       created: !!workspace,
       exists: !!workspace,
-      error: message || null,
+      success: !!workspace && !error,
+      error: error || null,
       workspace: workspace
         ? { id: workspace.id, name: workspace.name, slug: workspace.slug }
         : null,
     });
   }
-  return { success: true, results };
+  return {
+    success: results.every((result) => result.success !== false),
+    results,
+  };
 }
 
 function configuredAllowedOrigins() {
@@ -387,10 +395,61 @@ function pagePathAllowed(npc, pagePath = "") {
     npc.allowedPublicPagePaths.length === 0
   )
     return true;
-  return npc.allowedPublicPagePaths.some(
-    (allowedPath) =>
+  return npc.allowedPublicPagePaths.some((allowedPath) => {
+    if (allowedPath === "/") return true;
+    return (
       normalized === allowedPath || normalized.startsWith(`${allowedPath}/`)
-  );
+    );
+  });
+}
+
+function createSyntheticSseResponse({ onChunk } = {}) {
+  const emitter = new EventEmitter();
+  return {
+    writableEnded: false,
+    headers: {},
+    setHeader(name, value) {
+      this.headers[String(name).toLowerCase()] = value;
+      return this;
+    },
+    getHeader(name) {
+      return this.headers[String(name).toLowerCase()];
+    },
+    flushHeaders() {},
+    write(chunk) {
+      if (this.writableEnded) return false;
+      if (typeof onChunk === "function") onChunk(chunk);
+      return true;
+    },
+    end(chunk) {
+      if (chunk) this.write(chunk);
+      this.writableEnded = true;
+      this.emit("finish");
+      return this;
+    },
+    on(eventName, listener) {
+      emitter.on(eventName, listener);
+      return this;
+    },
+    once(eventName, listener) {
+      emitter.once(eventName, listener);
+      return this;
+    },
+    off(eventName, listener) {
+      emitter.off(eventName, listener);
+      return this;
+    },
+    removeListener(eventName, listener) {
+      emitter.removeListener(eventName, listener);
+      return this;
+    },
+    emit(eventName, ...args) {
+      return emitter.emit(eventName, ...args);
+    },
+    listenerCount(eventName) {
+      return emitter.listenerCount(eventName);
+    },
+  };
 }
 
 let npcChatRunner = defaultNpcChatRunner;
@@ -401,15 +460,13 @@ function setNpcChatRunnerForTests(runner) {
 
 async function defaultNpcChatRunner({ workspace, prompt }) {
   const chunks = [];
-  const response = {
-    setHeader() {},
-    flushHeaders() {},
-    write(chunk) {
+  const response = createSyntheticSseResponse({
+    onChunk: (chunk) => {
       const text = Buffer.isBuffer(chunk)
         ? chunk.toString("utf8")
         : String(chunk);
       const match = text.match(/^data:\s*(.*)\n\n$/s);
-      if (!match) return true;
+      if (!match) return;
       try {
         const payload = JSON.parse(match[1]);
         if (payload.textResponse) chunks.push(payload.textResponse);
@@ -418,10 +475,8 @@ async function defaultNpcChatRunner({ workspace, prompt }) {
       } catch (error) {
         if (error.message) throw error;
       }
-      return true;
     },
-    end() {},
-  };
+  });
   const { streamChatWithWorkspace } = require("../chats/stream");
   await streamChatWithWorkspace(
     response,
@@ -601,10 +656,12 @@ function publicError(
 
 module.exports = {
   DEFAULT_NPCS,
+  DEFAULT_PUBLIC_NPC_BUCKET_CAP,
   DEFAULT_SUBJECT_WORKSPACES,
   REQUIRED_WEBSITE_WORKSPACES,
   __resetWebsiteNpcConfigForTests: resetWebsiteNpcConfigForTests,
   __setNpcChatRunnerForTests: setNpcChatRunnerForTests,
+  createSyntheticSseResponse,
   adminStatus,
   allowedNpcIds,
   appendLog,

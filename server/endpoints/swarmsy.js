@@ -521,13 +521,18 @@ async function swarmsyPublicNpcChat(request, response) {
   }
 
   const body = reqBody(request);
+  const requestMeta =
+    body.requestMeta && typeof body.requestMeta === "object"
+      ? body.requestMeta
+      : {};
   const result = await publicNpcChat({
     npcId: body.npcId,
     message: body.message,
     pagePath: body.pagePath,
     origin: body.origin || request.header("origin") || "",
     requestMeta: {
-      bridge: "private-swarmsy-endpoint",
+      ...requestMeta,
+      bridge: requestMeta.bridge || "private-swarmsy-endpoint",
       ip: request.ip,
     },
   });
@@ -536,27 +541,52 @@ async function swarmsyPublicNpcChat(request, response) {
 
 const publicNpcBridgeBuckets = new Map();
 
+function publicNpcBridgeBucketCap() {
+  const cap = Number(process.env.SWARMSY_PUBLIC_RATE_BUCKET_CAP);
+  return Number.isFinite(cap) && cap > 0 ? cap : 1_000;
+}
+
+function cleanupPublicNpcBridgeBuckets(now = Date.now()) {
+  for (const [key, bucket] of publicNpcBridgeBuckets.entries()) {
+    if (!bucket || now > bucket.resetAt) publicNpcBridgeBuckets.delete(key);
+  }
+
+  const cap = publicNpcBridgeBucketCap();
+  while (publicNpcBridgeBuckets.size > cap) {
+    const oldestKey = publicNpcBridgeBuckets.keys().next().value;
+    if (!oldestKey) break;
+    publicNpcBridgeBuckets.delete(oldestKey);
+  }
+}
+
 function rateLimitPublicNpcBridge(request) {
   const key = request.ip || "unknown";
   const now = Date.now();
+  cleanupPublicNpcBridgeBuckets(now);
+
   const windowMs = Number(process.env.SWARMSY_PUBLIC_RATE_WINDOW_MS) || 60_000;
   const max = Number(process.env.SWARMSY_PUBLIC_RATE_LIMIT) || 20;
   const bucket = publicNpcBridgeBuckets.get(key) || {
     count: 0,
     resetAt: now + windowMs,
   };
-  if (now > bucket.resetAt) {
-    bucket.count = 0;
-    bucket.resetAt = now + windowMs;
-  }
   bucket.count += 1;
   publicNpcBridgeBuckets.set(key, bucket);
+  cleanupPublicNpcBridgeBuckets(now);
   return bucket.count <= max;
+}
+
+function __resetPublicNpcBridgeBucketsForTests() {
+  publicNpcBridgeBuckets.clear();
+}
+
+function __publicNpcBridgeBucketCountForTests() {
+  return publicNpcBridgeBuckets.size;
 }
 
 async function swarmsyPublicNpcBridge(request, response) {
   const origin = request.header("origin") || "";
-  if (!websiteNpcOriginAllowed(origin)) {
+  if (!origin || !websiteNpcOriginAllowed(origin)) {
     return response
       .status(403)
       .json({ success: false, error: "Origin is not allowed." });
@@ -717,6 +747,8 @@ function swarmsyEndpoints(app) {
 }
 
 module.exports = {
+  __publicNpcBridgeBucketCountForTests,
+  __resetPublicNpcBridgeBucketsForTests,
   __resetSwarmsyHiveCreationLocksForTests,
   swarmsyHostedImageEngineStatus,
   swarmsyLocalUserImageEngineGenerate,
