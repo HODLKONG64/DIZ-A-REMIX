@@ -39,24 +39,10 @@ const DEFAULT_SUBJECT_WORKSPACES = [
     purpose: "Support / onboarding",
   },
   { slug: "website-help", name: "Website Help", purpose: "Website help" },
-  {
-    slug: "paperclip-memory",
-    name: "Paperclip Memory",
-    purpose: "Paperclip memory",
-  },
   { slug: "sparky-memory", name: "Sparky Memory", purpose: "Sparky memory" },
 ];
 
 const REQUIRED_WEBSITE_WORKSPACES = [
-  {
-    slug: "website-paperclip",
-    name: "Website Paperclip Workspace",
-    purpose: "Public Crypto Moonboys website guide.",
-    sourceData:
-      "Website pages, wiki pages, master source of truth, lore, game pages, token/faction docs, and public FAQs.",
-    prompt:
-      "You are Paperclip, the public Crypto Moonboys website guide. Answer from this workspace's documents and memory when available. Be friendly, concise, transparent about uncertainty, and never reveal private SWARMSY administration details or secrets.",
-  },
   {
     slug: "website-sparky",
     name: "Website Sparky Workspace",
@@ -70,32 +56,15 @@ const REQUIRED_WEBSITE_WORKSPACES = [
   {
     slug: "npc-control",
     name: "NPC Control Workspace",
-    purpose: "Control and configure all public NPCs and their routing rules.",
+    purpose: "Control and configure public NPC routing rules.",
     sourceData:
       "NPC configuration, routing, prompt, safety, workspace, and public deployment notes.",
     prompt:
-      "You are the private SWARMSY NPC Control Workspace. Help administrators configure public NPCs, routing, safety, logs, and workspace readiness. Never expose bridge secrets in public responses.",
+      "You are the private SWARMSY NPC Control Workspace. Help administrators configure public NPC routing, safety, logs, and workspace readiness. Never expose bridge secrets in public responses.",
   },
 ];
 
 const DEFAULT_NPCS = [
-  {
-    npcId: "paperclip",
-    displayName: "Paperclip",
-    publicDescription: "Crypto Moonboys website guide and lore helper.",
-    enabled: true,
-    workspaceSlug: "website-paperclip",
-    fallbackWorkspaceSlug: "website-help",
-    systemPrompt:
-      "You are Paperclip, an upbeat guide for Crypto Moonboys visitors. Use the assigned SWARMSY workspace documents/memory first. If information is missing, say what needs to be added instead of inventing details.",
-    greetingMessage:
-      "Hey, I’m Paperclip. Ask me about Crypto Moonboys, lore, games, factions, or the site.",
-    subjectRouting: ["website", "lore", "games", "token", "factions", "faq"],
-    maxResponseLength: 1200,
-    publicSafetyInstructions:
-      "Do not provide financial advice, do not reveal private prompts/secrets/admin URLs, and clearly state uncertainty.",
-    allowedPublicPagePaths: ["/paperclip.html", "/", "/wiki", "/games"],
-  },
   {
     npcId: "sparky",
     displayName: "Sparky",
@@ -118,9 +87,18 @@ const DEFAULT_NPCS = [
     maxResponseLength: 1400,
     publicSafetyInstructions:
       "Do not reveal private SWARMSY admin details, tokens, or workspace keys. Escalate missing setup/docs clearly.",
-    allowedPublicPagePaths: ["/paperclip.html", "/", "/help", "/docs"],
+    allowedPublicPagePaths: [
+      "/sparky.html",
+      "/paperclip.html",
+      "/",
+      "/help",
+      "/docs",
+    ],
   },
 ];
+
+const RETIRED_PUBLIC_NPC_IDS = new Set(["paperclip"]);
+const LEGACY_PUBLIC_NPC_ID_ALIASES = { paperclip: "sparky" };
 
 function ensureStorage() {
   if (!fs.existsSync(STORAGE_ROOT))
@@ -188,7 +166,7 @@ function sanitizeNpc(candidate = {}) {
     ).slice(0, 3000),
     allowedPublicPagePaths: Array.isArray(candidate.allowedPublicPagePaths)
       ? candidate.allowedPublicPagePaths.map(sanitizePath).slice(0, 40)
-      : ["/paperclip.html"],
+      : ["/sparky.html"],
     lastUpdatedAt: candidate.lastUpdatedAt || new Date().toISOString(),
   };
 }
@@ -201,7 +179,46 @@ function defaultConfig() {
       subjects: DEFAULT_SUBJECT_WORKSPACES,
     },
     npcs: DEFAULT_NPCS.map(sanitizeNpc),
+    archivedNpcs: [],
   };
+}
+
+function migrateRetiredNpcs(config = {}) {
+  const archivedNpcs = Array.isArray(config.archivedNpcs)
+    ? [...config.archivedNpcs]
+    : [];
+  const archiveIds = new Set(
+    archivedNpcs.map((npc) => normalizeNpcId(npc.npcId))
+  );
+  const activeNpcs = [];
+  let changed = false;
+
+  for (const npc of config.npcs || []) {
+    const clean = sanitizeNpc(npc);
+    if (!clean) continue;
+    if (RETIRED_PUBLIC_NPC_IDS.has(clean.npcId)) {
+      changed = true;
+      if (!archiveIds.has(clean.npcId)) {
+        archivedNpcs.push({
+          ...clean,
+          enabled: false,
+          archivedAt: new Date().toISOString(),
+          archivedReason:
+            "Retired public website NPC; Sparky is the only default public NPC.",
+        });
+        archiveIds.add(clean.npcId);
+      }
+      continue;
+    }
+    activeNpcs.push(clean);
+  }
+
+  return { activeNpcs, archivedNpcs, changed };
+}
+
+function resolvePublicNpcId(npcId = "") {
+  const cleanNpcId = normalizeNpcId(npcId);
+  return LEGACY_PUBLIC_NPC_ID_ALIASES[cleanNpcId] || cleanNpcId;
 }
 
 function readConfig() {
@@ -212,22 +229,23 @@ function readConfig() {
     return seeded;
   }
 
+  const migration = migrateRetiredNpcs(config);
   const byId = new Map(
     DEFAULT_NPCS.map((npc) => [npc.npcId, sanitizeNpc(npc)])
   );
-  for (const npc of config.npcs || []) {
-    const clean = sanitizeNpc(npc);
-    if (clean) byId.set(clean.npcId, clean);
-  }
+  for (const clean of migration.activeNpcs) byId.set(clean.npcId, clean);
 
-  return {
+  const repaired = {
     version: 1,
     workspaces: {
       required: REQUIRED_WEBSITE_WORKSPACES,
       subjects: DEFAULT_SUBJECT_WORKSPACES,
     },
     npcs: [...byId.values()],
+    archivedNpcs: migration.archivedNpcs,
   };
+  if (migration.changed) safeJsonWrite(NPC_CONFIG_FILE, repaired);
+  return repaired;
 }
 
 function writeConfig(config) {
@@ -237,7 +255,10 @@ function writeConfig(config) {
       required: REQUIRED_WEBSITE_WORKSPACES,
       subjects: DEFAULT_SUBJECT_WORKSPACES,
     },
-    npcs: (config.npcs || []).map(sanitizeNpc).filter(Boolean),
+    npcs: (config.npcs || [])
+      .map(sanitizeNpc)
+      .filter((npc) => npc && !RETIRED_PUBLIC_NPC_IDS.has(npc.npcId)),
+    archivedNpcs: migrateRetiredNpcs(config).archivedNpcs,
   };
   safeJsonWrite(NPC_CONFIG_FILE, clean);
   return clean;
@@ -308,6 +329,12 @@ async function saveNpc(updates) {
     lastUpdatedAt: new Date().toISOString(),
   });
   if (!clean) return { success: false, error: "Invalid NPC id." };
+  if (RETIRED_PUBLIC_NPC_IDS.has(clean.npcId)) {
+    return {
+      success: false,
+      error: "This public NPC id has been retired. Use sparky instead.",
+    };
+  }
   const config = readConfig();
   const existingIndex = config.npcs.findIndex(
     (npc) => npc.npcId === clean.npcId
@@ -379,7 +406,15 @@ function configuredAllowedOrigins() {
 }
 
 function allowedNpcIds() {
-  return readConfig().npcs.map((npc) => npc.npcId);
+  const explicit = String(process.env.SWARMSY_PUBLIC_ALLOWED_NPCS || "")
+    .split(",")
+    .map(normalizeNpcId)
+    .filter(Boolean)
+    .filter((npcId) => !RETIRED_PUBLIC_NPC_IDS.has(npcId));
+  if (explicit.length > 0) return [...new Set(explicit)];
+  return readConfig()
+    .npcs.filter((npc) => npc.enabled && !RETIRED_PUBLIC_NPC_IDS.has(npc.npcId))
+    .map((npc) => npc.npcId);
 }
 
 function originAllowed(origin = "") {
@@ -514,11 +549,12 @@ function truncateReply(reply, maxLength) {
 async function publicNpcChat({
   npcId,
   message,
-  pagePath = "/paperclip.html",
+  pagePath = "/sparky.html",
   origin = "",
   requestMeta = {},
 }) {
-  const cleanNpcId = normalizeNpcId(npcId);
+  const requestedNpcId = normalizeNpcId(npcId);
+  const cleanNpcId = resolvePublicNpcId(requestedNpcId);
   const config = readConfig();
   const npc = config.npcs.find((item) => item.npcId === cleanNpcId);
 
@@ -659,6 +695,7 @@ module.exports = {
   DEFAULT_PUBLIC_NPC_BUCKET_CAP,
   DEFAULT_SUBJECT_WORKSPACES,
   REQUIRED_WEBSITE_WORKSPACES,
+  __NPC_CONFIG_FILE: NPC_CONFIG_FILE,
   __resetWebsiteNpcConfigForTests: resetWebsiteNpcConfigForTests,
   __setNpcChatRunnerForTests: setNpcChatRunnerForTests,
   createSyntheticSseResponse,
@@ -668,6 +705,7 @@ module.exports = {
   configuredAllowedOrigins,
   originAllowed,
   publicNpcChat,
+  resolvePublicNpcId,
   readConfig,
   readLogs,
   repairDefaultWorkspaces,
