@@ -192,6 +192,7 @@ function migrateRetiredNpcs(config = {}) {
     archivedNpcs.map((npc) => normalizeNpcId(npc.npcId))
   );
   const activeNpcs = [];
+  let replacementEnabled = null;
   let changed = source.npcs !== undefined && !Array.isArray(source.npcs);
   const npcCandidates = Array.isArray(source.npcs) ? source.npcs : [];
 
@@ -200,6 +201,7 @@ function migrateRetiredNpcs(config = {}) {
     if (!clean) continue;
     if (RETIRED_PUBLIC_NPC_IDS.has(clean.npcId)) {
       changed = true;
+      replacementEnabled = replacementEnabled === false ? false : clean.enabled;
       if (!archiveIds.has(clean.npcId)) {
         archivedNpcs.push({
           ...clean,
@@ -215,7 +217,7 @@ function migrateRetiredNpcs(config = {}) {
     activeNpcs.push(clean);
   }
 
-  return { activeNpcs, archivedNpcs, changed };
+  return { activeNpcs, archivedNpcs, changed, replacementEnabled };
 }
 
 function resolvePublicNpcId(npcId = "") {
@@ -232,9 +234,14 @@ function readConfig() {
   }
 
   const migration = migrateRetiredNpcs(config);
-  const byId = new Map(
-    DEFAULT_NPCS.map((npc) => [npc.npcId, sanitizeNpc(npc)])
+  const defaultNpcs = DEFAULT_NPCS.map((npc) =>
+    sanitizeNpc(
+      migration.replacementEnabled === null
+        ? npc
+        : { ...npc, enabled: migration.replacementEnabled }
+    )
   );
+  const byId = new Map(defaultNpcs.map((npc) => [npc.npcId, npc]));
   for (const clean of migration.activeNpcs) byId.set(clean.npcId, clean);
 
   const repaired = {

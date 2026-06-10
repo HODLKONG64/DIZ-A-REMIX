@@ -1261,6 +1261,78 @@ describe("SWARMSY website NPC public bridge", () => {
     expect(allowedNpcIds()).toEqual([]);
   });
 
+  it("carries disabled legacy Paperclip state to the Sparky replacement", () => {
+    const fs = require("fs");
+    const {
+      __NPC_CONFIG_FILE,
+      allowedNpcIds,
+      readConfig,
+    } = require("../../utils/swarmsy/websiteNpcControl");
+
+    fs.writeFileSync(
+      __NPC_CONFIG_FILE,
+      JSON.stringify({
+        version: 1,
+        npcs: [
+          {
+            npcId: "paperclip",
+            displayName: "Paperclip",
+            enabled: false,
+            workspaceSlug: "website-paperclip",
+          },
+        ],
+      })
+    );
+
+    const config = readConfig();
+
+    expect(config.npcs).toEqual([
+      expect.objectContaining({
+        npcId: "sparky",
+        enabled: false,
+        workspaceSlug: "website-sparky",
+      }),
+    ]);
+    expect(config.archivedNpcs[0]).toEqual(
+      expect.objectContaining({
+        npcId: "paperclip",
+        enabled: false,
+      })
+    );
+    expect(allowedNpcIds()).toEqual([]);
+  });
+
+  it("carries enabled legacy Paperclip state to enabled Sparky", () => {
+    const fs = require("fs");
+    const {
+      __NPC_CONFIG_FILE,
+      readConfig,
+    } = require("../../utils/swarmsy/websiteNpcControl");
+
+    fs.writeFileSync(
+      __NPC_CONFIG_FILE,
+      JSON.stringify({
+        version: 1,
+        npcs: [
+          {
+            npcId: "paperclip",
+            displayName: "Paperclip",
+            enabled: true,
+            workspaceSlug: "website-paperclip",
+          },
+        ],
+      })
+    );
+
+    expect(readConfig().npcs).toEqual([
+      expect.objectContaining({
+        npcId: "sparky",
+        enabled: true,
+        workspaceSlug: "website-sparky",
+      }),
+    ]);
+  });
+
   it("archives existing Paperclip config during repair without exposing it", async () => {
     const fs = require("fs");
     const {

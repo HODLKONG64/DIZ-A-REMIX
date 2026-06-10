@@ -106,7 +106,7 @@ describe("Crypto Moonboys public Sparky page", () => {
     expect(main).toContain("<AdminRoute Component={WebsiteNpcsAdmin} />");
     expect(sidebar).toContain('btnText: "Website NPCs"');
     expect(sidebar).toContain('roles: ["admin"]');
-    expect(sidebar).toContain("VITE_SWARMSY_PUBLIC_DOWNLOAD_BUILD");
+    expect(sidebar).toContain("IS_SWARMSY_PUBLIC_DOWNLOAD_BUILD");
     expect(main).toContain("includeSwarmsyAdminNpcRoutes");
   });
 });

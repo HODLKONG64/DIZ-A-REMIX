@@ -293,11 +293,10 @@ const SidebarOptions = ({ user = null, t }) => (
               href: paths.settings.invites(),
               roles: ["admin", "manager"],
             },
-            ...(import.meta.env.VITE_SWARMSY_PUBLIC_DOWNLOAD_BUILD === "true"
+            ...(IS_SWARMSY_PUBLIC_DOWNLOAD_BUILD
               ? []
               : [
                   {
-                    hidden: IS_SWARMSY_PUBLIC_DOWNLOAD_BUILD,
                     btnText: "Website NPCs",
                     href: paths.settings.websiteNpcs(),
                     flex: true,
