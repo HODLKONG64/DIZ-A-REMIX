@@ -1112,6 +1112,7 @@ describe("SWARMSY website NPC public bridge", () => {
   const previousBridgeToken = process.env.SWARMSY_BRIDGE_TOKEN;
   const previousOrigins = process.env.SWARMSY_PUBLIC_ALLOWED_ORIGINS;
   const previousRateBucketCap = process.env.SWARMSY_PUBLIC_RATE_BUCKET_CAP;
+  const previousAllowedNpcs = process.env.SWARMSY_PUBLIC_ALLOWED_NPCS;
   const {
     __resetWebsiteNpcConfigForTests,
     __setNpcChatRunnerForTests,
@@ -1126,6 +1127,7 @@ describe("SWARMSY website NPC public bridge", () => {
     jest.clearAllMocks();
     process.env.SWARMSY_BRIDGE_TOKEN = "test-bridge-token";
     process.env.SWARMSY_PUBLIC_ALLOWED_ORIGINS = "https://cryptomoonboys.com";
+    delete process.env.SWARMSY_PUBLIC_ALLOWED_NPCS;
     __resetPublicNpcBridgeBucketsForTests();
     __resetWebsiteNpcConfigForTests();
     __setNpcChatRunnerForTests(async ({ workspace }) => ({
@@ -1144,6 +1146,9 @@ describe("SWARMSY website NPC public bridge", () => {
     if (previousRateBucketCap === undefined)
       delete process.env.SWARMSY_PUBLIC_RATE_BUCKET_CAP;
     else process.env.SWARMSY_PUBLIC_RATE_BUCKET_CAP = previousRateBucketCap;
+    if (previousAllowedNpcs === undefined)
+      delete process.env.SWARMSY_PUBLIC_ALLOWED_NPCS;
+    else process.env.SWARMSY_PUBLIC_ALLOWED_NPCS = previousAllowedNpcs;
   });
 
   function request(
@@ -1224,6 +1229,38 @@ describe("SWARMSY website NPC public bridge", () => {
     expect(allowedNpcIds()).toEqual(["sparky"]);
   });
 
+  it("resolves explicit legacy Paperclip allow-list entries to Sparky only", () => {
+    const { allowedNpcIds } = require("../../utils/swarmsy/websiteNpcControl");
+
+    process.env.SWARMSY_PUBLIC_ALLOWED_NPCS = "paperclip";
+
+    expect(allowedNpcIds()).toEqual(["sparky"]);
+  });
+
+  it("does not fall back to all enabled NPCs for explicit invalid allow-lists", () => {
+    const { allowedNpcIds } = require("../../utils/swarmsy/websiteNpcControl");
+
+    process.env.SWARMSY_PUBLIC_ALLOWED_NPCS = "unknown, also-unknown";
+
+    expect(allowedNpcIds()).toEqual([]);
+  });
+
+  it("keeps Sparky allowed when explicitly configured", () => {
+    const { allowedNpcIds } = require("../../utils/swarmsy/websiteNpcControl");
+
+    process.env.SWARMSY_PUBLIC_ALLOWED_NPCS = "sparky";
+
+    expect(allowedNpcIds()).toEqual(["sparky"]);
+  });
+
+  it("treats malformed explicit allow-lists as explicit empty lists", () => {
+    const { allowedNpcIds } = require("../../utils/swarmsy/websiteNpcControl");
+
+    process.env.SWARMSY_PUBLIC_ALLOWED_NPCS = " , ";
+
+    expect(allowedNpcIds()).toEqual([]);
+  });
+
   it("archives existing Paperclip config during repair without exposing it", async () => {
     const fs = require("fs");
     const {
@@ -1274,6 +1311,40 @@ describe("SWARMSY website NPC public bridge", () => {
       })
     );
   });
+
+  it.each([
+    { npcs: { paperclip: true } },
+    { npcs: "paperclip" },
+    { npcs: null },
+  ])(
+    "repairs malformed website NPC config without crashing",
+    async (storedConfig) => {
+      const fs = require("fs");
+      const {
+        __NPC_CONFIG_FILE,
+        __writeConfigForTests,
+        readConfig,
+        saveNpc,
+      } = require("../../utils/swarmsy/websiteNpcControl");
+
+      fs.writeFileSync(
+        __NPC_CONFIG_FILE,
+        JSON.stringify({ version: 1, ...storedConfig })
+      );
+
+      expect(() => readConfig()).not.toThrow();
+      expect(readConfig().npcs.map((npc) => npc.npcId)).toEqual(["sparky"]);
+      expect(() => __writeConfigForTests(storedConfig)).not.toThrow();
+      await expect(
+        saveNpc({
+          npcId: "sparky",
+          displayName: "Sparky",
+          enabled: true,
+          workspaceSlug: "website-sparky",
+        })
+      ).resolves.toEqual(expect.objectContaining({ success: true }));
+    }
+  );
 
   it("reports workspace repair failures from Workspace.upsert", async () => {
     Workspace.get.mockResolvedValue(null);

@@ -26,6 +26,9 @@ describe("Crypto Moonboys public Sparky page", () => {
     expect(
       dom.window.document.querySelector(".npc-badge[data-npc='sparky']")
     ).toBeTruthy();
+    expect(
+      dom.window.document.getElementById("message").getAttribute("aria-label")
+    ).toBe("Message");
     expect(errors).toEqual([]);
   });
 

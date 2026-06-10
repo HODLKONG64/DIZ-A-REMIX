@@ -184,16 +184,18 @@ function defaultConfig() {
 }
 
 function migrateRetiredNpcs(config = {}) {
-  const archivedNpcs = Array.isArray(config.archivedNpcs)
-    ? [...config.archivedNpcs]
+  const source = config && typeof config === "object" ? config : {};
+  const archivedNpcs = Array.isArray(source.archivedNpcs)
+    ? [...source.archivedNpcs]
     : [];
   const archiveIds = new Set(
     archivedNpcs.map((npc) => normalizeNpcId(npc.npcId))
   );
   const activeNpcs = [];
-  let changed = false;
+  let changed = source.npcs !== undefined && !Array.isArray(source.npcs);
+  const npcCandidates = Array.isArray(source.npcs) ? source.npcs : [];
 
-  for (const npc of config.npcs || []) {
+  for (const npc of npcCandidates) {
     const clean = sanitizeNpc(npc);
     if (!clean) continue;
     if (RETIRED_PUBLIC_NPC_IDS.has(clean.npcId)) {
@@ -248,17 +250,20 @@ function readConfig() {
   return repaired;
 }
 
-function writeConfig(config) {
+function writeConfig(config = {}) {
+  const source = config && typeof config === "object" ? config : {};
+  const npcCandidates = Array.isArray(source.npcs) ? source.npcs : [];
+  const migration = migrateRetiredNpcs(source);
   const clean = {
     version: 1,
     workspaces: {
       required: REQUIRED_WEBSITE_WORKSPACES,
       subjects: DEFAULT_SUBJECT_WORKSPACES,
     },
-    npcs: (config.npcs || [])
+    npcs: npcCandidates
       .map(sanitizeNpc)
       .filter((npc) => npc && !RETIRED_PUBLIC_NPC_IDS.has(npc.npcId)),
-    archivedNpcs: migrateRetiredNpcs(config).archivedNpcs,
+    archivedNpcs: migration.archivedNpcs,
   };
   safeJsonWrite(NPC_CONFIG_FILE, clean);
   return clean;
@@ -406,15 +411,23 @@ function configuredAllowedOrigins() {
 }
 
 function allowedNpcIds() {
-  const explicit = String(process.env.SWARMSY_PUBLIC_ALLOWED_NPCS || "")
-    .split(",")
-    .map(normalizeNpcId)
-    .filter(Boolean)
-    .filter((npcId) => !RETIRED_PUBLIC_NPC_IDS.has(npcId));
-  if (explicit.length > 0) return [...new Set(explicit)];
-  return readConfig()
-    .npcs.filter((npc) => npc.enabled && !RETIRED_PUBLIC_NPC_IDS.has(npc.npcId))
-    .map((npc) => npc.npcId);
+  const config = readConfig();
+  const activeNpcIds = new Set(
+    config.npcs
+      .filter((npc) => npc.enabled && !RETIRED_PUBLIC_NPC_IDS.has(npc.npcId))
+      .map((npc) => npc.npcId)
+  );
+  const explicitValue = process.env.SWARMSY_PUBLIC_ALLOWED_NPCS;
+  if (explicitValue !== undefined) {
+    const explicit = String(explicitValue)
+      .split(",")
+      .map(normalizeNpcId)
+      .filter(Boolean)
+      .map(resolvePublicNpcId)
+      .filter((npcId) => activeNpcIds.has(npcId));
+    return [...new Set(explicit)];
+  }
+  return [...activeNpcIds];
 }
 
 function originAllowed(origin = "") {
@@ -697,6 +710,7 @@ module.exports = {
   REQUIRED_WEBSITE_WORKSPACES,
   __NPC_CONFIG_FILE: NPC_CONFIG_FILE,
   __resetWebsiteNpcConfigForTests: resetWebsiteNpcConfigForTests,
+  __writeConfigForTests: writeConfig,
   __setNpcChatRunnerForTests: setNpcChatRunnerForTests,
   createSyntheticSseResponse,
   adminStatus,
