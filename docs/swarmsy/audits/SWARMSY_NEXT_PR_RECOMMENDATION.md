@@ -36,11 +36,12 @@ Today, the Load Memory Lock path can hand a pasted lock to SPARKY through the no
 A focused next PR should add the smallest durable Memory Lock layer that supports returning-user continuity:
 
 1. Store imported Memory Locks in a dedicated persistence layer instead of relying only on chat history.
-2. Associate stored locks with the owning user and/or SWARMSY HIVE workspace.
-3. Add an authenticated route for listing and retrieving the current user's stored Memory Locks.
-4. Add a minimal viewer/import surface that lets a returning user select or inspect a previous lock.
-5. Preserve existing chat handoff behavior so the current Load Memory Lock flow keeps working.
-6. Add focused tests for ownership checks, import behavior, and retrieval behavior.
+2. Associate every stored lock with both the owning user and the owning SWARMSY HIVE workspace, matching `MEMORY_LOCK_STORAGE_SPEC.md`'s `userId` and `workspaceId` requirements.
+3. Enforce that only the owning user, or an explicitly authorized admin path, can list, view, update, archive, delete, export, or activate a lock; other users in the same workspace must not see it without explicit delegation.
+4. Add an authenticated route for listing and retrieving only the current user's stored Memory Locks for the selected workspace. If single-user mode needs a fallback owner, document and test that fallback separately from multi-user behavior.
+5. Add a minimal viewer/import surface that lets a returning user select or inspect a previous lock.
+6. Preserve existing chat handoff behavior so the current Load Memory Lock flow keeps working.
+7. Add focused tests for ownership checks, same-workspace isolation, import behavior, and retrieval behavior.
 
 ---
 
