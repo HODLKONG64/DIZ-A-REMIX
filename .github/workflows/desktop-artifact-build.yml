@@ -65,7 +65,7 @@ jobs:
     needs: [artifact-scope, validate-desktop-inputs]
     if: needs.artifact-scope.outputs.full_build == 'true'
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     env:
       ELECTRON_VERSION: 33.4.11
