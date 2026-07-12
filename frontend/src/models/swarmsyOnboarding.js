@@ -166,6 +166,89 @@ const SwarmsyOnboarding = {
         message: "Failed to import SWARMSY Memory Lock.",
       }));
   },
+  activeIntakeSession: async function (workspaceSlug) {
+    return await fetch(
+      `${API_BASE}/swarmsy/workspaces/${encodeURIComponent(
+        workspaceSlug
+      )}/intake-session`,
+      {
+        headers: baseHeaders(),
+      }
+    )
+      .then((response) =>
+        parseResponse(response, "SPARKY could not resume your questions.")
+      )
+      .catch(() => ({
+        success: false,
+        session: null,
+        message: "SPARKY could not resume your questions.",
+      }));
+  },
+  startIntakeSession: async function (workspaceSlug, mode) {
+    return await fetch(
+      `${API_BASE}/swarmsy/workspaces/${encodeURIComponent(
+        workspaceSlug
+      )}/intake-session/start`,
+      {
+        method: "POST",
+        headers: baseHeaders(),
+        body: JSON.stringify({ mode }),
+      }
+    )
+      .then((response) =>
+        parseResponse(response, "SPARKY could not start your questions.")
+      )
+      .catch(() => ({
+        success: false,
+        session: null,
+        resumed: false,
+        message: "SPARKY could not start your questions.",
+      }));
+  },
+  saveIntakeProgress: async function (
+    workspaceSlug,
+    sessionId,
+    currentStep,
+    answers
+  ) {
+    return await fetch(
+      `${API_BASE}/swarmsy/workspaces/${encodeURIComponent(
+        workspaceSlug
+      )}/intake-session/${encodeURIComponent(sessionId)}/progress`,
+      {
+        method: "POST",
+        headers: baseHeaders(),
+        body: JSON.stringify({ currentStep, answers }),
+      }
+    )
+      .then((response) =>
+        parseResponse(response, "SPARKY could not save your answer.")
+      )
+      .catch(() => ({
+        success: false,
+        session: null,
+        message: "SPARKY could not save your answer.",
+      }));
+  },
+  completeIntakeSession: async function (workspaceSlug, sessionId) {
+    return await fetch(
+      `${API_BASE}/swarmsy/workspaces/${encodeURIComponent(
+        workspaceSlug
+      )}/intake-session/${encodeURIComponent(sessionId)}/complete`,
+      {
+        method: "POST",
+        headers: baseHeaders(),
+      }
+    )
+      .then((response) =>
+        parseResponse(response, "SPARKY could not finish your questions.")
+      )
+      .catch(() => ({
+        success: false,
+        session: null,
+        message: "SPARKY could not finish your questions.",
+      }));
+  },
   identityIdeas: async function (workspaceSlug) {
     return await fetch(
       `${API_BASE}/swarmsy/workspaces/${encodeURIComponent(
