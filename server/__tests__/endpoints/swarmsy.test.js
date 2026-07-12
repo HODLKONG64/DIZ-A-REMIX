@@ -1649,6 +1649,36 @@ describe("swarmsy endpoints", () => {
       message: "No current workspace exists for SPARKY Wiki seed pack import.",
     });
   });
+  it("loads active progress only for the authenticated user and workspace", async () => {
+    const request = { params: { slug: "swarmsy-hive" }, headers: {} };
+    const response = responseMock();
+    const user = { id: 12, role: "default" };
+    const workspace = { id: 9, slug: "swarmsy-hive", name: "SWARMSY HIVE" };
+    const session = {
+      id: 61,
+      userId: 12,
+      workspaceId: 9,
+      currentStep: 2,
+    };
+    userFromSession.mockResolvedValue(user);
+    Workspace.getWithUser.mockResolvedValue(workspace);
+    SwarmsyIntakeSession.activeForUserWorkspace.mockResolvedValue(session);
+
+    await swarmsyIntakeSessionActive(request, response);
+
+    expect(Workspace.getWithUser).toHaveBeenCalledWith(user, {
+      slug: "swarmsy-hive",
+    });
+    expect(SwarmsyIntakeSession.activeForUserWorkspace).toHaveBeenCalledWith({
+      userId: 12,
+      workspaceId: 9,
+    });
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true, session })
+    );
+  });
+
   it("uses the authenticated owner for start and resume", async () => {
     const request = {
       params: { slug: "swarmsy-hive" },
