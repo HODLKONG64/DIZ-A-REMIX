@@ -89,6 +89,7 @@ model users {
   memories                     memories[]
   swarmsy_memory_locks         swarmsy_memory_locks[]
   swarmsy_proof_reviews        swarmsy_proof_reviews[]
+  swarmsy_identity_ideas        swarmsy_identity_ideas[]
 }
 
 model recovery_codes {
@@ -487,6 +488,26 @@ model swarmsy_proof_reviews {
   @@unique([workspaceId, userId, version])
   @@index([workspaceId, userId, archivedAt])
   @@index([workspaceId, userId, isActive])
+}
+
+model swarmsy_identity_ideas {
+  id          Int       @id @default(autoincrement())
+  workspaceId Int       @map("workspace_id")
+  userId      Int       @map("user_id")
+  mode        String
+  status      String    @default("proposed")
+  title       String
+  content     String
+  approvedAt  DateTime? @map("approved_at")
+  deletedAt   DateTime? @map("deleted_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @map("updated_at")
+
+  workspace workspaces @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      users      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([workspaceId, userId, deletedAt])
+  @@index([workspaceId, userId, status])
 }
 
 model model_routers {
