@@ -95,32 +95,6 @@ export function normalizeLocalUserOllamaRuntimeSelection(runtime = null) {
   };
 }
 
-export function buildOnboardingChatHandoffPayload({
-  message,
-  attachments = [],
-  runtime = null,
-  mode = "hosted_admin",
-  model = "",
-} = {}) {
-  const payload = {
-    message,
-    attachments: Array.isArray(attachments) ? attachments : [],
-  };
-
-  const runtimeSelection =
-    normalizeLocalUserOllamaRuntimeSelection(runtime) ||
-    getLocalUserOllamaRuntimeSelection({
-      mode,
-      model,
-    });
-
-  if (runtimeSelection) {
-    payload.runtime = runtimeSelection;
-  }
-
-  return payload;
-}
-
 /**
  * Returns true if the runtime payload has the Local User Ollama provider/mode
  * regardless of whether the model is present or valid. Used to detect that a
