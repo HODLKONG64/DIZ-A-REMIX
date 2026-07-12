@@ -19,7 +19,7 @@ export default function IdentityIdeaPanel({
 }) {
   const [ideas, setIdeas] = useState([]);
   const [loading, setLoading] = useState(Boolean(workspaceSlug));
-  const [busyIdeaId, setBusyIdeaId] = useState(null);
+  const [busyAction, setBusyAction] = useState(null);
   const [error, setError] = useState("");
 
   const loadIdeas = useCallback(async () => {
@@ -55,14 +55,14 @@ export default function IdentityIdeaPanel({
       if (!confirmed) return;
     }
 
-    setBusyIdeaId(idea.id);
+    setBusyAction({ ideaId: idea.id, actionId: decision });
     setError("");
     const result = await SwarmsyOnboarding.decideIdentityIdea(
       workspaceSlug,
       idea.id,
       decision
     );
-    setBusyIdeaId(null);
+    setBusyAction(null);
 
     if (!result?.success || !result?.idea) {
       setError(result?.message || "SPARKY could not update this idea.");
@@ -159,13 +159,17 @@ export default function IdentityIdeaPanel({
                   <button
                     key={action.id}
                     type="button"
-                    disabled={busyIdeaId !== null}
+                    disabled={busyAction !== null}
                     onClick={() => handleAction(idea, action.id)}
                     className="rounded-lg border border-theme-sidebar-border px-3 py-2 text-sm font-medium text-theme-text-primary transition hover:border-teal hover:bg-teal/10 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    {busyIdeaId === idea.id &&
-                    ["keep", "save", "delete"].includes(action.id)
-                      ? "Saving..."
+                    {busyAction?.ideaId === idea.id &&
+                    busyAction?.actionId === action.id
+                      ? {
+                          keep: "Keeping...",
+                          save: "Saving...",
+                          delete: "Deleting...",
+                        }[action.id]
                       : action.label}
                   </button>
                 ))}
