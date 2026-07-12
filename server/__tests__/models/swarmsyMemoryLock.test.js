@@ -13,6 +13,7 @@ describe("SwarmsyMemoryLock", () => {
     mockPrisma.$transaction.mockImplementation(async (callback) =>
       callback({
         $executeRawUnsafe: jest.fn().mockResolvedValue(1),
+        $queryRawUnsafe: jest.fn().mockResolvedValue([{ id: 10 }]),
       })
     );
   });
@@ -56,7 +57,6 @@ describe("SwarmsyMemoryLock", () => {
   it("creates a new active lock version scoped to both user and workspace", async () => {
     mockPrisma.$queryRawUnsafe
       .mockResolvedValueOnce([{ version: 4 }])
-      .mockResolvedValueOnce([{ id: 10 }])
       .mockResolvedValueOnce([
         {
           id: 10,

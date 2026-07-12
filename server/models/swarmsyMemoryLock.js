@@ -110,7 +110,7 @@ const SwarmsyMemoryLock = {
       );
       const version = Number(latestRows[0]?.version || 0) + 1;
 
-      await prisma.$transaction(async (tx) => {
+      const insertedId = await prisma.$transaction(async (tx) => {
         if (isActive) {
           await tx.$executeRawUnsafe(
             `UPDATE swarmsy_memory_locks
@@ -135,10 +135,15 @@ const SwarmsyMemoryLock = {
           safeSource,
           safeContent
         );
+
+        const insertedRows = await tx.$queryRawUnsafe(
+          "SELECT last_insert_rowid() AS id"
+        );
+        return insertedRows[0]?.id;
       });
 
       const lock = await this.getForUserWorkspace({
-        id: await this.lastInsertedId(),
+        id: insertedId,
         userId: safeUserId,
         workspaceId: safeWorkspaceId,
       });
@@ -147,13 +152,6 @@ const SwarmsyMemoryLock = {
       console.error(error.message);
       return { lock: null, message: error.message };
     }
-  },
-
-  lastInsertedId: async function () {
-    const rows = await prisma.$queryRawUnsafe(
-      "SELECT last_insert_rowid() AS id"
-    );
-    return rows[0]?.id;
   },
 
   publicLock,
