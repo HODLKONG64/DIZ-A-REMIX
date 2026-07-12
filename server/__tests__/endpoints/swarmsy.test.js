@@ -652,6 +652,33 @@ describe("swarmsy endpoints", () => {
     }
   );
 
+  it("uses the structured model code for out-of-scope decision responses", async () => {
+    const request = {
+      params: { slug: "swarmsy-hive", ideaId: "51" },
+      headers: {},
+      body: { decision: "keep" },
+    };
+    const response = responseMock();
+    const user = { id: 12, role: "default" };
+    const workspace = { id: 9, slug: "swarmsy-hive", name: "SWARMSY HIVE" };
+
+    userFromSession.mockResolvedValue(user);
+    Workspace.getWithUser.mockResolvedValue(workspace);
+    SwarmsyIdentityIdea.decide.mockResolvedValue({
+      idea: null,
+      message: "This wording can change safely.",
+      errorCode: "NOT_FOUND",
+    });
+
+    await swarmsyIdentityIdeaDecide(request, response);
+
+    expect(response.status).toHaveBeenCalledWith(404);
+    expect(response.json).toHaveBeenCalledWith({
+      success: false,
+      message: "This wording can change safely.",
+    });
+  });
+
   it("rejects Identity Idea access without an authenticated user account", async () => {
     const request = { params: { slug: "swarmsy-hive" }, headers: {} };
     const response = responseMock();
