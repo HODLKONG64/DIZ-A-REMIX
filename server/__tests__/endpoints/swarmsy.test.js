@@ -54,6 +54,15 @@ jest.mock("../../models/swarmsyIdentityIdea", () => ({
   },
 }));
 
+jest.mock("../../models/swarmsyIntakeSession", () => ({
+  SwarmsyIntakeSession: {
+    activeForUserWorkspace: jest.fn(),
+    startOrResume: jest.fn(),
+    saveProgress: jest.fn(),
+    complete: jest.fn(),
+  },
+}));
+
 jest.mock("../../utils/swarmsy/sparkyWikiSeedPacks", () => ({
   getSparkyWikiSeedPack: jest.fn(),
   importSparkyWikiSeedPack: jest.fn(),
@@ -90,6 +99,7 @@ const { Workspace } = require("../../models/workspace");
 const { SwarmsyMemoryLock } = require("../../models/swarmsyMemoryLock");
 const { SwarmsyProofReview } = require("../../models/swarmsyProofReview");
 const { SwarmsyIdentityIdea } = require("../../models/swarmsyIdentityIdea");
+const { SwarmsyIntakeSession } = require("../../models/swarmsyIntakeSession");
 const {
   findUserSwarmsyHiveWorkspace,
   getSwarmsyOnboardingStatus,
@@ -138,6 +148,10 @@ const {
   swarmsyIdentityIdeaPropose,
   swarmsyIdentityIdeaShow,
   swarmsyIdentityIdeasList,
+  swarmsyIntakeSessionActive,
+  swarmsyIntakeSessionComplete,
+  swarmsyIntakeSessionProgress,
+  swarmsyIntakeSessionStart,
   swarmsyProofReviewImport,
   swarmsyProofReviewShow,
   swarmsyProofReviewsList,
@@ -220,6 +234,26 @@ describe("swarmsy endpoints", () => {
       "/swarmsy/workspaces/:slug/memory-locks/import",
       [validatedRequest, mockRoleMiddleware],
       swarmsyMemoryLockImport
+    );
+    expect(app.get).toHaveBeenCalledWith(
+      "/swarmsy/workspaces/:slug/intake-session",
+      [validatedRequest, mockRoleMiddleware],
+      swarmsyIntakeSessionActive
+    );
+    expect(app.post).toHaveBeenCalledWith(
+      "/swarmsy/workspaces/:slug/intake-session/start",
+      [validatedRequest, mockRoleMiddleware],
+      swarmsyIntakeSessionStart
+    );
+    expect(app.post).toHaveBeenCalledWith(
+      "/swarmsy/workspaces/:slug/intake-session/:sessionId/progress",
+      [validatedRequest, mockRoleMiddleware],
+      swarmsyIntakeSessionProgress
+    );
+    expect(app.post).toHaveBeenCalledWith(
+      "/swarmsy/workspaces/:slug/intake-session/:sessionId/complete",
+      [validatedRequest, mockRoleMiddleware],
+      swarmsyIntakeSessionComplete
     );
     expect(app.get).toHaveBeenCalledWith(
       "/swarmsy/workspaces/:slug/identity-ideas",
@@ -1615,6 +1649,159 @@ describe("swarmsy endpoints", () => {
       message: "No current workspace exists for SPARKY Wiki seed pack import.",
     });
   });
+  it("loads active progress only for the authenticated user and workspace", async () => {
+    const request = { params: { slug: "swarmsy-hive" }, headers: {} };
+    const response = responseMock();
+    const user = { id: 12, role: "default" };
+    const workspace = { id: 9, slug: "swarmsy-hive", name: "SWARMSY HIVE" };
+    const session = {
+      id: 61,
+      userId: 12,
+      workspaceId: 9,
+      currentStep: 2,
+    };
+    userFromSession.mockResolvedValue(user);
+    Workspace.getWithUser.mockResolvedValue(workspace);
+    SwarmsyIntakeSession.activeForUserWorkspace.mockResolvedValue(session);
+
+    await swarmsyIntakeSessionActive(request, response);
+
+    expect(Workspace.getWithUser).toHaveBeenCalledWith(user, {
+      slug: "swarmsy-hive",
+    });
+    expect(SwarmsyIntakeSession.activeForUserWorkspace).toHaveBeenCalledWith({
+      userId: 12,
+      workspaceId: 9,
+    });
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true, session })
+    );
+  });
+
+  it("uses the authenticated owner for start and resume", async () => {
+    const request = {
+      params: { slug: "swarmsy-hive" },
+      headers: {},
+      body: { mode: "hidden", userId: 999 },
+    };
+    const response = responseMock();
+    const user = { id: 12, role: "default" };
+    const workspace = { id: 9, slug: "swarmsy-hive", name: "SWARMSY HIVE" };
+    const session = { id: 61, userId: 12, workspaceId: 9 };
+    userFromSession.mockResolvedValue(user);
+    Workspace.getWithUser.mockResolvedValue(workspace);
+    SwarmsyIntakeSession.startOrResume.mockResolvedValue({
+      session,
+      resumed: false,
+      message: null,
+    });
+
+    await swarmsyIntakeSessionStart(request, response);
+
+    expect(SwarmsyIntakeSession.startOrResume).toHaveBeenCalledWith({
+      userId: 12,
+      workspaceId: 9,
+      mode: "hidden",
+    });
+    expect(response.status).toHaveBeenCalledWith(200);
+  });
+
+  it("saves progress only inside the authenticated user and workspace scope", async () => {
+    const request = {
+      params: { slug: "swarmsy-hive", sessionId: "61" },
+      headers: {},
+      body: { currentStep: 3, answers: { goal: "build trust" } },
+    };
+    const response = responseMock();
+    const user = { id: 12, role: "default" };
+    const workspace = { id: 9, slug: "swarmsy-hive", name: "SWARMSY HIVE" };
+    const session = { id: 61, userId: 12, workspaceId: 9 };
+    userFromSession.mockResolvedValue(user);
+    Workspace.getWithUser.mockResolvedValue(workspace);
+    SwarmsyIntakeSession.saveProgress.mockResolvedValue({
+      session,
+      message: null,
+      errorCode: null,
+    });
+
+    await swarmsyIntakeSessionProgress(request, response);
+
+    expect(SwarmsyIntakeSession.saveProgress).toHaveBeenCalledWith({
+      id: 61,
+      userId: 12,
+      workspaceId: 9,
+      currentStep: 3,
+      answers: { goal: "build trust" },
+    });
+    expect(response.status).toHaveBeenCalledWith(200);
+  });
+
+  it("returns the same not-found result for missing or out-of-scope progress", async () => {
+    const request = {
+      params: { slug: "swarmsy-hive", sessionId: "61" },
+      headers: {},
+      body: { currentStep: 3, answers: {} },
+    };
+    const response = responseMock();
+    userFromSession.mockResolvedValue({ id: 12, role: "default" });
+    Workspace.getWithUser.mockResolvedValue({
+      id: 9,
+      slug: "swarmsy-hive",
+      name: "SWARMSY HIVE",
+    });
+    SwarmsyIntakeSession.saveProgress.mockResolvedValue({
+      session: null,
+      message: "Intake session not found.",
+      errorCode: "NOT_FOUND",
+    });
+
+    await swarmsyIntakeSessionProgress(request, response);
+
+    expect(response.status).toHaveBeenCalledWith(404);
+    expect(response.json).toHaveBeenCalledWith({
+      success: false,
+      message: "Intake session not found.",
+    });
+  });
+
+  it("finishes intake and points the beginner to their idea", async () => {
+    const request = {
+      params: { slug: "swarmsy-hive", sessionId: "61" },
+      headers: {},
+    };
+    const response = responseMock();
+    const session = { id: 61, status: "completed", isActive: false };
+    userFromSession.mockResolvedValue({ id: 12, role: "default" });
+    Workspace.getWithUser.mockResolvedValue({
+      id: 9,
+      slug: "swarmsy-hive",
+      name: "SWARMSY HIVE",
+    });
+    SwarmsyIntakeSession.complete.mockResolvedValue({
+      session,
+      message: null,
+      errorCode: null,
+    });
+
+    await swarmsyIntakeSessionComplete(request, response);
+
+    expect(SwarmsyIntakeSession.complete).toHaveBeenCalledWith({
+      id: 61,
+      userId: 12,
+      workspaceId: 9,
+    });
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success: true,
+        nextAction: {
+          type: "create_identity_idea",
+          label: "Show me my idea",
+        },
+      })
+    );
+  });
+
 });
 
 describe("SWARMSY website NPC public bridge", () => {
