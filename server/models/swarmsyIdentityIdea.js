@@ -98,13 +98,22 @@ const SwarmsyIdentityIdea = {
     }
   },
 
-  createProposal: async function ({ userId, workspaceId, mode, title, content }) {
+  createProposal: async function ({
+    userId,
+    workspaceId,
+    mode,
+    title,
+    content,
+  }) {
     try {
       const safeWorkspaceId = toInt(workspaceId, "workspaceId");
       const safeUserId = normalizeUserId(userId);
       const safeMode = normalizeMode(mode);
       const safeTitle = normalizeRequiredText(title, "Identity Idea title");
-      const safeContent = normalizeRequiredText(content, "Identity Idea content");
+      const safeContent = normalizeRequiredText(
+        content,
+        "Identity Idea content"
+      );
 
       const insertedId = await prisma.$transaction(async (tx) => {
         await tx.$executeRawUnsafe(
