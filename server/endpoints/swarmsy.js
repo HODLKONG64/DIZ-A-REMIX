@@ -664,12 +664,13 @@ async function swarmsyIntakeSessionComplete(request, response) {
       });
     }
 
-    const { session, message, errorCode } =
-      await SwarmsyIntakeSession.complete({
+    const { session, message, errorCode } = await SwarmsyIntakeSession.complete(
+      {
         id: sessionId,
         userId: context.userId,
         workspaceId: context.workspace.id,
-      });
+      }
+    );
     if (!session) {
       return response.status(errorCode === "NOT_FOUND" ? 404 : 400).json({
         success: false,
