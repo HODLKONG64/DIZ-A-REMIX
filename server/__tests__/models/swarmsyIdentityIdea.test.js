@@ -110,8 +110,10 @@ describe("SwarmsyIdentityIdea", () => {
     ["keep", "kept"],
     ["save", "saved"],
     ["delete", "deleted"],
-  ])("records the user's %s decision without leaving their scope", async (decision, status) => {
-    mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([
+  ])(
+    "records the user's %s decision without leaving their scope",
+    async (decision, status) => {
+      mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([
       {
         id: 5,
         workspace_id: 9,
@@ -138,16 +140,17 @@ describe("SwarmsyIdentityIdea", () => {
 
     expect(message).toBeNull();
     expect(idea.status).toBe(status);
-    expect(mockPrisma.$queryRawUnsafe).toHaveBeenCalledWith(
-      expect.stringContaining("AND user_id = ?"),
-      status,
-      status,
-      status,
-      5,
-      9,
-      12
-    );
-  });
+      expect(mockPrisma.$queryRawUnsafe).toHaveBeenCalledWith(
+        expect.stringContaining("AND user_id = ?"),
+        status,
+        status,
+        status,
+        5,
+        9,
+        12
+      );
+    }
+  );
 
   it("returns the same not-found result for missing and out-of-scope ideas", async () => {
     mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([]);
