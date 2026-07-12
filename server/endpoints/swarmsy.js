@@ -635,15 +635,14 @@ async function swarmsyIdentityIdeaDecide(request, response) {
     }
 
     const { decision } = reqBody(request) || {};
-    const { idea, message } = await SwarmsyIdentityIdea.decide({
+    const { idea, message, errorCode } = await SwarmsyIdentityIdea.decide({
       id: ideaId,
       userId: context.userId,
       workspaceId: context.workspace.id,
       decision,
     });
     if (!idea) {
-      const notFound = message === "Identity Idea not found.";
-      return response.status(notFound ? 404 : 400).json({
+      return response.status(errorCode === "NOT_FOUND" ? 404 : 400).json({
         success: false,
         message: message || "SPARKY could not update this idea.",
       });
