@@ -178,10 +178,15 @@ const SwarmsyIdentityIdea = {
       return {
         idea,
         message: idea ? null : "Identity Idea not found.",
+        errorCode: idea ? null : "NOT_FOUND",
       };
     } catch (error) {
       console.error(error.message);
-      return { idea: null, message: error.message };
+      return {
+        idea: null,
+        message: error.message,
+        errorCode: "INVALID_REQUEST",
+      };
     }
   },
 
