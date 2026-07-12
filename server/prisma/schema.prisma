@@ -88,6 +88,7 @@ model users {
   workspace_parsed_files       workspace_parsed_files[]
   memories                     memories[]
   swarmsy_memory_locks         swarmsy_memory_locks[]
+  swarmsy_proof_reviews        swarmsy_proof_reviews[]
 }
 
 model recovery_codes {
@@ -151,6 +152,7 @@ model workspaces {
   workspace_parsed_files       workspace_parsed_files[]
   memories                     memories[]
   swarmsy_memory_locks         swarmsy_memory_locks[]
+  swarmsy_proof_reviews        swarmsy_proof_reviews[]
 }
 
 model workspace_threads {
@@ -448,6 +450,26 @@ model memories {
 }
 
 model swarmsy_memory_locks {
+  id          Int       @id @default(autoincrement())
+  workspaceId Int       @map("workspace_id")
+  userId      Int       @map("user_id")
+  isActive    Boolean   @default(false) @map("is_active")
+  version     Int
+  source      String    @default("pasted")
+  content     String
+  archivedAt  DateTime? @map("archived_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @default(now()) @map("updated_at")
+
+  workspace workspaces @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      users      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId, version])
+  @@index([workspaceId, userId, archivedAt])
+  @@index([workspaceId, userId, isActive])
+}
+
+model swarmsy_proof_reviews {
   id          Int       @id @default(autoincrement())
   workspaceId Int       @map("workspace_id")
   userId      Int       @map("user_id")
