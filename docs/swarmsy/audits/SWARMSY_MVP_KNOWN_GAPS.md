@@ -1,7 +1,7 @@
 # SWARMSY MVP Known Gaps
 
-Audit date: 2026-06-01
-Branch: post-full-first-user-flow
+Audit date: 2026-07-12
+Branch: master after merged PRs #84 through #87
 
 ---
 
@@ -9,28 +9,13 @@ Branch: post-full-first-user-flow
 
 This document lists known gaps in the current SWARMSY MVP layer.
 
-All gaps listed here are things that do not exist in the current codebase. No feature is invented or speculated beyond what the code and existing spec docs describe.
+All gaps listed here are things that do not exist in the current codebase or are intentionally limited to a minimal first slice. No feature is invented or speculated beyond what the code, merged PR trail, and existing spec docs describe.
 
 Gaps that are already documented in spec docs have a cross-reference. Gaps that are not yet spec'd are noted as planned or not started.
 
 ---
 
-## Gap 1 — No dedicated Memory Lock storage or viewer
-
-**What exists today:** The Load Memory Lock handoff allows users to paste a memory lock and hand it off to SPARKY via `sessionStorage` → chat. The pasted lock is included in the opening chat message and stored in normal workspace chat history.
-
-**What does not exist:** A dedicated Memory Lock database table, a Memory Lock API, a Memory Lock viewer UI, or any way to retrieve a previous lock without manually copy-pasting from prior chat history.
-
-| Property | Detail |
-|---|---|
-| Impact | Returning users must locate and re-paste their lock manually each session |
-| Priority | High — without this, returning users have no reliable lock continuity |
-| Recommended future PR | Implement Memory Lock storage, import flow, and viewer (spec: `docs/swarmsy/memory-locks/`) |
-| Blocks MVP? | No — handoff path works; storage is a Phase 2 improvement |
-
----
-
-## Gap 2 — No Proof Tracker database or viewer
+## Gap 1 — No Proof Tracker database or viewer
 
 **What exists today:** The Proof Tracker handoff allows users to paste proof notes and send them to SPARKY for review. SPARKY's proof-review response is stored in normal workspace chat history.
 
@@ -39,9 +24,24 @@ Gaps that are already documented in spec docs have a cross-reference. Gaps that 
 | Property | Detail |
 |---|---|
 | Impact | Proof review is one-shot per session; no cross-session proof tracking |
-| Priority | Medium — proof review still works; the gap is persistence and history |
+| Priority | High — Memory Lock continuity is now durable, making proof persistence the next direct returning-user gap |
 | Recommended future PR | Implement Proof Tracker storage and viewer surface (referenced in `SWARMSY_PROOF_TRACKER_HANDOFF.md`) |
 | Blocks MVP? | No — handoff path works |
+
+---
+
+## Gap 2 — Memory Lock advanced controls are not built
+
+**What exists today:** Memory Lock continuity now has a dedicated storage layer, authenticated list/retrieve/import API, frontend API helpers, and a minimal saved-lock viewer/import surface in the SWARMSY HIVE Action Hub. Stored locks are scoped by both user and workspace, and saved-lock chat handoff preserves the Local User/Ollama runtime contract.
+
+**What does not exist:** Advanced lock management controls such as archive, delete, export/download, upload/import from file, compare versions, mark an older lock as active, or explicitly delegate lock visibility to another user.
+
+| Property | Detail |
+|---|---|
+| Impact | Returning users can save, list, select, and continue from stored locks, but cannot yet manage the full lifecycle of older locks |
+| Priority | Medium — the core continuity gap is solved; lifecycle controls are a follow-up |
+| Recommended future PR | Add advanced Memory Lock controls after Proof Tracker persistence is scoped |
+| Blocks MVP? | No — storage, retrieval, import, viewer, and handoff paths work |
 
 ---
 
@@ -55,7 +55,7 @@ Gaps that are already documented in spec docs have a cross-reference. Gaps that 
 |---|---|
 | Impact | Returning users see the full onboarding surface every time, not a project status view |
 | Priority | Medium — usable without it; reduces friction for returning users |
-| Recommended future PR | Implement SWARMSY dashboard surface (spec: `SWARMSY_DASHBOARD_INFORMATION_ARCHITECTURE.md`) |
+| Recommended future PR | Implement SWARMSY dashboard surface after core continuity primitives exist |
 | Blocks MVP? | No |
 
 ---
@@ -134,7 +134,7 @@ A future PR should add an optional advanced-doctrine ingestion/selection flow if
 |---|---|
 | Impact | Users with prior SWARMSY-style work must manually transcribe their project state |
 | Priority | Low — affects power users and legacy users only |
-| Recommended future PR | Add a structured project import flow alongside or after Memory Lock storage is built |
+| Recommended future PR | Add a structured project import flow after core continuity primitives are validated |
 | Blocks MVP? | No |
 
 ---
@@ -176,8 +176,8 @@ A future PR should add an optional advanced-doctrine ingestion/selection flow if
 
 | Gap | Blocks MVP? | Priority |
 |---|---|---|
-| No Memory Lock storage/viewer | No | High |
-| No Proof Tracker database/viewer | No | Medium |
+| No Proof Tracker database/viewer | No | High |
+| Memory Lock advanced controls are not built | No | Medium |
 | No dashboard | No | Medium |
 | No campaign storage/calendar persistence | No | Medium |
 | No local AI setup helper / collector recovery UI | Partially | Medium |
