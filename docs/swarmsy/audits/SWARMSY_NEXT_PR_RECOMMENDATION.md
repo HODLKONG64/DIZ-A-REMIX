@@ -1,83 +1,84 @@
 # SWARMSY Next PR Recommendation
 
 Audit date: 2026-07-12
-Based on: `SWARMSY_MVP_KNOWN_GAPS.md`, current `server/endpoints/swarmsy.js`, and current SWARMSY endpoint tests.
+Based on: `SWARMSY_MVP_KNOWN_GAPS.md`, current `server/endpoints/swarmsy.js`, current SWARMSY endpoint tests, and merged PRs #84 through #87.
 
 ---
 
 ## Current State
 
-The previous 2026-05-31 recommendation targeted a first-run onboarding entrypoint and user-safe route layer. That work has now landed.
-
-Current runtime evidence:
+The previous recommendation targeted durable Memory Lock continuity. That work has now landed across focused PRs:
 
 | Area | Current status |
 |---|---|
 | User-safe onboarding status route | Implemented: `GET /api/swarmsy/onboarding/status` |
 | User-safe HIVE creation route | Implemented: `POST /api/swarmsy/onboarding/create-hive` |
 | User-safe required-docs ingestion route | Implemented: `POST /api/swarmsy/onboarding/ingest-required-docs` |
+| Memory Lock storage foundation | Implemented in PR #84 with workspace/user ownership, versioning, active state, and model tests |
+| Authenticated Memory Lock API | Implemented in PR #85 for list, retrieve, and import flows scoped to the current user and workspace |
+| Frontend Memory Lock API helpers | Implemented in PR #86 with model tests and stored-lock metadata handoff support |
+| Saved Memory Lock viewer/import UI | Implemented in PR #87 inside the SWARMSY HIVE Action Hub |
+| Local User/Ollama saved-lock handoff guard | Implemented in PR #87 so saved and pasted Memory Lock handoff use the shared runtime payload contract |
 | Onboarding route tests | Present in `server/__tests__/endpoints/swarmsy.test.js` |
 | Required-docs ingestion utility tests | Present in `server/__tests__/utils/swarmsy/ingestRequiredDocs.test.js` |
 | Workspace preset tests | Present in `server/__tests__/utils/swarmsy/applyWorkspacePreset.test.js` |
-| Frontend onboarding tests | Present in `server/__tests__/frontend/swarmsyOnboarding.test.js` |
+| Frontend onboarding tests | Present in `server/__tests__/frontend/swarmsyOnboarding.test.js` and `server/__tests__/frontend/actionHub.test.js` |
 
-The old recommendation should no longer be used as the active next-PR plan because it points contributors at work that is already represented in the codebase.
+The old Memory Lock recommendation should no longer be used as the active next-PR plan because its storage, API, frontend helper, and minimal viewer/import surface are represented in the codebase.
 
 ---
 
 ## Recommended Next PR
 
-`Add SWARMSY Memory Lock storage and viewer`
+`Add SWARMSY Proof Tracker persistence and history viewer`
 
-Memory Lock continuity is the highest-priority remaining gap documented in `SWARMSY_MVP_KNOWN_GAPS.md`.
+Proof Tracker persistence is now the highest-priority continuity gap after Memory Locks. The current Proof Review action can generate a chat handoff from pasted proof text, but there is no dedicated proof-review record, retrieval API, or history viewer for returning users.
 
-Today, the Load Memory Lock path can hand a pasted lock to SPARKY through the normal chat flow. The lock is then only recoverable from ordinary workspace chat history. There is no dedicated storage, retrieval API, or viewer for returning users.
+A focused next PR should add the smallest durable Proof Tracker layer that supports returning-user continuity:
 
-A focused next PR should add the smallest durable Memory Lock layer that supports returning-user continuity:
-
-1. Store imported Memory Locks in a dedicated persistence layer instead of relying only on chat history.
-2. Associate every stored lock with both the owning user and the owning SWARMSY HIVE workspace, matching `MEMORY_LOCK_STORAGE_SPEC.md`'s `userId` and `workspaceId` requirements.
-3. Enforce that only the owning user, or an explicitly authorized admin path, can list, view, update, archive, delete, export, or activate a lock; other users in the same workspace must not see it without explicit delegation.
-4. Add an authenticated route for listing and retrieving only the current user's stored Memory Locks for the selected workspace. If single-user mode needs a fallback owner, document and test that fallback separately from multi-user behavior.
-5. Add a minimal viewer/import surface that lets a returning user select or inspect a previous lock.
-6. Preserve existing chat handoff behavior so the current Load Memory Lock flow keeps working.
-7. Add focused tests for ownership checks, same-workspace isolation, import behavior, and retrieval behavior.
+1. Store submitted proof-review content and generated review metadata in a dedicated persistence layer instead of relying only on chat history.
+2. Associate every proof record with both the owning user and the owning SWARMSY HIVE workspace, matching the same isolation standard now used by Memory Locks.
+3. Add a server model for listing, retrieving, creating/importing, archiving, and marking proof records reviewed or active where appropriate.
+4. Add authenticated routes for listing, retrieving, and importing only the current user's proof records for the selected workspace.
+5. Add a minimal Action Hub history surface that lets a returning user select or inspect previous proof-review inputs.
+6. Preserve the existing pasted Proof Review chat handoff so current behavior keeps working.
+7. Add focused tests for ownership checks, same-workspace isolation, empty-content rejection, route protection, import behavior, and retrieval behavior.
 
 ---
 
 ## Scope Guardrails
 
-Keep the PR limited to Memory Lock continuity. Do not bundle it with unrelated Phase 2 systems.
+Keep the PR limited to Proof Tracker continuity. Do not bundle it with unrelated Phase 2 systems.
 
 Do not include:
 
-- Proof Tracker database/viewer work.
+- Advanced Memory Lock controls such as compare, upload, export, delete, or mark-active unless directly required by shared helper cleanup.
 - Campaign calendar persistence.
 - Space Agent integration.
 - Optional advanced doctrine ingestion UI.
 - Legacy SWARMSY migration tooling.
 - Broad dashboard redesign.
-- Package or build-system changes unless directly required by the Memory Lock implementation.
+- Package, workflow, desktop artifact, or build-system changes unless directly required by Proof Tracker implementation.
 
 ---
 
 ## Why This Is Next
 
-Memory Lock storage is the most direct gap between a functional first-run experience and a usable returning-user experience.
+Memory Locks now give returning users a durable identity/continuity primitive. Proof Tracker persistence is the next direct gap because proof-review work is also user-specific, workspace-specific, and easy to lose if it only exists inside ordinary chat history.
 
-The current onboarding and HIVE setup path can get a user into SWARMSY mode, but returning users still need to manually recover and re-paste their lock from previous chat history. That is brittle and easy to lose. A dedicated storage/viewer path gives the app a concrete continuity primitive before larger dashboard, proof, campaign, or agent features are built.
+A dedicated proof-review storage and viewer path gives SWARMSY a second concrete continuity primitive before larger dashboard, campaign, or Space Agent features are built.
 
 ---
 
 ## Secondary Actions
 
-These remain valid follow-up candidates, but they should not be mixed into the Memory Lock PR:
+These remain valid follow-up candidates, but they should not be mixed into the Proof Tracker PR:
 
 | Item | Suggested follow-up |
 |---|---|
-| Proof Tracker persistence | Add proof-review storage and history viewer after Memory Locks are durable |
-| SWARMSY dashboard | Surface active project state after core continuity primitives exist |
+| Advanced Memory Lock controls | Add archive/delete/export/upload/compare/mark-active after Proof Tracker persistence is scoped |
 | Campaign persistence | Store campaign-day output and show completed dates |
+| SWARMSY dashboard | Surface active project state after core continuity primitives exist |
 | Collector setup helper | Add in-app recovery guidance for `COLLECTOR_OFFLINE` first-run failures |
 | Admin route tests | Add coverage for admin-only SWARMSY routes separately from user-safe onboarding tests |
 
@@ -85,4 +86,4 @@ These remain valid follow-up candidates, but they should not be mixed into the M
 
 ## Historical Note
 
-The previous version of this document recommended first-run onboarding and user-safe route wiring. That recommendation has been superseded by the current codebase. Use this document with `SWARMSY_MVP_KNOWN_GAPS.md` when choosing the next runtime PR.
+Earlier versions of this document recommended first-run onboarding, user-safe route wiring, and Memory Lock continuity. Those recommendations have been superseded by the current codebase. Use this document with `SWARMSY_MVP_KNOWN_GAPS.md` when choosing the next runtime PR.
