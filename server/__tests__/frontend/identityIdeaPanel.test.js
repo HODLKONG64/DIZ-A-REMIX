@@ -36,6 +36,27 @@ describe("visible SWARMSY Identity Idea panel", () => {
     );
   });
 
+  it("blocks idea decisions and chat when no workspace is open", () => {
+    const decisionGuard = panelSource.indexOf(
+      'setError("Open your SWARMSY workspace before updating this idea.")'
+    );
+    const decisionRequest = panelSource.indexOf(
+      "SwarmsyOnboarding.decideIdentityIdea("
+    );
+    const chatGuard = onboardingSource.indexOf(
+      '"Open your SWARMSY workspace before continuing with SPARKY."'
+    );
+    const chatPayload = onboardingSource.indexOf(
+      "buildOnboardingChatHandoffPayload({",
+      onboardingSource.indexOf("function openIdentityIdeaChat")
+    );
+
+    expect(decisionGuard).toBeGreaterThan(-1);
+    expect(decisionGuard).toBeLessThan(decisionRequest);
+    expect(chatGuard).toBeGreaterThan(-1);
+    expect(chatGuard).toBeLessThan(chatPayload);
+  });
+
   it("requires deliberate confirmation before deleting an idea", () => {
     expect(panelSource).toContain('if (decision === "delete")');
     expect(panelSource).toContain("confirmDelete(");
