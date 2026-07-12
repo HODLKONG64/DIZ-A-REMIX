@@ -37,6 +37,14 @@ jest.mock("../../models/swarmsyMemoryLock", () => ({
   },
 }));
 
+jest.mock("../../models/swarmsyProofReview", () => ({
+  SwarmsyProofReview: {
+    forUserWorkspace: jest.fn(),
+    getForUserWorkspace: jest.fn(),
+    create: jest.fn(),
+  },
+}));
+
 jest.mock("../../utils/swarmsy/sparkyWikiSeedPacks", () => ({
   getSparkyWikiSeedPack: jest.fn(),
   importSparkyWikiSeedPack: jest.fn(),
@@ -71,6 +79,7 @@ jest.mock("../../utils/middleware/multiUserProtected", () => ({
 const { userFromSession } = require("../../utils/http");
 const { Workspace } = require("../../models/workspace");
 const { SwarmsyMemoryLock } = require("../../models/swarmsyMemoryLock");
+const { SwarmsyProofReview } = require("../../models/swarmsyProofReview");
 const {
   findUserSwarmsyHiveWorkspace,
   getSwarmsyOnboardingStatus,
@@ -115,6 +124,9 @@ const {
   swarmsyOnboardingCreateHive,
   swarmsyOnboardingIngestRequiredDocs,
   swarmsyOnboardingStatus,
+  swarmsyProofReviewImport,
+  swarmsyProofReviewShow,
+  swarmsyProofReviewsList,
   swarmsyPublicNpcBridge,
   swarmsyPublicNpcChat,
   swarmsySparkyWikiSeedPackImport,
@@ -194,6 +206,21 @@ describe("swarmsy endpoints", () => {
       "/swarmsy/workspaces/:slug/memory-locks/import",
       [validatedRequest, mockRoleMiddleware],
       swarmsyMemoryLockImport
+    );
+    expect(app.get).toHaveBeenCalledWith(
+      "/swarmsy/workspaces/:slug/proof-reviews",
+      [validatedRequest, mockRoleMiddleware],
+      swarmsyProofReviewsList
+    );
+    expect(app.get).toHaveBeenCalledWith(
+      "/swarmsy/workspaces/:slug/proof-reviews/:reviewId",
+      [validatedRequest, mockRoleMiddleware],
+      swarmsyProofReviewShow
+    );
+    expect(app.post).toHaveBeenCalledWith(
+      "/swarmsy/workspaces/:slug/proof-reviews/import",
+      [validatedRequest, mockRoleMiddleware],
+      swarmsyProofReviewImport
     );
     expect(app.get).toHaveBeenCalledWith(
       "/swarmsy/sparky-wiki/seed-packs",
@@ -442,6 +469,121 @@ describe("swarmsy endpoints", () => {
     expect(response.json).toHaveBeenCalledWith({
       success: false,
       message: "Memory Lock storage requires an authenticated user account.",
+    });
+  });
+
+  it("lists only the current user's Proof Reviews in an accessible workspace", async () => {
+    const request = { params: { slug: "swarmsy-hive" }, headers: {} };
+    const response = responseMock();
+    const user = { id: 12, role: "default" };
+    const workspace = { id: 9, slug: "swarmsy-hive", name: "SWARMSY HIVE" };
+    const reviews = [{ id: 41, userId: 12, workspaceId: 9, version: 2 }];
+
+    userFromSession.mockResolvedValue(user);
+    Workspace.getWithUser.mockResolvedValue(workspace);
+    SwarmsyProofReview.forUserWorkspace.mockResolvedValue(reviews);
+
+    await swarmsyProofReviewsList(request, response);
+
+    expect(Workspace.getWithUser).toHaveBeenCalledWith(user, {
+      slug: "swarmsy-hive",
+    });
+    expect(SwarmsyProofReview.forUserWorkspace).toHaveBeenCalledWith({
+      userId: 12,
+      workspaceId: 9,
+    });
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith({
+      success: true,
+      workspace: {
+        exists: true,
+        id: 9,
+        slug: "swarmsy-hive",
+        name: "SWARMSY HIVE",
+      },
+      reviews,
+    });
+  });
+
+  it("does not reveal a Proof Review outside the current user scope", async () => {
+    const request = {
+      params: { slug: "swarmsy-hive", reviewId: "41" },
+      headers: {},
+    };
+    const response = responseMock();
+    const user = { id: 12, role: "default" };
+    const workspace = { id: 9, slug: "swarmsy-hive", name: "SWARMSY HIVE" };
+
+    userFromSession.mockResolvedValue(user);
+    Workspace.getWithUser.mockResolvedValue(workspace);
+    SwarmsyProofReview.getForUserWorkspace.mockResolvedValue(null);
+
+    await swarmsyProofReviewShow(request, response);
+
+    expect(SwarmsyProofReview.getForUserWorkspace).toHaveBeenCalledWith({
+      id: 41,
+      userId: 12,
+      workspaceId: 9,
+    });
+    expect(response.status).toHaveBeenCalledWith(404);
+    expect(response.json).toHaveBeenCalledWith({
+      success: false,
+      message: "Proof Review not found.",
+    });
+  });
+
+  it("imports a Proof Review for the current user and workspace", async () => {
+    const request = {
+      params: { slug: "swarmsy-hive" },
+      headers: {},
+      body: { content: "PROOF", source: "generated", isActive: true },
+    };
+    const response = responseMock();
+    const user = { id: 12, role: "default" };
+    const workspace = { id: 9, slug: "swarmsy-hive", name: "SWARMSY HIVE" };
+    const review = {
+      id: 41,
+      userId: 12,
+      workspaceId: 9,
+      content: "PROOF",
+      source: "generated",
+      isActive: true,
+    };
+
+    userFromSession.mockResolvedValue(user);
+    Workspace.getWithUser.mockResolvedValue(workspace);
+    SwarmsyProofReview.create.mockResolvedValue({ review, message: null });
+
+    await swarmsyProofReviewImport(request, response);
+
+    expect(SwarmsyProofReview.create).toHaveBeenCalledWith({
+      userId: 12,
+      workspaceId: 9,
+      content: "PROOF",
+      source: "generated",
+      isActive: true,
+    });
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true, review })
+    );
+  });
+
+  it("rejects Proof Tracker access without an authenticated user account", async () => {
+    const request = { params: { slug: "swarmsy-hive" }, headers: {} };
+    const response = responseMock();
+
+    userFromSession.mockResolvedValue(null);
+
+    await swarmsyProofReviewsList(request, response);
+
+    expect(Workspace.get).not.toHaveBeenCalled();
+    expect(Workspace.getWithUser).not.toHaveBeenCalled();
+    expect(SwarmsyProofReview.forUserWorkspace).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(401);
+    expect(response.json).toHaveBeenCalledWith({
+      success: false,
+      message: "Proof Tracker storage requires an authenticated user account.",
     });
   });
 
