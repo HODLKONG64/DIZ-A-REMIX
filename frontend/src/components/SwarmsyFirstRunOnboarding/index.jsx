@@ -58,6 +58,7 @@ import {
   resolveLocalUserBackupImportModelState,
 } from "@/utils/localUserBackup";
 import SwarmsyLocalUserSettingsHub from "@/components/SwarmsyLocalUserSettingsHub";
+import IdentityIdeaPanel from "./IdentityIdeaPanel";
 import { LOCAL_USER_SETTINGS_SYNC_EVENT } from "@/components/SwarmsyLocalUserSettingsHub/useLocalUserSettingsHub";
 
 const IDENTITY_MODES = [
@@ -1093,6 +1094,56 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     navigate(paths.workspace.chat(activeStatus.workspace.slug));
   }
 
+  function openIdentityIdeaChat(message) {
+    const workspaceSlug = activeStatus?.workspace?.slug;
+    if (!workspaceSlug) {
+      showToast(
+        "Open your SWARMSY workspace before continuing with SPARKY.",
+        "warning"
+      );
+      return;
+    }
+
+    if (isLocalUserMode) {
+      if (!hasVerifiedLocalOllamaModels) {
+        showToast(INTAKE_LOCAL_USER_MODEL_UNVERIFIED_MESSAGE, "warning");
+        return;
+      }
+      if (!selectedLocalOllamaModel || !selectedLocalOllamaModelIsInstalled) {
+        showToast(INTAKE_LOCAL_USER_MODEL_REQUIRED_MESSAGE, "warning");
+        return;
+      }
+    }
+
+    const handoffPayload = buildOnboardingChatHandoffPayload({
+      message,
+      attachments: [],
+      mode: isLocalUserMode ? "local_user" : "hosted_admin",
+      model: selectedLocalOllamaModel,
+    });
+
+    try {
+      sessionStorage.setItem(
+        PENDING_HOME_MESSAGE,
+        JSON.stringify(
+          buildPendingHomeMessage({
+            ...handoffPayload,
+            workspaceSlug,
+            threadSlug: null,
+          })
+        )
+      );
+    } catch {
+      showToast(
+        "SPARKY could not open this idea. Enable browser session storage or try again.",
+        "error"
+      );
+      return;
+    }
+
+    navigate(paths.workspace.chat(workspaceSlug));
+  }
+
   async function loadSavedLocks() {
     const workspaceSlug = activeStatus?.workspace?.slug;
     if (!workspaceSlug) return;
@@ -1642,6 +1693,11 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                 {ACTION_HUB_HELPER_COPY}
               </p>
             </div>
+
+            <IdentityIdeaPanel
+              workspaceSlug={activeStatus?.workspace?.slug}
+              onOpenChat={openIdentityIdeaChat}
+            />
 
             <div className="mt-6 grid gap-4 lg:grid-cols-2">
               <div className="rounded-2xl border border-theme-sidebar-border bg-theme-bg-menu p-5">
