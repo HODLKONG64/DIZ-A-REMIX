@@ -48,6 +48,11 @@ export default function IdentityIdeaPanel({
   }, [loadIdeas]);
 
   async function recordDecision(idea, decision) {
+    if (!workspaceSlug) {
+      setError("Open your SWARMSY workspace before updating this idea.");
+      return;
+    }
+
     if (decision === "delete") {
       const confirmed = confirmDelete(
         `Delete “${idea.title}”? This removes it from your ideas.`
@@ -80,6 +85,11 @@ export default function IdentityIdeaPanel({
   }
 
   function openChat(idea, tryAnother = false) {
+    if (!workspaceSlug) {
+      setError("Open your SWARMSY workspace before continuing with SPARKY.");
+      return;
+    }
+
     const message = buildIdentityIdeaSparkyMessage(idea, { tryAnother });
     if (!message || typeof onOpenChat !== "function") {
       setError("SPARKY could not open this idea. Try again.");
