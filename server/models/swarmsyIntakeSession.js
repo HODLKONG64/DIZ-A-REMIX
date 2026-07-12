@@ -136,7 +136,11 @@ const SwarmsyIntakeSession = {
         return publicSession(insertedRows[0] || null);
       });
 
-      return { session, resumed: Boolean(session && session.currentStep > 0), message: null };
+      return {
+        session,
+        resumed: Boolean(session && session.currentStep > 0),
+        message: null,
+      };
     } catch (error) {
       console.error(error.message);
       return { session: null, resumed: false, message: error.message };
