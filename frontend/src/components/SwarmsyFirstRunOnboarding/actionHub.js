@@ -176,25 +176,15 @@ export function getActionHubActionState({
   const memoryLockBlockedMessage = canContinueFromMemoryLock(status)
     ? null
     : MEMORY_LOCK_BLOCKED_MESSAGE;
-<<<<<<< HEAD
-  const memoryLockLocalRuntimeBlockedMessage = getLocalUserRuntimeBlockedMessage(
-    {
-=======
   const memoryLockLocalRuntimeBlockedMessage =
     getLocalUserRuntimeBlockedMessage({
->>>>>>> origin/master
       runtimeMode,
       localOllamaStatus,
       selectedLocalOllamaModel,
       localOllamaModels,
       unverifiedMessage: MEMORY_LOCK_LOCAL_USER_MODEL_UNVERIFIED_MESSAGE,
       requiredMessage: MEMORY_LOCK_LOCAL_USER_MODEL_REQUIRED_MESSAGE,
-<<<<<<< HEAD
-    }
-  );
-=======
     });
->>>>>>> origin/master
   const campaignBlockedMessage = getCampaignCalendarBlockedMessage(status);
   const proofBlockedMessage = getProofTrackerBlockedMessage(status);
 

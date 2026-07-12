@@ -593,9 +593,6 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toContain(
       'mode: isLocalUserMode ? "local_user" : "hosted_admin"'
     );
-<<<<<<< HEAD
-    expect(source).not.toContain("getLocalUserOllamaRuntimeSelection");
-=======
     expect(source).toMatch(
       /function startIntake\(\)[\s\S]*?const handoffPayload = buildOnboardingChatHandoffPayload\({[\s\S]*?mode: isLocalUserMode \? "local_user" : "hosted_admin",[\s\S]*?model: selectedLocalOllamaModel,[\s\S]*?}\);/m
     );
@@ -603,10 +600,12 @@ describe("SWARMSY HIVE action hub", () => {
       /function continueFromMemoryLock\(\)[\s\S]*?const handoffPayload = buildOnboardingChatHandoffPayload\({[\s\S]*?mode: isLocalUserMode \? "local_user" : "hosted_admin",[\s\S]*?model: selectedLocalOllamaModel,[\s\S]*?}\);/m
     );
     expect(source).toMatch(
+      /function continueFromSavedLock\(\)[\s\S]*?const handoffPayload = buildOnboardingChatHandoffPayload\({[\s\S]*?mode: isLocalUserMode \? "local_user" : "hosted_admin",[\s\S]*?model: selectedLocalOllamaModel,[\s\S]*?}\);/m
+    );
+    expect(source).toMatch(
       /\.\.\.handoffPayload,[\s\S]*?workspaceSlug: activeStatus\.workspace\.slug,[\s\S]*?threadSlug: null,/m
     );
-    expect(source).not.toContain("function continueFromSavedLock()");
->>>>>>> origin/master
+    expect(source).not.toContain("getLocalUserOllamaRuntimeSelection");
   });
 
   it("preserves saved local-user model selection through unverified status states", () => {
