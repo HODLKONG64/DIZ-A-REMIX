@@ -1047,7 +1047,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     setBusyAction(null);
   }
 
-  function startIntake() {
+  async function startIntake() {
     const disabledReason = actionHubState.actions.startIntake.disabledReason;
     if (disabledReason) {
       showToast(disabledReason, "warning");
@@ -1064,6 +1064,33 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
       }
     }
 
+    const workspaceSlug = activeStatus?.workspace?.slug;
+    if (!workspaceSlug) {
+      showToast(
+        "Open your SWARMSY workspace before starting with SPARKY.",
+        "warning"
+      );
+      return;
+    }
+
+    setBusyAction("start-intake");
+    const intakeResult = await SwarmsyOnboarding.startIntakeSession(
+      workspaceSlug,
+      selectedMode
+    );
+    if (!intakeResult?.success || !intakeResult?.session) {
+      showToast(
+        intakeResult?.message ||
+          "SPARKY could not start your questions. Please try again.",
+        "error"
+      );
+      setBusyAction(null);
+      return;
+    }
+    if (intakeResult.resumed) {
+      showToast("Welcome back — SPARKY found where you left off.", "info");
+    }
+
     const handoffPayload = buildOnboardingChatHandoffPayload({
       message: intakeStarter,
       attachments: [],
@@ -1071,14 +1098,13 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
       model: selectedLocalOllamaModel,
     });
 
-    setBusyAction("start-intake");
     try {
       sessionStorage.setItem(
         PENDING_HOME_MESSAGE,
         JSON.stringify(
           buildPendingHomeMessage({
             ...handoffPayload,
-            workspaceSlug: activeStatus.workspace.slug,
+            workspaceSlug,
             threadSlug: null,
           })
         )
