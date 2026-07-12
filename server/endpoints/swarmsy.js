@@ -16,6 +16,7 @@ const { Workspace } = require("../models/workspace");
 const { SwarmsyMemoryLock } = require("../models/swarmsyMemoryLock");
 const { SwarmsyProofReview } = require("../models/swarmsyProofReview");
 const { SwarmsyIdentityIdea } = require("../models/swarmsyIdentityIdea");
+const { SwarmsyIntakeSession } = require("../models/swarmsyIntakeSession");
 const {
   adminStatus: websiteNpcAdminStatus,
   allowedNpcIds: websiteNpcAllowedIds,
@@ -135,6 +136,31 @@ async function resolveIdentityIdeaRequest(request, response) {
     response.status(401).json({
       success: false,
       message: "Identity Ideas require an authenticated user account.",
+    });
+    return null;
+  }
+
+  const workspace = await resolveSelectedWorkspace(request, response, user);
+  if (!workspace) {
+    response.status(404).json({
+      success: false,
+      workspace: { exists: false },
+      message:
+        "Selected workspace was not found or is not available to this user.",
+    });
+    return null;
+  }
+
+  return { userId, workspace };
+}
+
+async function resolveIntakeSessionRequest(request, response) {
+  const user = await userFromSession(request, response);
+  const userId = Number(user?.id);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    response.status(401).json({
+      success: false,
+      message: "SPARKY questions require an authenticated user account.",
     });
     return null;
   }
@@ -521,6 +547,150 @@ async function swarmsyProofReviewImport(request, response) {
     return response.status(500).json({
       success: false,
       message: "Failed to import SWARMSY Proof Review.",
+    });
+  }
+}
+
+async function swarmsyIntakeSessionActive(request, response) {
+  try {
+    const context = await resolveIntakeSessionRequest(request, response);
+    if (!context) return;
+
+    const session = await SwarmsyIntakeSession.activeForUserWorkspace({
+      userId: context.userId,
+      workspaceId: context.workspace.id,
+    });
+    return response.status(200).json({
+      success: true,
+      workspace: swarmsyHiveWorkspaceSummary(context.workspace),
+      session,
+    });
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({
+      success: false,
+      message: "SPARKY could not resume your questions.",
+    });
+  }
+}
+
+async function swarmsyIntakeSessionStart(request, response) {
+  try {
+    const context = await resolveIntakeSessionRequest(request, response);
+    if (!context) return;
+
+    const { mode } = reqBody(request) || {};
+    const { session, resumed, message } =
+      await SwarmsyIntakeSession.startOrResume({
+        userId: context.userId,
+        workspaceId: context.workspace.id,
+        mode,
+      });
+    if (!session) {
+      return response.status(400).json({
+        success: false,
+        message: message || "SPARKY could not start your questions.",
+      });
+    }
+
+    return response.status(200).json({
+      success: true,
+      workspace: swarmsyHiveWorkspaceSummary(context.workspace),
+      session,
+      resumed,
+    });
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({
+      success: false,
+      message: "SPARKY could not start your questions.",
+    });
+  }
+}
+
+async function swarmsyIntakeSessionProgress(request, response) {
+  try {
+    const context = await resolveIntakeSessionRequest(request, response);
+    if (!context) return;
+
+    const sessionId = Number(request.params?.sessionId);
+    if (!Number.isInteger(sessionId) || sessionId <= 0) {
+      return response.status(404).json({
+        success: false,
+        message: "Question progress not found.",
+      });
+    }
+
+    const { currentStep, answers } = reqBody(request) || {};
+    const { session, message, errorCode } =
+      await SwarmsyIntakeSession.saveProgress({
+        id: sessionId,
+        userId: context.userId,
+        workspaceId: context.workspace.id,
+        currentStep,
+        answers,
+      });
+    if (!session) {
+      return response.status(errorCode === "NOT_FOUND" ? 404 : 400).json({
+        success: false,
+        message: message || "SPARKY could not save your answer.",
+      });
+    }
+
+    return response.status(200).json({
+      success: true,
+      workspace: swarmsyHiveWorkspaceSummary(context.workspace),
+      session,
+    });
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({
+      success: false,
+      message: "SPARKY could not save your answer.",
+    });
+  }
+}
+
+async function swarmsyIntakeSessionComplete(request, response) {
+  try {
+    const context = await resolveIntakeSessionRequest(request, response);
+    if (!context) return;
+
+    const sessionId = Number(request.params?.sessionId);
+    if (!Number.isInteger(sessionId) || sessionId <= 0) {
+      return response.status(404).json({
+        success: false,
+        message: "Question progress not found.",
+      });
+    }
+
+    const { session, message, errorCode } =
+      await SwarmsyIntakeSession.complete({
+        id: sessionId,
+        userId: context.userId,
+        workspaceId: context.workspace.id,
+      });
+    if (!session) {
+      return response.status(errorCode === "NOT_FOUND" ? 404 : 400).json({
+        success: false,
+        message: message || "SPARKY could not finish your questions.",
+      });
+    }
+
+    return response.status(200).json({
+      success: true,
+      workspace: swarmsyHiveWorkspaceSummary(context.workspace),
+      session,
+      nextAction: {
+        type: "create_identity_idea",
+        label: "Show me my idea",
+      },
+    });
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({
+      success: false,
+      message: "SPARKY could not finish your questions.",
     });
   }
 }
@@ -1119,6 +1289,30 @@ function swarmsyEndpoints(app) {
   );
 
   app.get(
+    "/swarmsy/workspaces/:slug/intake-session",
+    [validatedRequest, flexUserRoleValid([ROLES.all])],
+    swarmsyIntakeSessionActive
+  );
+
+  app.post(
+    "/swarmsy/workspaces/:slug/intake-session/start",
+    [validatedRequest, flexUserRoleValid([ROLES.all])],
+    swarmsyIntakeSessionStart
+  );
+
+  app.post(
+    "/swarmsy/workspaces/:slug/intake-session/:sessionId/progress",
+    [validatedRequest, flexUserRoleValid([ROLES.all])],
+    swarmsyIntakeSessionProgress
+  );
+
+  app.post(
+    "/swarmsy/workspaces/:slug/intake-session/:sessionId/complete",
+    [validatedRequest, flexUserRoleValid([ROLES.all])],
+    swarmsyIntakeSessionComplete
+  );
+
+  app.get(
     "/swarmsy/workspaces/:slug/identity-ideas",
     [validatedRequest, flexUserRoleValid([ROLES.all])],
     swarmsyIdentityIdeasList
@@ -1263,6 +1457,10 @@ module.exports = {
   swarmsyOnboardingIngestRequiredDocs,
   swarmsyOnboardingStatus,
   swarmsyIdentityIdeaDecide,
+  swarmsyIntakeSessionActive,
+  swarmsyIntakeSessionComplete,
+  swarmsyIntakeSessionProgress,
+  swarmsyIntakeSessionStart,
   swarmsyIdentityIdeaPropose,
   swarmsyIdentityIdeaShow,
   swarmsyIdentityIdeasList,
