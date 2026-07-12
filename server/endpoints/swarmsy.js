@@ -15,6 +15,7 @@ const { detectLocalOllama } = require("../utils/swarmsy/localUserOllama");
 const { Workspace } = require("../models/workspace");
 const { SwarmsyMemoryLock } = require("../models/swarmsyMemoryLock");
 const { SwarmsyProofReview } = require("../models/swarmsyProofReview");
+const { SwarmsyIdentityIdea } = require("../models/swarmsyIdentityIdea");
 const {
   adminStatus: websiteNpcAdminStatus,
   allowedNpcIds: websiteNpcAllowedIds,
@@ -109,6 +110,31 @@ async function resolveProofReviewRequest(request, response) {
     response.status(401).json({
       success: false,
       message: "Proof Tracker storage requires an authenticated user account.",
+    });
+    return null;
+  }
+
+  const workspace = await resolveSelectedWorkspace(request, response, user);
+  if (!workspace) {
+    response.status(404).json({
+      success: false,
+      workspace: { exists: false },
+      message:
+        "Selected workspace was not found or is not available to this user.",
+    });
+    return null;
+  }
+
+  return { userId, workspace };
+}
+
+async function resolveIdentityIdeaRequest(request, response) {
+  const user = await userFromSession(request, response);
+  const userId = Number(user?.id);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    response.status(401).json({
+      success: false,
+      message: "Identity Ideas require an authenticated user account.",
     });
     return null;
   }
@@ -495,6 +521,144 @@ async function swarmsyProofReviewImport(request, response) {
     return response.status(500).json({
       success: false,
       message: "Failed to import SWARMSY Proof Review.",
+    });
+  }
+}
+
+async function swarmsyIdentityIdeasList(request, response) {
+  try {
+    const context = await resolveIdentityIdeaRequest(request, response);
+    if (!context) return;
+
+    const ideas = await SwarmsyIdentityIdea.forUserWorkspace({
+      userId: context.userId,
+      workspaceId: context.workspace.id,
+    });
+    return response.status(200).json({
+      success: true,
+      workspace: swarmsyHiveWorkspaceSummary(context.workspace),
+      ideas,
+    });
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({
+      success: false,
+      message: "SPARKY could not load your saved ideas.",
+    });
+  }
+}
+
+async function swarmsyIdentityIdeaShow(request, response) {
+  try {
+    const context = await resolveIdentityIdeaRequest(request, response);
+    if (!context) return;
+
+    const ideaId = Number(request.params?.ideaId);
+    if (!Number.isInteger(ideaId) || ideaId <= 0) {
+      return response.status(404).json({
+        success: false,
+        message: "Identity Idea not found.",
+      });
+    }
+
+    const idea = await SwarmsyIdentityIdea.getForUserWorkspace({
+      id: ideaId,
+      userId: context.userId,
+      workspaceId: context.workspace.id,
+    });
+    if (!idea) {
+      return response.status(404).json({
+        success: false,
+        message: "Identity Idea not found.",
+      });
+    }
+
+    return response.status(200).json({
+      success: true,
+      workspace: swarmsyHiveWorkspaceSummary(context.workspace),
+      idea,
+    });
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({
+      success: false,
+      message: "SPARKY could not load this idea.",
+    });
+  }
+}
+
+async function swarmsyIdentityIdeaPropose(request, response) {
+  try {
+    const context = await resolveIdentityIdeaRequest(request, response);
+    if (!context) return;
+
+    const { mode, title, content } = reqBody(request) || {};
+    const { idea, message } = await SwarmsyIdentityIdea.createProposal({
+      userId: context.userId,
+      workspaceId: context.workspace.id,
+      mode,
+      title,
+      content,
+    });
+    if (!idea) {
+      return response.status(400).json({
+        success: false,
+        message: message || "SPARKY could not create this idea.",
+      });
+    }
+
+    return response.status(200).json({
+      success: true,
+      workspace: swarmsyHiveWorkspaceSummary(context.workspace),
+      idea,
+    });
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({
+      success: false,
+      message: "SPARKY could not create this idea.",
+    });
+  }
+}
+
+async function swarmsyIdentityIdeaDecide(request, response) {
+  try {
+    const context = await resolveIdentityIdeaRequest(request, response);
+    if (!context) return;
+
+    const ideaId = Number(request.params?.ideaId);
+    if (!Number.isInteger(ideaId) || ideaId <= 0) {
+      return response.status(404).json({
+        success: false,
+        message: "Identity Idea not found.",
+      });
+    }
+
+    const { decision } = reqBody(request) || {};
+    const { idea, message } = await SwarmsyIdentityIdea.decide({
+      id: ideaId,
+      userId: context.userId,
+      workspaceId: context.workspace.id,
+      decision,
+    });
+    if (!idea) {
+      const notFound = message === "Identity Idea not found.";
+      return response.status(notFound ? 404 : 400).json({
+        success: false,
+        message: message || "SPARKY could not update this idea.",
+      });
+    }
+
+    return response.status(200).json({
+      success: true,
+      workspace: swarmsyHiveWorkspaceSummary(context.workspace),
+      idea,
+    });
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({
+      success: false,
+      message: "SPARKY could not update this idea.",
     });
   }
 }
@@ -956,6 +1120,30 @@ function swarmsyEndpoints(app) {
   );
 
   app.get(
+    "/swarmsy/workspaces/:slug/identity-ideas",
+    [validatedRequest, flexUserRoleValid([ROLES.all])],
+    swarmsyIdentityIdeasList
+  );
+
+  app.get(
+    "/swarmsy/workspaces/:slug/identity-ideas/:ideaId",
+    [validatedRequest, flexUserRoleValid([ROLES.all])],
+    swarmsyIdentityIdeaShow
+  );
+
+  app.post(
+    "/swarmsy/workspaces/:slug/identity-ideas/propose",
+    [validatedRequest, flexUserRoleValid([ROLES.all])],
+    swarmsyIdentityIdeaPropose
+  );
+
+  app.post(
+    "/swarmsy/workspaces/:slug/identity-ideas/:ideaId/decision",
+    [validatedRequest, flexUserRoleValid([ROLES.all])],
+    swarmsyIdentityIdeaDecide
+  );
+
+  app.get(
     "/swarmsy/workspaces/:slug/proof-reviews",
     [validatedRequest, flexUserRoleValid([ROLES.all])],
     swarmsyProofReviewsList
@@ -1075,6 +1263,10 @@ module.exports = {
   swarmsyOnboardingCreateHive,
   swarmsyOnboardingIngestRequiredDocs,
   swarmsyOnboardingStatus,
+  swarmsyIdentityIdeaDecide,
+  swarmsyIdentityIdeaPropose,
+  swarmsyIdentityIdeaShow,
+  swarmsyIdentityIdeasList,
   swarmsyProofReviewImport,
   swarmsyProofReviewShow,
   swarmsyProofReviewsList,
