@@ -1135,13 +1135,23 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
       setBusyAction(null);
       return;
     }
+    const runtimeSelection = getLocalUserOllamaRuntimeSelection({
+      mode: isLocalUserMode ? "local_user" : "hosted_admin",
+      model: selectedLocalOllamaModel,
+    });
+    const handoffPayload = {
+      message: starterMessage,
+      attachments: [],
+    };
+    if (runtimeSelection) {
+      handoffPayload.runtime = runtimeSelection;
+    }
     try {
       sessionStorage.setItem(
         PENDING_HOME_MESSAGE,
         JSON.stringify(
           buildPendingHomeMessage({
-            message: starterMessage,
-            attachments: [],
+            ...handoffPayload,
             workspaceSlug: activeStatus.workspace.slug,
             threadSlug: null,
           })

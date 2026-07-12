@@ -892,6 +892,27 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toContain("onClick={continueFromSavedLock}");
   });
 
+  it("includes runtime handoff in continueFromSavedLock for local-user ollama selection", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    const fnStart = source.indexOf("async function continueFromSavedLock()");
+    const fnEnd = source.indexOf("\n  async function saveMemoryLockAsActive", fnStart);
+    const fnSource = source.slice(fnStart, fnEnd);
+
+    expect(fnSource).toContain("getLocalUserOllamaRuntimeSelection");
+    expect(fnSource).toContain(
+      'mode: isLocalUserMode ? "local_user" : "hosted_admin"'
+    );
+    expect(fnSource).toContain("if (runtimeSelection)");
+    expect(fnSource).toContain("handoffPayload.runtime = runtimeSelection");
+  });
+
   it("includes saveMemoryLockAsActive that calls importMemoryLock for pasted content", () => {
     const source = fs.readFileSync(
       path.resolve(
