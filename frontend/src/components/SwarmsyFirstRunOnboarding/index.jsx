@@ -1107,6 +1107,13 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
 
   function continueFromMemoryLock() {
     setBusyAction("memory-lock");
+    const disabledReason = actionHubState.actions.loadMemoryLock.disabledReason;
+    if (disabledReason) {
+      showToast(disabledReason, "warning");
+      setBusyAction(null);
+      return;
+    }
+
     if (!canLoadMemoryLock) {
       showToast(MEMORY_LOCK_BLOCKED_MESSAGE, "warning");
       setBusyAction(null);

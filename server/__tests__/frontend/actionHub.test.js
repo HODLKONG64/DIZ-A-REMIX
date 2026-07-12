@@ -155,6 +155,42 @@ describe("SWARMSY HIVE action hub", () => {
     );
   });
 
+  it("blocks local-user memory lock continuation without a selected installed Ollama model", () => {
+    const actionHub = loadActionHubModule();
+    const state = actionHub.getActionHubActionState({
+      status: buildReadyStatus(),
+      selectedMode: "memory-lock",
+      busyAction: null,
+      runtimeMode: "local_user",
+      localOllamaStatus: "reachable",
+      selectedLocalOllamaModel: "",
+      localOllamaModels: [{ id: "llama3.1:8b" }],
+    });
+
+    expect(state.actions.loadMemoryLock.disabled).toBe(true);
+    expect(state.actions.loadMemoryLock.disabledReason).toBe(
+      "Select an installed Ollama model before continuing from a memory lock."
+    );
+  });
+
+  it("blocks local-user memory lock continuation when Ollama model list is not verified yet", () => {
+    const actionHub = loadActionHubModule();
+    const state = actionHub.getActionHubActionState({
+      status: buildReadyStatus(),
+      selectedMode: "memory-lock",
+      busyAction: null,
+      runtimeMode: "local_user",
+      localOllamaStatus: "checking",
+      selectedLocalOllamaModel: "llama3.1:8b",
+      localOllamaModels: [{ id: "llama3.1:8b" }],
+    });
+
+    expect(state.actions.loadMemoryLock.disabled).toBe(true);
+    expect(state.actions.loadMemoryLock.disabledReason).toBe(
+      "Check Local User Mode Ollama status and select an installed model before continuing from a memory lock."
+    );
+  });
+
   it("keeps the no-HIVE state in the create flow", () => {
     const actionHub = loadActionHubModule();
     const status = buildReadyStatus({ workspace: { exists: false } });

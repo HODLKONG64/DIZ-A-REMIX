@@ -26,6 +26,10 @@ export const INTAKE_LOCAL_USER_MODEL_REQUIRED_MESSAGE =
   "Select an installed Ollama model before starting intake.";
 export const INTAKE_LOCAL_USER_MODEL_UNVERIFIED_MESSAGE =
   "Check Local User Mode Ollama status and select an installed model before starting intake.";
+export const MEMORY_LOCK_LOCAL_USER_MODEL_REQUIRED_MESSAGE =
+  "Select an installed Ollama model before continuing from a memory lock.";
+export const MEMORY_LOCK_LOCAL_USER_MODEL_UNVERIFIED_MESSAGE =
+  "Check Local User Mode Ollama status and select an installed model before continuing from a memory lock.";
 export const ACTION_HUB_GROUPS = [
   {
     id: "build",
@@ -104,27 +108,46 @@ export function getIntakeDisabledMessage(
     return INTAKE_MODE_REQUIRED_MESSAGE;
   }
 
-  if (runtimeMode === "local_user") {
-    const hasVerifiedLocalOllamaModels =
-      localOllamaStatus === "reachable" || localOllamaStatus === "no_models";
-    if (!hasVerifiedLocalOllamaModels) {
-      return INTAKE_LOCAL_USER_MODEL_UNVERIFIED_MESSAGE;
-    }
+  return getLocalUserRuntimeBlockedMessage({
+    runtimeMode,
+    localOllamaStatus,
+    selectedLocalOllamaModel,
+    localOllamaModels,
+    unverifiedMessage: INTAKE_LOCAL_USER_MODEL_UNVERIFIED_MESSAGE,
+    requiredMessage: INTAKE_LOCAL_USER_MODEL_REQUIRED_MESSAGE,
+  });
+}
 
-    const selectedModel = String(selectedLocalOllamaModel || "").trim();
-    if (!selectedModel) {
-      return INTAKE_LOCAL_USER_MODEL_REQUIRED_MESSAGE;
-    }
+function getLocalUserRuntimeBlockedMessage({
+  runtimeMode = "hosted_admin",
+  localOllamaStatus = "checking",
+  selectedLocalOllamaModel = "",
+  localOllamaModels = [],
+  unverifiedMessage = "",
+  requiredMessage = "",
+} = {}) {
+  if (runtimeMode !== "local_user") return null;
 
-    const installedModelIds = (
-      Array.isArray(localOllamaModels) ? localOllamaModels : []
-    )
-      .map((model) => String(model?.id || "").trim())
-      .filter(Boolean);
+  const hasVerifiedLocalOllamaModels =
+    localOllamaStatus === "reachable" || localOllamaStatus === "no_models";
+  if (!hasVerifiedLocalOllamaModels) {
+    return unverifiedMessage;
+  }
 
-    if (!installedModelIds.includes(selectedModel)) {
-      return INTAKE_LOCAL_USER_MODEL_REQUIRED_MESSAGE;
-    }
+  const selectedModel = String(selectedLocalOllamaModel || "").trim();
+  if (!selectedModel) {
+    return requiredMessage;
+  }
+
+  const installedModelIds = (Array.isArray(localOllamaModels)
+    ? localOllamaModels
+    : []
+  )
+    .map((model) => String(model?.id || "").trim())
+    .filter(Boolean);
+
+  if (!installedModelIds.includes(selectedModel)) {
+    return requiredMessage;
   }
 
   return null;
@@ -154,6 +177,14 @@ export function getActionHubActionState({
   const memoryLockBlockedMessage = canContinueFromMemoryLock(status)
     ? null
     : MEMORY_LOCK_BLOCKED_MESSAGE;
+  const memoryLockLocalRuntimeBlockedMessage = getLocalUserRuntimeBlockedMessage({
+    runtimeMode,
+    localOllamaStatus,
+    selectedLocalOllamaModel,
+    localOllamaModels,
+    unverifiedMessage: MEMORY_LOCK_LOCAL_USER_MODEL_UNVERIFIED_MESSAGE,
+    requiredMessage: MEMORY_LOCK_LOCAL_USER_MODEL_REQUIRED_MESSAGE,
+  });
   const campaignBlockedMessage = getCampaignCalendarBlockedMessage(status);
   const proofBlockedMessage = getProofTrackerBlockedMessage(status);
 
@@ -169,10 +200,13 @@ export function getActionHubActionState({
       },
       loadMemoryLock: {
         busy: busyAction === "memory-lock",
-        disabled: globallyBusy || Boolean(memoryLockBlockedMessage),
+        disabled:
+          globallyBusy ||
+          Boolean(memoryLockBlockedMessage || memoryLockLocalRuntimeBlockedMessage),
         disabledReason:
           getBusyReasonForAction("memory-lock", busyAction) ||
-          memoryLockBlockedMessage,
+          memoryLockBlockedMessage ||
+          memoryLockLocalRuntimeBlockedMessage,
       },
       campaignCalendar: {
         busy: busyAction === "campaign-calendar",
