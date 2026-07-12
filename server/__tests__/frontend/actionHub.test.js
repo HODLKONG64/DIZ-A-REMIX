@@ -191,6 +191,24 @@ describe("SWARMSY HIVE action hub", () => {
     );
   });
 
+  it("blocks local-user memory lock continuation when selected model is stale or missing from verified installs", () => {
+    const actionHub = loadActionHubModule();
+    const state = actionHub.getActionHubActionState({
+      status: buildReadyStatus(),
+      selectedMode: "memory-lock",
+      busyAction: null,
+      runtimeMode: "local_user",
+      localOllamaStatus: "reachable",
+      selectedLocalOllamaModel: "stale:model",
+      localOllamaModels: [{ id: "llama3.1:8b" }],
+    });
+
+    expect(state.actions.loadMemoryLock.disabled).toBe(true);
+    expect(state.actions.loadMemoryLock.disabledReason).toBe(
+      "Select an installed Ollama model before continuing from a memory lock."
+    );
+  });
+
   it("keeps the no-HIVE state in the create flow", () => {
     const actionHub = loadActionHubModule();
     const status = buildReadyStatus({ workspace: { exists: false } });
@@ -575,8 +593,16 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toContain(
       'mode: isLocalUserMode ? "local_user" : "hosted_admin"'
     );
-    expect(source).toContain("function startIntake()");
-    expect(source).toContain("function continueFromMemoryLock()");
+    expect(source).toMatch(
+      /function startIntake\(\)[\s\S]*?const handoffPayload = buildOnboardingChatHandoffPayload\({[\s\S]*?mode: isLocalUserMode \? "local_user" : "hosted_admin",[\s\S]*?model: selectedLocalOllamaModel,[\s\S]*?}\);/m
+    );
+    expect(source).toMatch(
+      /function continueFromMemoryLock\(\)[\s\S]*?const handoffPayload = buildOnboardingChatHandoffPayload\({[\s\S]*?mode: isLocalUserMode \? "local_user" : "hosted_admin",[\s\S]*?model: selectedLocalOllamaModel,[\s\S]*?}\);/m
+    );
+    expect(source).toMatch(
+      /\.\.\.handoffPayload,[\s\S]*?workspaceSlug: activeStatus\.workspace\.slug,[\s\S]*?threadSlug: null,/m
+    );
+    expect(source).not.toContain("function continueFromSavedLock()");
   });
 
   it("preserves saved local-user model selection through unverified status states", () => {

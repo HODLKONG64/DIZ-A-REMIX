@@ -111,27 +111,6 @@ describe("Local User Ollama runtime handoff contract", () => {
       });
     });
 
-    it("includes local runtime for saved Memory Lock continuation in local-user mode", () => {
-      const handoff = loadHandoffModule();
-
-      expect(
-        handoff.buildOnboardingChatHandoffPayload({
-          message: "Continue from saved Memory Lock",
-          attachments: [],
-          mode: "local_user",
-          model: "mistral:latest",
-        })
-      ).toEqual({
-        message: "Continue from saved Memory Lock",
-        attachments: [],
-        runtime: {
-          provider: "ollama",
-          mode: "local_user",
-          model: "mistral:latest",
-        },
-      });
-    });
-
     it("does not include runtime in hosted/admin mode", () => {
       const handoff = loadHandoffModule();
 
