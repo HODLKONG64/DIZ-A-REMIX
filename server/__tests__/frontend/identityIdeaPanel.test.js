@@ -17,8 +17,8 @@ describe("visible SWARMSY Identity Idea panel", () => {
   it("renders a plain-language Identity Ideas section", () => {
     expect(panelSource).toContain("Your Identity Ideas");
     expect(panelSource).toContain("No identity ideas yet.");
-    expect(panelSource).toContain(
-      "Your ideas will appear here when they are ready for you to choose."
+    expect(panelSource).toMatch(
+      /Your ideas will appear here when they\s+are ready for you to choose\./
     );
     expect(panelSource).not.toContain("Prisma");
     expect(panelSource).not.toContain("database");
