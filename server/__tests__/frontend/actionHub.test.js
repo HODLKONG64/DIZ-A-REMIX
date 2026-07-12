@@ -155,6 +155,60 @@ describe("SWARMSY HIVE action hub", () => {
     );
   });
 
+  it("blocks local-user memory lock continuation without a selected installed Ollama model", () => {
+    const actionHub = loadActionHubModule();
+    const state = actionHub.getActionHubActionState({
+      status: buildReadyStatus(),
+      selectedMode: "memory-lock",
+      busyAction: null,
+      runtimeMode: "local_user",
+      localOllamaStatus: "reachable",
+      selectedLocalOllamaModel: "",
+      localOllamaModels: [{ id: "llama3.1:8b" }],
+    });
+
+    expect(state.actions.loadMemoryLock.disabled).toBe(true);
+    expect(state.actions.loadMemoryLock.disabledReason).toBe(
+      "Select an installed Ollama model before continuing from a memory lock."
+    );
+  });
+
+  it("blocks local-user memory lock continuation when Ollama model list is not verified yet", () => {
+    const actionHub = loadActionHubModule();
+    const state = actionHub.getActionHubActionState({
+      status: buildReadyStatus(),
+      selectedMode: "memory-lock",
+      busyAction: null,
+      runtimeMode: "local_user",
+      localOllamaStatus: "checking",
+      selectedLocalOllamaModel: "llama3.1:8b",
+      localOllamaModels: [{ id: "llama3.1:8b" }],
+    });
+
+    expect(state.actions.loadMemoryLock.disabled).toBe(true);
+    expect(state.actions.loadMemoryLock.disabledReason).toBe(
+      "Check Local User Mode Ollama status and select an installed model before continuing from a memory lock."
+    );
+  });
+
+  it("blocks local-user memory lock continuation when selected model is stale or missing from verified installs", () => {
+    const actionHub = loadActionHubModule();
+    const state = actionHub.getActionHubActionState({
+      status: buildReadyStatus(),
+      selectedMode: "memory-lock",
+      busyAction: null,
+      runtimeMode: "local_user",
+      localOllamaStatus: "reachable",
+      selectedLocalOllamaModel: "stale:model",
+      localOllamaModels: [{ id: "llama3.1:8b" }],
+    });
+
+    expect(state.actions.loadMemoryLock.disabled).toBe(true);
+    expect(state.actions.loadMemoryLock.disabledReason).toBe(
+      "Select an installed Ollama model before continuing from a memory lock."
+    );
+  });
+
   it("keeps the no-HIVE state in the create flow", () => {
     const actionHub = loadActionHubModule();
     const status = buildReadyStatus({ workspace: { exists: false } });
@@ -526,7 +580,7 @@ describe("SWARMSY HIVE action hub", () => {
     );
   });
 
-  it("adds runtime handoff contract payload for local-user ollama selection", () => {
+  it("uses a shared onboarding handoff payload builder for chat runtime selection", () => {
     const source = fs.readFileSync(
       path.resolve(
         __dirname,
@@ -539,7 +593,20 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toContain(
       'mode: isLocalUserMode ? "local_user" : "hosted_admin"'
     );
+<<<<<<< HEAD
     expect(source).not.toContain("getLocalUserOllamaRuntimeSelection");
+=======
+    expect(source).toMatch(
+      /function startIntake\(\)[\s\S]*?const handoffPayload = buildOnboardingChatHandoffPayload\({[\s\S]*?mode: isLocalUserMode \? "local_user" : "hosted_admin",[\s\S]*?model: selectedLocalOllamaModel,[\s\S]*?}\);/m
+    );
+    expect(source).toMatch(
+      /function continueFromMemoryLock\(\)[\s\S]*?const handoffPayload = buildOnboardingChatHandoffPayload\({[\s\S]*?mode: isLocalUserMode \? "local_user" : "hosted_admin",[\s\S]*?model: selectedLocalOllamaModel,[\s\S]*?}\);/m
+    );
+    expect(source).toMatch(
+      /\.\.\.handoffPayload,[\s\S]*?workspaceSlug: activeStatus\.workspace\.slug,[\s\S]*?threadSlug: null,/m
+    );
+    expect(source).not.toContain("function continueFromSavedLock()");
+>>>>>>> origin/master
   });
 
   it("preserves saved local-user model selection through unverified status states", () => {
