@@ -617,7 +617,7 @@ async function swarmsyIntakeSessionProgress(request, response) {
     if (!Number.isInteger(sessionId) || sessionId <= 0) {
       return response.status(404).json({
         success: false,
-        message: "Question progress not found.",
+        message: "Intake session not found.",
       });
     }
 
@@ -660,7 +660,7 @@ async function swarmsyIntakeSessionComplete(request, response) {
     if (!Number.isInteger(sessionId) || sessionId <= 0) {
       return response.status(404).json({
         success: false,
-        message: "Question progress not found.",
+        message: "Intake session not found.",
       });
     }
 
