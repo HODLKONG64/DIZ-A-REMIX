@@ -26,5 +26,9 @@ CREATE INDEX "swarmsy_intake_sessions_workspace_id_user_id_is_active_idx"
 ON "swarmsy_intake_sessions"("workspace_id", "user_id", "is_active");
 
 -- CreateIndex
+CREATE INDEX "swarmsy_intake_sessions_workspace_id_user_id_archived_at_idx"
+ON "swarmsy_intake_sessions"("workspace_id", "user_id", "archived_at");
+
+-- CreateIndex
 CREATE INDEX "swarmsy_intake_sessions_workspace_id_user_id_updated_at_idx"
 ON "swarmsy_intake_sessions"("workspace_id", "user_id", "updated_at");
