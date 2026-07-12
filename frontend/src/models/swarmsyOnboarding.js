@@ -166,6 +166,85 @@ const SwarmsyOnboarding = {
         message: "Failed to import SWARMSY Memory Lock.",
       }));
   },
+  identityIdeas: async function (workspaceSlug) {
+    return await fetch(
+      `${API_BASE}/swarmsy/workspaces/${encodeURIComponent(
+        workspaceSlug
+      )}/identity-ideas`,
+      {
+        headers: baseHeaders(),
+      }
+    )
+      .then((response) =>
+        parseResponse(response, "SPARKY could not load your ideas.")
+      )
+      .catch(() => ({
+        success: false,
+        ideas: [],
+        message: "SPARKY could not load your ideas.",
+      }));
+  },
+  identityIdea: async function (workspaceSlug, ideaId) {
+    return await fetch(
+      `${API_BASE}/swarmsy/workspaces/${encodeURIComponent(
+        workspaceSlug
+      )}/identity-ideas/${encodeURIComponent(ideaId)}`,
+      {
+        headers: baseHeaders(),
+      }
+    )
+      .then((response) =>
+        parseResponse(response, "SPARKY could not load this idea.")
+      )
+      .catch(() => ({
+        success: false,
+        idea: null,
+        message: "SPARKY could not load this idea.",
+      }));
+  },
+  proposeIdentityIdea: async function (
+    workspaceSlug,
+    { mode, title, content }
+  ) {
+    return await fetch(
+      `${API_BASE}/swarmsy/workspaces/${encodeURIComponent(
+        workspaceSlug
+      )}/identity-ideas/propose`,
+      {
+        method: "POST",
+        headers: baseHeaders(),
+        body: JSON.stringify({ mode, title, content }),
+      }
+    )
+      .then((response) =>
+        parseResponse(response, "SPARKY could not create this idea.")
+      )
+      .catch(() => ({
+        success: false,
+        idea: null,
+        message: "SPARKY could not create this idea.",
+      }));
+  },
+  decideIdentityIdea: async function (workspaceSlug, ideaId, decision) {
+    return await fetch(
+      `${API_BASE}/swarmsy/workspaces/${encodeURIComponent(
+        workspaceSlug
+      )}/identity-ideas/${encodeURIComponent(ideaId)}/decision`,
+      {
+        method: "POST",
+        headers: baseHeaders(),
+        body: JSON.stringify({ decision }),
+      }
+    )
+      .then((response) =>
+        parseResponse(response, "SPARKY could not update this idea.")
+      )
+      .catch(() => ({
+        success: false,
+        idea: null,
+        message: "SPARKY could not update this idea.",
+      }));
+  },
   localUserOllamaStatus: async function ({ signal } = {}) {
     return await fetch(`${API_BASE}/swarmsy/local-user/ollama/status`, {
       headers: baseHeaders(),
