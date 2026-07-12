@@ -154,6 +154,7 @@ model workspaces {
   memories                     memories[]
   swarmsy_memory_locks         swarmsy_memory_locks[]
   swarmsy_proof_reviews        swarmsy_proof_reviews[]
+  swarmsy_identity_ideas        swarmsy_identity_ideas[]
 }
 
 model workspace_threads {
