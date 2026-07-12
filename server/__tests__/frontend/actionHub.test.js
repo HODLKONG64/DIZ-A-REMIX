@@ -526,7 +526,7 @@ describe("SWARMSY HIVE action hub", () => {
     );
   });
 
-  it("adds runtime handoff contract payload for local-user ollama selection", () => {
+  it("uses a shared onboarding handoff payload builder for chat runtime selection", () => {
     const source = fs.readFileSync(
       path.resolve(
         __dirname,
@@ -535,12 +535,12 @@ describe("SWARMSY HIVE action hub", () => {
       "utf8"
     );
 
-    expect(source).toContain("getLocalUserOllamaRuntimeSelection");
-    expect(source).toContain("if (runtimeSelection)");
-    expect(source).toContain("handoffPayload.runtime = runtimeSelection");
+    expect(source).toContain("buildOnboardingChatHandoffPayload");
     expect(source).toContain(
       'mode: isLocalUserMode ? "local_user" : "hosted_admin"'
     );
+    expect(source).toContain("function startIntake()");
+    expect(source).toContain("function continueFromMemoryLock()");
   });
 
   it("preserves saved local-user model selection through unverified status states", () => {

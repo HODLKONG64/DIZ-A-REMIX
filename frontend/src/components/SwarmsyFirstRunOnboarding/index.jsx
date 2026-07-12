@@ -20,8 +20,8 @@ import {
   getActionHubActionState,
 } from "./actionHub";
 import {
+  buildOnboardingChatHandoffPayload,
   getIntakeStarterMessage,
-  getLocalUserOllamaRuntimeSelection,
   hasIdentityEmpireKnowledge,
 } from "./handoff";
 import {
@@ -1055,18 +1055,12 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
       }
     }
 
-    const runtimeSelection = getLocalUserOllamaRuntimeSelection({
+    const handoffPayload = buildOnboardingChatHandoffPayload({
+      message: intakeStarter,
+      attachments: [],
       mode: isLocalUserMode ? "local_user" : "hosted_admin",
       model: selectedLocalOllamaModel,
     });
-
-    const handoffPayload = {
-      message: intakeStarter,
-      attachments: [],
-    };
-    if (runtimeSelection) {
-      handoffPayload.runtime = runtimeSelection;
-    }
 
     setBusyAction("start-intake");
     try {
@@ -1128,13 +1122,19 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
       return;
     }
 
+    const handoffPayload = buildOnboardingChatHandoffPayload({
+      message: starterMessage,
+      attachments: [],
+      mode: isLocalUserMode ? "local_user" : "hosted_admin",
+      model: selectedLocalOllamaModel,
+    });
+
     try {
       sessionStorage.setItem(
         PENDING_HOME_MESSAGE,
         JSON.stringify(
           buildPendingHomeMessage({
-            message: starterMessage,
-            attachments: [],
+            ...handoffPayload,
             workspaceSlug: activeStatus.workspace.slug,
             threadSlug: null,
           })

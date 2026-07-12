@@ -70,6 +70,8 @@ describe("SWARMSY runtime chat flow wiring", () => {
     expect(homeSource).toContain("workspaceSlug: targetWorkspace.slug");
     expect(homeSource).toContain("threadSlug: targetThread || null");
     expect(onboardingSource).toContain("buildPendingHomeMessage");
+    expect(onboardingSource).toContain("buildOnboardingChatHandoffPayload");
+    expect(onboardingSource).toContain("...handoffPayload");
     expect(onboardingSource).toContain(
       "workspaceSlug: activeStatus.workspace.slug"
     );
