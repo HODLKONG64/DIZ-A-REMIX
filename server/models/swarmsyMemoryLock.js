@@ -19,7 +19,9 @@ function normalizeContent(value) {
 }
 
 function normalizeSource(value = "pasted") {
-  const source = String(value || "pasted").trim().toLowerCase();
+  const source = String(value || "pasted")
+    .trim()
+    .toLowerCase();
   if (!SwarmsyMemoryLock.VALID_SOURCES.includes(source))
     throw new Error(`Invalid Memory Lock source: ${source}`);
   return source;
