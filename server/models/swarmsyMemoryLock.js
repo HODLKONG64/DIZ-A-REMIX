@@ -8,7 +8,8 @@ function toInt(value, field = "value") {
 }
 
 function normalizeUserId(value) {
-  if (value === null || value === undefined) return null;
+  if (value === null || value === undefined)
+    throw new Error("userId is required.");
   return toInt(value, "userId");
 }
 
@@ -46,13 +47,13 @@ function publicLock(row = null) {
 const SwarmsyMemoryLock = {
   VALID_SOURCES: ["pasted", "generated", "uploaded"],
 
-  forUserWorkspace: async function ({ userId = null, workspaceId }) {
+  forUserWorkspace: async function ({ userId, workspaceId }) {
     try {
       const rows = await prisma.$queryRawUnsafe(
         `SELECT *
          FROM swarmsy_memory_locks
          WHERE workspace_id = ?
-           AND user_id IS ?
+           AND user_id = ?
            AND archived_at IS NULL
          ORDER BY is_active DESC, version DESC`,
         toInt(workspaceId, "workspaceId"),
@@ -65,14 +66,14 @@ const SwarmsyMemoryLock = {
     }
   },
 
-  getForUserWorkspace: async function ({ id, userId = null, workspaceId }) {
+  getForUserWorkspace: async function ({ id, userId, workspaceId }) {
     try {
       const rows = await prisma.$queryRawUnsafe(
         `SELECT *
          FROM swarmsy_memory_locks
          WHERE id = ?
            AND workspace_id = ?
-           AND user_id IS ?
+           AND user_id = ?
            AND archived_at IS NULL
          LIMIT 1`,
         toInt(id, "id"),
@@ -87,7 +88,7 @@ const SwarmsyMemoryLock = {
   },
 
   create: async function ({
-    userId = null,
+    userId,
     workspaceId,
     content,
     source = "pasted",
@@ -98,26 +99,26 @@ const SwarmsyMemoryLock = {
       const safeUserId = normalizeUserId(userId);
       const safeContent = normalizeContent(content);
       const safeSource = normalizeSource(source);
-      const latestRows = await prisma.$queryRawUnsafe(
-        `SELECT version
-         FROM swarmsy_memory_locks
-         WHERE workspace_id = ?
-           AND user_id IS ?
-         ORDER BY version DESC
-         LIMIT 1`,
-        safeWorkspaceId,
-        safeUserId
-      );
-      const version = Number(latestRows[0]?.version || 0) + 1;
-
       const insertedId = await prisma.$transaction(async (tx) => {
+        const latestRows = await tx.$queryRawUnsafe(
+          `SELECT version
+           FROM swarmsy_memory_locks
+           WHERE workspace_id = ?
+             AND user_id = ?
+           ORDER BY version DESC
+           LIMIT 1`,
+          safeWorkspaceId,
+          safeUserId
+        );
+        const version = Number(latestRows[0]?.version || 0) + 1;
+
         if (isActive) {
           await tx.$executeRawUnsafe(
             `UPDATE swarmsy_memory_locks
              SET is_active = false,
                  updated_at = CURRENT_TIMESTAMP
              WHERE workspace_id = ?
-               AND user_id IS ?
+               AND user_id = ?
                AND is_active = true`,
             safeWorkspaceId,
             safeUserId

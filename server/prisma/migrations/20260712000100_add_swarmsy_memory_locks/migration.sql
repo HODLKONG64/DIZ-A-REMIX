@@ -2,7 +2,7 @@
 CREATE TABLE "swarmsy_memory_locks" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "workspace_id" INTEGER NOT NULL,
-    "user_id" INTEGER,
+    "user_id" INTEGER NOT NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT false,
     "version" INTEGER NOT NULL,
     "source" TEXT NOT NULL DEFAULT 'pasted',

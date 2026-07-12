@@ -450,7 +450,7 @@ model memories {
 model swarmsy_memory_locks {
   id          Int       @id @default(autoincrement())
   workspaceId Int       @map("workspace_id")
-  userId      Int?      @map("user_id")
+  userId      Int       @map("user_id")
   isActive    Boolean   @default(false) @map("is_active")
   version     Int
   source      String    @default("pasted")
@@ -460,7 +460,7 @@ model swarmsy_memory_locks {
   updatedAt   DateTime  @default(now()) @map("updated_at")
 
   workspace workspaces @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
-  user      users?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      users      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([workspaceId, userId, version])
   @@index([workspaceId, userId, archivedAt])
