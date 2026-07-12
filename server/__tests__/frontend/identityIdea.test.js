@@ -36,6 +36,17 @@ describe("SWARMSY Identity Idea frontend contract", () => {
     ]);
   });
 
+  it("uses action ids as label keys for every proposal action", () => {
+    const actions = helpers.getIdentityIdeaActions({
+      id: 1,
+      status: "proposed",
+    });
+
+    for (const action of actions) {
+      expect(helpers.IDENTITY_IDEA_ACTION_LABELS[action.id]).toBe(action.label);
+    }
+  });
+
   it("offers brainstorming and explicit save only after an idea is kept", () => {
     expect(helpers.getIdentityIdeaActions({ id: 1, status: "kept" })).toEqual([
       { id: "brainstorm", label: "Talk it through with SPARKY" },
