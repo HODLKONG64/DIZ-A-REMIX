@@ -24,10 +24,16 @@ export function buildMemoryLockStarterMessage(
 
   const lockMetadata = lock
     ? `Stored Memory Lock metadata:
-- Version: ${lock.version || "unknown"}
-- Source: ${lock.source || "unknown"}
-- Active: ${lock.isActive ? "yes" : "no"}
-- Created: ${lock.createdAt || "unknown"}
+- Version: ${lock.version ?? "unknown"}
+- Source: ${lock.source ?? "unknown"}
+- Active: ${
+        typeof lock.isActive === "boolean"
+          ? lock.isActive
+            ? "yes"
+            : "no"
+          : "unknown"
+      }
+- Created: ${lock.createdAt ?? "unknown"}
 
 `
     : "";
