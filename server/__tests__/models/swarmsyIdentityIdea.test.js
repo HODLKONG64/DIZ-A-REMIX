@@ -165,6 +165,7 @@ describe("SwarmsyIdentityIdea", () => {
     ).resolves.toEqual({
       idea: null,
       message: "Identity Idea not found.",
+      errorCode: "NOT_FOUND",
     });
   });
 
