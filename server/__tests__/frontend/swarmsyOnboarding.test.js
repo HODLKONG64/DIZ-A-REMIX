@@ -356,6 +356,36 @@ describe("Swarmsy onboarding model", () => {
     expect(fetchImpl.mock.calls[0][1]).not.toHaveProperty("body");
   });
 
+  it("returns plain SPARKY recovery shapes when write actions lose connection", async () => {
+    const fetchImpl = jest.fn().mockRejectedValue(new Error("network down"));
+    const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+
+    await expect(
+      onboardingModel.startIntakeSession("swarmsy-hive", "hidden")
+    ).resolves.toEqual({
+      success: false,
+      session: null,
+      resumed: false,
+      message: "SPARKY could not start your questions.",
+    });
+    await expect(
+      onboardingModel.saveIntakeProgress("swarmsy-hive", 61, 2, {
+        goal: "build trust",
+      })
+    ).resolves.toEqual({
+      success: false,
+      session: null,
+      message: "SPARKY could not save your answer.",
+    });
+    await expect(
+      onboardingModel.completeIntakeSession("swarmsy-hive", 61)
+    ).resolves.toEqual({
+      success: false,
+      session: null,
+      message: "SPARKY could not finish your questions.",
+    });
+  });
+
   it("returns a plain SPARKY recovery message when progress cannot load", async () => {
     const fetchImpl = jest.fn().mockRejectedValue(new Error("network down"));
     const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
