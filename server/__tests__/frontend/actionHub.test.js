@@ -600,9 +600,12 @@ describe("SWARMSY HIVE action hub", () => {
       /function continueFromMemoryLock\(\)[\s\S]*?const handoffPayload = buildOnboardingChatHandoffPayload\({[\s\S]*?mode: isLocalUserMode \? "local_user" : "hosted_admin",[\s\S]*?model: selectedLocalOllamaModel,[\s\S]*?}\);/m
     );
     expect(source).toMatch(
+      /function continueFromSavedLock\(\)[\s\S]*?const handoffPayload = buildOnboardingChatHandoffPayload\({[\s\S]*?mode: isLocalUserMode \? "local_user" : "hosted_admin",[\s\S]*?model: selectedLocalOllamaModel,[\s\S]*?}\);/m
+    );
+    expect(source).toMatch(
       /\.\.\.handoffPayload,[\s\S]*?workspaceSlug: activeStatus\.workspace\.slug,[\s\S]*?threadSlug: null,/m
     );
-    expect(source).not.toContain("function continueFromSavedLock()");
+    expect(source).not.toContain("getLocalUserOllamaRuntimeSelection");
   });
 
   it("preserves saved local-user model selection through unverified status states", () => {
@@ -883,5 +886,253 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).not.toContain(
       "}, [hasVerifiedLocalOllamaModels, localOllamaStatus.models]);"
     );
+  });
+
+  it("includes saved Memory Lock history state in the action hub component", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("const [savedLocks, setSavedLocks]");
+    expect(source).toContain("const [savedLocksLoading, setSavedLocksLoading]");
+    expect(source).toContain("const [selectedLockId, setSelectedLockId]");
+  });
+
+  it("includes loadSavedLocks that calls memoryLocks and selects the active/newest lock", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("async function loadSavedLocks()");
+    expect(source).toContain("SwarmsyOnboarding.memoryLocks(workspaceSlug)");
+    expect(source).toContain("const activeLock = result.locks.find(");
+    expect(source).toContain(
+      "const defaultLock = activeLock || result.locks[0]"
+    );
+    expect(source).toContain("setSelectedLockId(defaultLock?.id ?? null)");
+    expect(source).toContain("setSavedLocksLoading(true)");
+    expect(source).toContain("setSavedLocksLoading(false)");
+  });
+
+  it("includes a Refresh control that triggers loadSavedLocks in the Memory Lock panel", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain('aria-label="Refresh saved Memory Locks"');
+    expect(source).toContain("Refresh");
+    expect(source).toContain("onClick={loadSavedLocks}");
+  });
+
+  it("includes continueFromSavedLock that fetches lock detail and builds the starter message", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("async function continueFromSavedLock()");
+    expect(source).toContain(
+      "SwarmsyOnboarding.memoryLock(\n      workspaceSlug,\n      selectedLockId\n    )"
+    );
+    expect(source).toContain(
+      "buildMemoryLockStarterMessage(result.lock.content, {"
+    );
+    expect(source).toContain("lock: result.lock,");
+    expect(source).toContain("Continue from saved lock");
+    expect(source).toContain("onClick={continueFromSavedLock}");
+  });
+
+  it("includes runtime handoff in continueFromSavedLock for local-user ollama selection", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    const fnStart = source.indexOf("async function continueFromSavedLock()");
+    const fnEnd = source.indexOf("\n  async function saveMemoryLockAsActive", fnStart);
+    const fnSource = source.slice(fnStart, fnEnd);
+
+    expect(fnSource).toContain("buildOnboardingChatHandoffPayload");
+    expect(fnSource).toContain(
+      'mode: isLocalUserMode ? "local_user" : "hosted_admin"'
+    );
+    expect(fnSource).not.toContain("getLocalUserOllamaRuntimeSelection");
+  });
+
+  it("includes saveMemoryLockAsActive that calls importMemoryLock for pasted content", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("async function saveMemoryLockAsActive()");
+    expect(source).toContain(
+      "SwarmsyOnboarding.importMemoryLock(\n      workspaceSlug,\n      memoryLockInput\n    )"
+    );
+    expect(source).toContain("Save as active lock");
+    expect(source).toContain("onClick={saveMemoryLockAsActive}");
+  });
+
+  it("preserves the existing paste-to-chat continue flow alongside the new controls", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("Continue from Memory Lock");
+    expect(source).toContain("onClick={continueFromMemoryLock}");
+    expect(source).toContain(
+      'placeholder="Paste your SWARMSY memory lock here."'
+    );
+  });
+
+  it("shows MEMORY_LOCK_EMPTY_ERROR when saving an empty paste as an active lock", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain(
+      "if (!memoryLockInput.trim()) {\n      setMemoryLockError(MEMORY_LOCK_EMPTY_ERROR);"
+    );
+  });
+
+  it("resets saved lock state when the Memory Lock panel is closed or becomes unavailable", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toMatch(
+      /closeMemoryLockPanel[\s\S]{0,300}setSavedLocks\(\[\]\)/
+    );
+    expect(source).toMatch(
+      /closeMemoryLockPanel[\s\S]{0,300}setSavedLocksLoading\(false\)/
+    );
+    expect(source).toMatch(
+      /closeMemoryLockPanel[\s\S]{0,300}setSelectedLockId\(null\)/
+    );
+  });
+
+  it("blocks local-user memory lock continuation without a selected installed Ollama model", () => {
+    const actionHub = loadActionHubModule();
+    const state = actionHub.getActionHubActionState({
+      status: buildReadyStatus(),
+      selectedMode: "face",
+      busyAction: null,
+      runtimeMode: "local_user",
+      localOllamaStatus: "reachable",
+      selectedLocalOllamaModel: "",
+      localOllamaModels: [{ id: "llama3.1:8b" }],
+    });
+
+    expect(state.actions.loadMemoryLock.disabled).toBe(true);
+    expect(state.actions.loadMemoryLock.disabledReason).toBe(
+      "Select an installed Ollama model before continuing from a memory lock."
+    );
+  });
+
+  it("blocks local-user memory lock continuation while Ollama status is unverified", () => {
+    const actionHub = loadActionHubModule();
+    const state = actionHub.getActionHubActionState({
+      status: buildReadyStatus(),
+      selectedMode: "face",
+      busyAction: null,
+      runtimeMode: "local_user",
+      localOllamaStatus: "checking",
+      selectedLocalOllamaModel: "llama3.1:8b",
+      localOllamaModels: [{ id: "llama3.1:8b" }],
+    });
+
+    expect(state.actions.loadMemoryLock.disabled).toBe(true);
+    expect(state.actions.loadMemoryLock.disabledReason).toBe(
+      "Check Local User Mode Ollama status and select an installed model before continuing from a memory lock."
+    );
+  });
+
+  it("blocks local-user memory lock continuation when selected model is stale or not installed", () => {
+    const actionHub = loadActionHubModule();
+    const state = actionHub.getActionHubActionState({
+      status: buildReadyStatus(),
+      selectedMode: "face",
+      busyAction: null,
+      runtimeMode: "local_user",
+      localOllamaStatus: "reachable",
+      selectedLocalOllamaModel: "stale:model",
+      localOllamaModels: [{ id: "llama3.1:8b" }],
+    });
+
+    expect(state.actions.loadMemoryLock.disabled).toBe(true);
+    expect(state.actions.loadMemoryLock.disabledReason).toBe(
+      "Select an installed Ollama model before continuing from a memory lock."
+    );
+  });
+
+  it("continueFromSavedLock uses buildOnboardingChatHandoffPayload for the handoff payload", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    const fnStart = source.indexOf("async function continueFromSavedLock()");
+    const fnEnd = source.indexOf(
+      "\n  async function saveMemoryLockAsActive",
+      fnStart
+    );
+    const fnSource = source.slice(fnStart, fnEnd);
+
+    expect(fnSource).toContain("buildOnboardingChatHandoffPayload");
+    expect(fnSource).toContain("actionHubState.actions.loadMemoryLock.disabledReason");
+  });
+
+  it("pasted memory lock continueFromMemoryLock uses buildOnboardingChatHandoffPayload and checks disabledReason", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    const fnStart = source.indexOf("function continueFromMemoryLock()");
+    const fnEnd = source.indexOf("\n  function createCampaignDay()", fnStart);
+    const fnSource = source.slice(fnStart, fnEnd);
+
+    expect(fnSource).toContain("buildOnboardingChatHandoffPayload");
+    expect(fnSource).toContain("actionHubState.actions.loadMemoryLock.disabledReason");
+    expect(fnSource).not.toContain("getLocalUserOllamaRuntimeSelection");
   });
 });

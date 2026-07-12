@@ -297,6 +297,9 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   const [memoryLockInput, setMemoryLockInput] = useState("");
   const [memoryLockError, setMemoryLockError] = useState("");
   const [memoryLockPanelOpen, setMemoryLockPanelOpen] = useState(false);
+  const [savedLocks, setSavedLocks] = useState([]);
+  const [savedLocksLoading, setSavedLocksLoading] = useState(false);
+  const [selectedLockId, setSelectedLockId] = useState(null);
   const [proofReviewInput, setProofReviewInput] = useState("");
   const [proofReviewError, setProofReviewError] = useState("");
   const [proofReviewPanelOpen, setProofReviewPanelOpen] = useState(false);
@@ -538,6 +541,9 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     setMemoryLockPanelOpen(false);
     setMemoryLockInput("");
     setMemoryLockError("");
+    setSavedLocks([]);
+    setSavedLocksLoading(false);
+    setSelectedLockId(null);
   }, [canLoadMemoryLock]);
 
   useEffect(() => {
@@ -782,7 +788,9 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `swarmsy-local-user-backup-${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `swarmsy-local-user-backup-${new Date()
+      .toISOString()
+      .slice(0, 10)}.json`;
     a.click();
     URL.revokeObjectURL(url);
     showToast("Local User backup exported.", "success");
@@ -1085,6 +1093,96 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     navigate(paths.workspace.chat(activeStatus.workspace.slug));
   }
 
+  async function loadSavedLocks() {
+    const workspaceSlug = activeStatus?.workspace?.slug;
+    if (!workspaceSlug) return;
+    setSavedLocksLoading(true);
+    const result = await SwarmsyOnboarding.memoryLocks(workspaceSlug);
+    setSavedLocksLoading(false);
+    if (result?.success && Array.isArray(result.locks)) {
+      setSavedLocks(result.locks);
+      const activeLock = result.locks.find((l) => l.isActive);
+      const defaultLock = activeLock || result.locks[0] || null;
+      setSelectedLockId(defaultLock?.id ?? null);
+    }
+  }
+
+  async function continueFromSavedLock() {
+    const workspaceSlug = activeStatus?.workspace?.slug;
+    if (!workspaceSlug || !selectedLockId) return;
+    setBusyAction("memory-lock");
+    const disabledReason = actionHubState.actions.loadMemoryLock.disabledReason;
+    if (disabledReason) {
+      showToast(disabledReason, "warning");
+      setBusyAction(null);
+      return;
+    }
+    const result = await SwarmsyOnboarding.memoryLock(
+      workspaceSlug,
+      selectedLockId
+    );
+    if (!result?.lock) {
+      setMemoryLockError("Could not load the selected memory lock. Try again.");
+      setBusyAction(null);
+      return;
+    }
+    const starterMessage = buildMemoryLockStarterMessage(result.lock.content, {
+      identityEmpireAvailable,
+      lock: result.lock,
+    });
+    if (!starterMessage) {
+      setMemoryLockError(MEMORY_LOCK_EMPTY_ERROR);
+      setBusyAction(null);
+      return;
+    }
+    const handoffPayload = buildOnboardingChatHandoffPayload({
+      message: starterMessage,
+      attachments: [],
+      mode: isLocalUserMode ? "local_user" : "hosted_admin",
+      model: selectedLocalOllamaModel,
+    });
+    try {
+      sessionStorage.setItem(
+        PENDING_HOME_MESSAGE,
+        JSON.stringify(
+          buildPendingHomeMessage({
+            ...handoffPayload,
+            workspaceSlug: activeStatus.workspace.slug,
+            threadSlug: null,
+          })
+        )
+      );
+    } catch {
+      setMemoryLockError(
+        "This memory lock could not be stored for chat handoff. Paste a shorter lock or enable browser session storage, then try again."
+      );
+      setBusyAction(null);
+      return;
+    }
+    navigate(paths.workspace.chat(activeStatus.workspace.slug));
+  }
+
+  async function saveMemoryLockAsActive() {
+    if (!memoryLockInput.trim()) {
+      setMemoryLockError(MEMORY_LOCK_EMPTY_ERROR);
+      return;
+    }
+    const workspaceSlug = activeStatus?.workspace?.slug;
+    if (!workspaceSlug) return;
+    setBusyAction("memory-lock-import");
+    const result = await SwarmsyOnboarding.importMemoryLock(
+      workspaceSlug,
+      memoryLockInput
+    );
+    setBusyAction(null);
+    if (result?.success) {
+      showToast("Memory Lock saved as active.", "success");
+      await loadSavedLocks();
+    } else {
+      showToast(result?.message || "Failed to save memory lock.", "error");
+    }
+  }
+
   function openMemoryLockPanel() {
     if (!canLoadMemoryLock) {
       showToast(MEMORY_LOCK_BLOCKED_MESSAGE, "warning");
@@ -1094,12 +1192,16 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     setSelectedMode("memory-lock");
     setMemoryLockError("");
     setMemoryLockPanelOpen(true);
+    loadSavedLocks();
   }
 
   function closeMemoryLockPanel() {
     setMemoryLockError("");
     setMemoryLockInput("");
     setMemoryLockPanelOpen(false);
+    setSavedLocks([]);
+    setSavedLocksLoading(false);
+    setSelectedLockId(null);
     if (selectedMode === "memory-lock") {
       setSelectedMode(null);
     }
@@ -1110,12 +1212,6 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     const disabledReason = actionHubState.actions.loadMemoryLock.disabledReason;
     if (disabledReason) {
       showToast(disabledReason, "warning");
-      setBusyAction(null);
-      return;
-    }
-
-    if (!canLoadMemoryLock) {
-      showToast(MEMORY_LOCK_BLOCKED_MESSAGE, "warning");
       setBusyAction(null);
       return;
     }
@@ -1390,7 +1486,9 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                 <p className="text-theme-text-secondary">Doctrine docs</p>
                 <p className="font-medium">
                   {activeStatus?.doctrine?.statusAvailable
-                    ? `${activeStatus.doctrine.requiredAttached ?? 0}/${activeStatus.doctrine.requiredLoadable ?? 0} loaded`
+                    ? `${activeStatus.doctrine.requiredAttached ?? 0}/${
+                        activeStatus.doctrine.requiredLoadable ?? 0
+                      } loaded`
                     : "Unavailable"}
                 </p>
               </div>
@@ -1662,7 +1760,97 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
 
                 {memoryLockPanelOpen && (
                   <div className="mt-4 rounded-2xl border border-theme-sidebar-border bg-theme-bg-secondary p-4">
-                    <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <h3 className="text-base font-semibold text-theme-text-primary">
+                        Saved Memory Locks
+                      </h3>
+                      <button
+                        type="button"
+                        disabled={Boolean(busyAction) || savedLocksLoading}
+                        onClick={loadSavedLocks}
+                        className="flex items-center gap-1 rounded-lg border border-theme-sidebar-border px-3 py-1 text-xs font-medium text-theme-text-primary transition hover:bg-theme-bg-menu disabled:cursor-not-allowed disabled:opacity-60"
+                        aria-label="Refresh saved Memory Locks"
+                      >
+                        <ArrowClockwise
+                          size={13}
+                          className={savedLocksLoading ? "animate-spin" : ""}
+                        />
+                        Refresh
+                      </button>
+                    </div>
+
+                    {savedLocksLoading && (
+                      <p className="mt-3 text-sm text-theme-text-secondary">
+                        Loading saved locks…
+                      </p>
+                    )}
+
+                    {!savedLocksLoading && savedLocks.length === 0 && (
+                      <p className="mt-3 text-sm text-theme-text-secondary">
+                        No saved Memory Locks found for this workspace.
+                      </p>
+                    )}
+
+                    {!savedLocksLoading && savedLocks.length > 0 && (
+                      <div className="mt-3 flex flex-col gap-2">
+                        {savedLocks.map((lock) => {
+                          const isSelected = selectedLockId === lock.id;
+                          return (
+                            <button
+                              key={lock.id}
+                              type="button"
+                              disabled={Boolean(busyAction)}
+                              onClick={() => setSelectedLockId(lock.id)}
+                              className={`rounded-2xl border p-3 text-left transition ${
+                                isSelected
+                                  ? "border-teal bg-teal/10"
+                                  : "border-theme-sidebar-border hover:bg-theme-bg-menu"
+                              } disabled:cursor-not-allowed disabled:opacity-60`}
+                            >
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs font-semibold text-theme-text-primary">
+                                  {lock.isActive ? "Active" : "History"}
+                                </span>
+                                {lock.version != null && (
+                                  <span className="text-xs text-theme-text-secondary">
+                                    v{lock.version}
+                                  </span>
+                                )}
+                                {lock.source && (
+                                  <span className="text-xs text-theme-text-secondary">
+                                    {lock.source}
+                                  </span>
+                                )}
+                              </div>
+                              {(lock.createdAt || lock.updatedAt) && (
+                                <p className="mt-1 text-xs text-theme-text-secondary">
+                                  {lock.updatedAt
+                                    ? `Updated ${lock.updatedAt}`
+                                    : `Created ${lock.createdAt}`}
+                                </p>
+                              )}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {selectedLockId && (
+                      <div className="mt-4">
+                        <ActionButton
+                          icon={CheckCircle}
+                          busy={busyAction === "memory-lock"}
+                          disabled={
+                            Boolean(busyAction) && busyAction !== "memory-lock"
+                          }
+                          onClick={continueFromSavedLock}
+                        >
+                          Continue from saved lock
+                        </ActionButton>
+                      </div>
+                    )}
+
+                    <div className="mt-6 space-y-2 border-t border-theme-sidebar-border pt-5">
                       <h3 className="text-base font-semibold text-theme-text-primary">
                         Paste your latest SWARMSY memory lock.
                       </h3>
@@ -1708,6 +1896,17 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                       >
                         Cancel
                       </button>
+                      <ActionButton
+                        icon={CheckCircle}
+                        busy={busyAction === "memory-lock-import"}
+                        disabled={
+                          Boolean(busyAction) &&
+                          busyAction !== "memory-lock-import"
+                        }
+                        onClick={saveMemoryLockAsActive}
+                      >
+                        Save as active lock
+                      </ActionButton>
                       <ActionButton
                         icon={CheckCircle}
                         busy={busyAction === "memory-lock"}
