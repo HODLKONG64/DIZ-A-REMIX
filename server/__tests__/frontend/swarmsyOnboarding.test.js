@@ -258,6 +258,98 @@ describe("Swarmsy onboarding model", () => {
     );
   });
 
+  it("lists the current user's Identity Ideas for a workspace", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        success: true,
+        ideas: [{ id: 51, status: "proposed", title: "Visible Builder" }],
+      }),
+    });
+    const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+
+    const response = await onboardingModel.identityIdeas("swarmsy-hive");
+
+    expect(response.ideas).toHaveLength(1);
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://localhost/api/swarmsy/workspaces/swarmsy-hive/identity-ideas",
+      expect.objectContaining({ headers: {} })
+    );
+  });
+
+  it("retrieves one Identity Idea before showing its actions", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        success: true,
+        idea: { id: 51, status: "kept", title: "Visible Builder" },
+      }),
+    });
+    const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+
+    const response = await onboardingModel.identityIdea("swarmsy-hive", 51);
+
+    expect(response.idea.id).toBe(51);
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://localhost/api/swarmsy/workspaces/swarmsy-hive/identity-ideas/51",
+      expect.objectContaining({ headers: {} })
+    );
+  });
+
+  it("creates a SPARKY Identity Idea proposal", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        success: true,
+        idea: { id: 51, status: "proposed" },
+      }),
+    });
+    const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+    const proposal = {
+      mode: "face",
+      title: "Visible Builder",
+      content: "Show the process and let proof build the identity.",
+    };
+
+    await onboardingModel.proposeIdentityIdea("swarmsy-hive", proposal);
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://localhost/api/swarmsy/workspaces/swarmsy-hive/identity-ideas/propose",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify(proposal),
+      })
+    );
+  });
+
+  it.each(["keep", "save", "delete"])(
+    "sends the plain %s decision for an Identity Idea",
+    async (decision) => {
+      const fetchImpl = jest.fn().mockResolvedValue({
+        ok: true,
+        json: jest.fn().mockResolvedValue({
+          success: true,
+          idea: { id: 51 },
+        }),
+      });
+      const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+
+      await onboardingModel.decideIdentityIdea(
+        "swarmsy-hive",
+        51,
+        decision
+      );
+
+      expect(fetchImpl).toHaveBeenCalledWith(
+        "http://localhost/api/swarmsy/workspaces/swarmsy-hive/identity-ideas/51/decision",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ decision }),
+        })
+      );
+    }
+  );
+
   it("passes local ComfyUI generation abort signals to fetch", async () => {
     const fetchImpl = jest.fn().mockResolvedValue({
       ok: true,
