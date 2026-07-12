@@ -45,6 +45,15 @@ jest.mock("../../models/swarmsyProofReview", () => ({
   },
 }));
 
+jest.mock("../../models/swarmsyIdentityIdea", () => ({
+  SwarmsyIdentityIdea: {
+    forUserWorkspace: jest.fn(),
+    getForUserWorkspace: jest.fn(),
+    createProposal: jest.fn(),
+    decide: jest.fn(),
+  },
+}));
+
 jest.mock("../../utils/swarmsy/sparkyWikiSeedPacks", () => ({
   getSparkyWikiSeedPack: jest.fn(),
   importSparkyWikiSeedPack: jest.fn(),
@@ -80,6 +89,7 @@ const { userFromSession } = require("../../utils/http");
 const { Workspace } = require("../../models/workspace");
 const { SwarmsyMemoryLock } = require("../../models/swarmsyMemoryLock");
 const { SwarmsyProofReview } = require("../../models/swarmsyProofReview");
+const { SwarmsyIdentityIdea } = require("../../models/swarmsyIdentityIdea");
 const {
   findUserSwarmsyHiveWorkspace,
   getSwarmsyOnboardingStatus,
@@ -124,6 +134,10 @@ const {
   swarmsyOnboardingCreateHive,
   swarmsyOnboardingIngestRequiredDocs,
   swarmsyOnboardingStatus,
+  swarmsyIdentityIdeaDecide,
+  swarmsyIdentityIdeaPropose,
+  swarmsyIdentityIdeaShow,
+  swarmsyIdentityIdeasList,
   swarmsyProofReviewImport,
   swarmsyProofReviewShow,
   swarmsyProofReviewsList,
@@ -206,6 +220,26 @@ describe("swarmsy endpoints", () => {
       "/swarmsy/workspaces/:slug/memory-locks/import",
       [validatedRequest, mockRoleMiddleware],
       swarmsyMemoryLockImport
+    );
+    expect(app.get).toHaveBeenCalledWith(
+      "/swarmsy/workspaces/:slug/identity-ideas",
+      [validatedRequest, mockRoleMiddleware],
+      swarmsyIdentityIdeasList
+    );
+    expect(app.get).toHaveBeenCalledWith(
+      "/swarmsy/workspaces/:slug/identity-ideas/:ideaId",
+      [validatedRequest, mockRoleMiddleware],
+      swarmsyIdentityIdeaShow
+    );
+    expect(app.post).toHaveBeenCalledWith(
+      "/swarmsy/workspaces/:slug/identity-ideas/propose",
+      [validatedRequest, mockRoleMiddleware],
+      swarmsyIdentityIdeaPropose
+    );
+    expect(app.post).toHaveBeenCalledWith(
+      "/swarmsy/workspaces/:slug/identity-ideas/:ideaId/decision",
+      [validatedRequest, mockRoleMiddleware],
+      swarmsyIdentityIdeaDecide
     );
     expect(app.get).toHaveBeenCalledWith(
       "/swarmsy/workspaces/:slug/proof-reviews",
@@ -469,6 +503,170 @@ describe("swarmsy endpoints", () => {
     expect(response.json).toHaveBeenCalledWith({
       success: false,
       message: "Memory Lock storage requires an authenticated user account.",
+    });
+  });
+
+  it("lists only the current user's Identity Ideas in an accessible workspace", async () => {
+    const request = { params: { slug: "swarmsy-hive" }, headers: {} };
+    const response = responseMock();
+    const user = { id: 12, role: "default" };
+    const workspace = { id: 9, slug: "swarmsy-hive", name: "SWARMSY HIVE" };
+    const ideas = [
+      {
+        id: 51,
+        userId: 12,
+        workspaceId: 9,
+        status: "proposed",
+        title: "Visible Builder",
+      },
+    ];
+
+    userFromSession.mockResolvedValue(user);
+    Workspace.getWithUser.mockResolvedValue(workspace);
+    SwarmsyIdentityIdea.forUserWorkspace.mockResolvedValue(ideas);
+
+    await swarmsyIdentityIdeasList(request, response);
+
+    expect(Workspace.getWithUser).toHaveBeenCalledWith(user, {
+      slug: "swarmsy-hive",
+    });
+    expect(SwarmsyIdentityIdea.forUserWorkspace).toHaveBeenCalledWith({
+      userId: 12,
+      workspaceId: 9,
+    });
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true, ideas })
+    );
+  });
+
+  it("does not reveal an Identity Idea outside the current user scope", async () => {
+    const request = {
+      params: { slug: "swarmsy-hive", ideaId: "51" },
+      headers: {},
+    };
+    const response = responseMock();
+    const user = { id: 12, role: "default" };
+    const workspace = { id: 9, slug: "swarmsy-hive", name: "SWARMSY HIVE" };
+
+    userFromSession.mockResolvedValue(user);
+    Workspace.getWithUser.mockResolvedValue(workspace);
+    SwarmsyIdentityIdea.getForUserWorkspace.mockResolvedValue(null);
+
+    await swarmsyIdentityIdeaShow(request, response);
+
+    expect(SwarmsyIdentityIdea.getForUserWorkspace).toHaveBeenCalledWith({
+      id: 51,
+      userId: 12,
+      workspaceId: 9,
+    });
+    expect(response.status).toHaveBeenCalledWith(404);
+    expect(response.json).toHaveBeenCalledWith({
+      success: false,
+      message: "Identity Idea not found.",
+    });
+  });
+
+  it("creates a SPARKY Identity Idea proposal for the current user", async () => {
+    const request = {
+      params: { slug: "swarmsy-hive" },
+      headers: {},
+      body: {
+        mode: "face",
+        title: "Visible Builder",
+        content: "A public identity built around showing the work.",
+      },
+    };
+    const response = responseMock();
+    const user = { id: 12, role: "default" };
+    const workspace = { id: 9, slug: "swarmsy-hive", name: "SWARMSY HIVE" };
+    const idea = {
+      id: 51,
+      userId: 12,
+      workspaceId: 9,
+      mode: "face",
+      status: "proposed",
+      title: "Visible Builder",
+    };
+
+    userFromSession.mockResolvedValue(user);
+    Workspace.getWithUser.mockResolvedValue(workspace);
+    SwarmsyIdentityIdea.createProposal.mockResolvedValue({
+      idea,
+      message: null,
+    });
+
+    await swarmsyIdentityIdeaPropose(request, response);
+
+    expect(SwarmsyIdentityIdea.createProposal).toHaveBeenCalledWith({
+      userId: 12,
+      workspaceId: 9,
+      mode: "face",
+      title: "Visible Builder",
+      content: "A public identity built around showing the work.",
+    });
+    expect(response.status).toHaveBeenCalledWith(200);
+    expect(response.json).toHaveBeenCalledWith(
+      expect.objectContaining({ success: true, idea })
+    );
+  });
+
+  it.each(["keep", "save", "delete"])(
+    "records a scoped %s decision for an Identity Idea",
+    async (decision) => {
+      const request = {
+        params: { slug: "swarmsy-hive", ideaId: "51" },
+        headers: {},
+        body: { decision },
+      };
+      const response = responseMock();
+      const user = { id: 12, role: "default" };
+      const workspace = {
+        id: 9,
+        slug: "swarmsy-hive",
+        name: "SWARMSY HIVE",
+      };
+      const idea = {
+        id: 51,
+        userId: 12,
+        workspaceId: 9,
+        status: { keep: "kept", save: "saved", delete: "deleted" }[decision],
+      };
+
+      userFromSession.mockResolvedValue(user);
+      Workspace.getWithUser.mockResolvedValue(workspace);
+      SwarmsyIdentityIdea.decide.mockResolvedValue({ idea, message: null });
+
+      await swarmsyIdentityIdeaDecide(request, response);
+
+      expect(SwarmsyIdentityIdea.decide).toHaveBeenCalledWith({
+        id: 51,
+        userId: 12,
+        workspaceId: 9,
+        decision,
+      });
+      expect(response.status).toHaveBeenCalledWith(200);
+      expect(response.json).toHaveBeenCalledWith(
+        expect.objectContaining({ success: true, idea })
+      );
+    }
+  );
+
+  it("rejects Identity Idea access without an authenticated user account", async () => {
+    const request = { params: { slug: "swarmsy-hive" }, headers: {} };
+    const response = responseMock();
+
+    userFromSession.mockResolvedValue(null);
+
+    await swarmsyIdentityIdeasList(request, response);
+
+    expect(Workspace.get).not.toHaveBeenCalled();
+    expect(Workspace.getWithUser).not.toHaveBeenCalled();
+    expect(SwarmsyIdentityIdea.forUserWorkspace).not.toHaveBeenCalled();
+    expect(response.status).toHaveBeenCalledWith(401);
+    expect(response.json).toHaveBeenCalledWith({
+      success: false,
+      message: "Identity Ideas require an authenticated user account.",
     });
   });
 
