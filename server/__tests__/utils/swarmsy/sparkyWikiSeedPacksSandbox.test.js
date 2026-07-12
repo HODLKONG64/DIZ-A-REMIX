@@ -391,7 +391,7 @@ describe("SPARKY Wiki seed pack sandbox stress test", () => {
       ),
       "utf8"
     );
-    expect(onboardingSource).toContain("getLocalUserOllamaRuntimeSelection");
+    expect(onboardingSource).toContain("buildOnboardingChatHandoffPayload");
     expect(handoffSource).toContain('provider: "ollama"');
     expect(hubSource).toContain("local-first reference knowledge");
     expect(hubSource).not.toMatch(

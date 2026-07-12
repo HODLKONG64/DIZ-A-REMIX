@@ -139,9 +139,8 @@ function getLocalUserRuntimeBlockedMessage({
     return requiredMessage;
   }
 
-  const installedModelIds = (Array.isArray(localOllamaModels)
-    ? localOllamaModels
-    : []
+  const installedModelIds = (
+    Array.isArray(localOllamaModels) ? localOllamaModels : []
   )
     .map((model) => String(model?.id || "").trim())
     .filter(Boolean);
@@ -177,14 +176,15 @@ export function getActionHubActionState({
   const memoryLockBlockedMessage = canContinueFromMemoryLock(status)
     ? null
     : MEMORY_LOCK_BLOCKED_MESSAGE;
-  const memoryLockLocalRuntimeBlockedMessage = getLocalUserRuntimeBlockedMessage({
-    runtimeMode,
-    localOllamaStatus,
-    selectedLocalOllamaModel,
-    localOllamaModels,
-    unverifiedMessage: MEMORY_LOCK_LOCAL_USER_MODEL_UNVERIFIED_MESSAGE,
-    requiredMessage: MEMORY_LOCK_LOCAL_USER_MODEL_REQUIRED_MESSAGE,
-  });
+  const memoryLockLocalRuntimeBlockedMessage =
+    getLocalUserRuntimeBlockedMessage({
+      runtimeMode,
+      localOllamaStatus,
+      selectedLocalOllamaModel,
+      localOllamaModels,
+      unverifiedMessage: MEMORY_LOCK_LOCAL_USER_MODEL_UNVERIFIED_MESSAGE,
+      requiredMessage: MEMORY_LOCK_LOCAL_USER_MODEL_REQUIRED_MESSAGE,
+    });
   const campaignBlockedMessage = getCampaignCalendarBlockedMessage(status);
   const proofBlockedMessage = getProofTrackerBlockedMessage(status);
 
@@ -202,7 +202,9 @@ export function getActionHubActionState({
         busy: busyAction === "memory-lock",
         disabled:
           globallyBusy ||
-          Boolean(memoryLockBlockedMessage || memoryLockLocalRuntimeBlockedMessage),
+          Boolean(
+            memoryLockBlockedMessage || memoryLockLocalRuntimeBlockedMessage
+          ),
         disabledReason:
           getBusyReasonForAction("memory-lock", busyAction) ||
           memoryLockBlockedMessage ||
