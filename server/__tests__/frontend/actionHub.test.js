@@ -822,4 +822,140 @@ describe("SWARMSY HIVE action hub", () => {
       "}, [hasVerifiedLocalOllamaModels, localOllamaStatus.models]);"
     );
   });
+
+  it("includes saved Memory Lock history state in the action hub component", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("const [savedLocks, setSavedLocks]");
+    expect(source).toContain("const [savedLocksLoading, setSavedLocksLoading]");
+    expect(source).toContain("const [selectedLockId, setSelectedLockId]");
+  });
+
+  it("includes loadSavedLocks that calls memoryLocks and selects the active/newest lock", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("async function loadSavedLocks()");
+    expect(source).toContain("SwarmsyOnboarding.memoryLocks(workspaceSlug)");
+    expect(source).toContain("const activeLock = result.locks.find(");
+    expect(source).toContain(
+      "const defaultLock = activeLock || result.locks[0]"
+    );
+    expect(source).toContain("setSelectedLockId(defaultLock?.id ?? null)");
+    expect(source).toContain("setSavedLocksLoading(true)");
+    expect(source).toContain("setSavedLocksLoading(false)");
+  });
+
+  it("includes a Refresh control that triggers loadSavedLocks in the Memory Lock panel", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain('aria-label="Refresh saved Memory Locks"');
+    expect(source).toContain("Refresh");
+    expect(source).toContain("onClick={loadSavedLocks}");
+  });
+
+  it("includes continueFromSavedLock that fetches lock detail and builds the starter message", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("async function continueFromSavedLock()");
+    expect(source).toContain(
+      "SwarmsyOnboarding.memoryLock(\n      workspaceSlug,\n      selectedLockId\n    )"
+    );
+    expect(source).toContain(
+      "buildMemoryLockStarterMessage(result.lock.content, {"
+    );
+    expect(source).toContain("lock: result.lock,");
+    expect(source).toContain("Continue from saved lock");
+    expect(source).toContain("onClick={continueFromSavedLock}");
+  });
+
+  it("includes saveMemoryLockAsActive that calls importMemoryLock for pasted content", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("async function saveMemoryLockAsActive()");
+    expect(source).toContain(
+      "SwarmsyOnboarding.importMemoryLock(\n      workspaceSlug,\n      memoryLockInput\n    )"
+    );
+    expect(source).toContain("Save as active lock");
+    expect(source).toContain("onClick={saveMemoryLockAsActive}");
+  });
+
+  it("preserves the existing paste-to-chat continue flow alongside the new controls", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("Continue from Memory Lock");
+    expect(source).toContain("onClick={continueFromMemoryLock}");
+    expect(source).toContain(
+      'placeholder="Paste your SWARMSY memory lock here."'
+    );
+  });
+
+  it("shows MEMORY_LOCK_EMPTY_ERROR when saving an empty paste as an active lock", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain(
+      "if (!memoryLockInput.trim()) {\n      setMemoryLockError(MEMORY_LOCK_EMPTY_ERROR);"
+    );
+  });
+
+  it("resets saved lock state when the Memory Lock panel is closed or becomes unavailable", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toMatch(
+      /closeMemoryLockPanel[\s\S]{0,300}setSavedLocks\(\[\]\)/
+    );
+    expect(source).toMatch(
+      /closeMemoryLockPanel[\s\S]{0,300}setSavedLocksLoading\(false\)/
+    );
+    expect(source).toMatch(
+      /closeMemoryLockPanel[\s\S]{0,300}setSelectedLockId\(null\)/
+    );
+  });
 });
