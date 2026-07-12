@@ -1078,7 +1078,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
         JSON.stringify(
           buildPendingHomeMessage({
             ...handoffPayload,
-            workspaceSlug: activeStatus.workspace.slug,
+            workspaceSlug,
             threadSlug: null,
           })
         )
@@ -1095,6 +1095,15 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   }
 
   function openIdentityIdeaChat(message) {
+    const workspaceSlug = activeStatus?.workspace?.slug;
+    if (!workspaceSlug) {
+      showToast(
+        "Open your SWARMSY workspace before continuing with SPARKY.",
+        "warning"
+      );
+      return;
+    }
+
     if (isLocalUserMode) {
       if (!hasVerifiedLocalOllamaModels) {
         showToast(INTAKE_LOCAL_USER_MODEL_UNVERIFIED_MESSAGE, "warning");
@@ -1132,7 +1141,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
       return;
     }
 
-    navigate(paths.workspace.chat(activeStatus.workspace.slug));
+    navigate(paths.workspace.chat(workspaceSlug));
   }
 
   async function loadSavedLocks() {
