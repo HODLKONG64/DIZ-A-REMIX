@@ -180,7 +180,10 @@ export default function IdentityIdeaPanel({
       )}
 
       {error && (
-        <p role="alert" className="mt-4 text-sm text-red-300 light:text-red-700">
+        <p
+          role="alert"
+          className="mt-4 text-sm text-red-300 light:text-red-700"
+        >
           {error}
         </p>
       )}
