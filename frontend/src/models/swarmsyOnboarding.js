@@ -106,6 +106,66 @@ const SwarmsyOnboarding = {
         message: "Failed to import SPARKY Wiki seed pack.",
       }));
   },
+  memoryLocks: async function (workspaceSlug) {
+    return await fetch(
+      `${API_BASE}/swarmsy/workspaces/${encodeURIComponent(
+        workspaceSlug
+      )}/memory-locks`,
+      {
+        headers: baseHeaders(),
+      }
+    )
+      .then((response) =>
+        parseResponse(response, "Failed to list SWARMSY Memory Locks.")
+      )
+      .catch(() => ({
+        success: false,
+        locks: [],
+        message: "Failed to list SWARMSY Memory Locks.",
+      }));
+  },
+  memoryLock: async function (workspaceSlug, lockId) {
+    return await fetch(
+      `${API_BASE}/swarmsy/workspaces/${encodeURIComponent(
+        workspaceSlug
+      )}/memory-locks/${encodeURIComponent(lockId)}`,
+      {
+        headers: baseHeaders(),
+      }
+    )
+      .then((response) =>
+        parseResponse(response, "Failed to retrieve SWARMSY Memory Lock.")
+      )
+      .catch(() => ({
+        success: false,
+        lock: null,
+        message: "Failed to retrieve SWARMSY Memory Lock.",
+      }));
+  },
+  importMemoryLock: async function (workspaceSlug, content) {
+    return await fetch(
+      `${API_BASE}/swarmsy/workspaces/${encodeURIComponent(
+        workspaceSlug
+      )}/memory-locks/import`,
+      {
+        method: "POST",
+        headers: baseHeaders(),
+        body: JSON.stringify({
+          content,
+          source: "pasted",
+          isActive: true,
+        }),
+      }
+    )
+      .then((response) =>
+        parseResponse(response, "Failed to import SWARMSY Memory Lock.")
+      )
+      .catch(() => ({
+        success: false,
+        lock: null,
+        message: "Failed to import SWARMSY Memory Lock.",
+      }));
+  },
   localUserOllamaStatus: async function ({ signal } = {}) {
     return await fetch(`${API_BASE}/swarmsy/local-user/ollama/status`, {
       headers: baseHeaders(),
