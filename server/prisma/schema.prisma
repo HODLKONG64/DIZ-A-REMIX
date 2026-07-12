@@ -156,6 +156,7 @@ model workspaces {
   swarmsy_memory_locks         swarmsy_memory_locks[]
   swarmsy_proof_reviews        swarmsy_proof_reviews[]
   swarmsy_identity_ideas        swarmsy_identity_ideas[]
+  swarmsy_intake_sessions       swarmsy_intake_sessions[]
 }
 
 model workspace_threads {
