@@ -1,7 +1,7 @@
 export const IDENTITY_IDEA_ACTION_LABELS = {
   keep: "Keep this idea",
   delete: "Delete",
-  tryAnother: "Try another",
+  "try-another": "Try another",
   brainstorm: "Talk it through with SPARKY",
   save: "Save this idea",
 };
@@ -12,7 +12,7 @@ export function getIdentityIdeaActions(idea = null) {
   if (idea.status === "proposed") {
     return [
       { id: "keep", label: IDENTITY_IDEA_ACTION_LABELS.keep },
-      { id: "try-another", label: IDENTITY_IDEA_ACTION_LABELS.tryAnother },
+      { id: "try-another", label: IDENTITY_IDEA_ACTION_LABELS["try-another"] },
       { id: "delete", label: IDENTITY_IDEA_ACTION_LABELS.delete },
     ];
   }
