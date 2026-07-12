@@ -535,12 +535,11 @@ describe("SWARMSY HIVE action hub", () => {
       "utf8"
     );
 
-    expect(source).toContain("getLocalUserOllamaRuntimeSelection");
-    expect(source).toContain("if (runtimeSelection)");
-    expect(source).toContain("handoffPayload.runtime = runtimeSelection");
+    expect(source).toContain("buildOnboardingChatHandoffPayload");
     expect(source).toContain(
       'mode: isLocalUserMode ? "local_user" : "hosted_admin"'
     );
+    expect(source).not.toContain("getLocalUserOllamaRuntimeSelection");
   });
 
   it("preserves saved local-user model selection through unverified status states", () => {
@@ -905,12 +904,11 @@ describe("SWARMSY HIVE action hub", () => {
     const fnEnd = source.indexOf("\n  async function saveMemoryLockAsActive", fnStart);
     const fnSource = source.slice(fnStart, fnEnd);
 
-    expect(fnSource).toContain("getLocalUserOllamaRuntimeSelection");
+    expect(fnSource).toContain("buildOnboardingChatHandoffPayload");
     expect(fnSource).toContain(
       'mode: isLocalUserMode ? "local_user" : "hosted_admin"'
     );
-    expect(fnSource).toContain("if (runtimeSelection)");
-    expect(fnSource).toContain("handoffPayload.runtime = runtimeSelection");
+    expect(fnSource).not.toContain("getLocalUserOllamaRuntimeSelection");
   });
 
   it("includes saveMemoryLockAsActive that calls importMemoryLock for pasted content", () => {
@@ -978,5 +976,97 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toMatch(
       /closeMemoryLockPanel[\s\S]{0,300}setSelectedLockId\(null\)/
     );
+  });
+
+  it("blocks local-user memory lock continuation without a selected installed Ollama model", () => {
+    const actionHub = loadActionHubModule();
+    const state = actionHub.getActionHubActionState({
+      status: buildReadyStatus(),
+      selectedMode: "face",
+      busyAction: null,
+      runtimeMode: "local_user",
+      localOllamaStatus: "reachable",
+      selectedLocalOllamaModel: "",
+      localOllamaModels: [{ id: "llama3.1:8b" }],
+    });
+
+    expect(state.actions.loadMemoryLock.disabled).toBe(true);
+    expect(state.actions.loadMemoryLock.disabledReason).toBe(
+      "Select an installed Ollama model before continuing from a memory lock."
+    );
+  });
+
+  it("blocks local-user memory lock continuation while Ollama status is unverified", () => {
+    const actionHub = loadActionHubModule();
+    const state = actionHub.getActionHubActionState({
+      status: buildReadyStatus(),
+      selectedMode: "face",
+      busyAction: null,
+      runtimeMode: "local_user",
+      localOllamaStatus: "checking",
+      selectedLocalOllamaModel: "llama3.1:8b",
+      localOllamaModels: [{ id: "llama3.1:8b" }],
+    });
+
+    expect(state.actions.loadMemoryLock.disabled).toBe(true);
+    expect(state.actions.loadMemoryLock.disabledReason).toBe(
+      "Check Local User Mode Ollama status and select an installed model before continuing from a memory lock."
+    );
+  });
+
+  it("blocks local-user memory lock continuation when selected model is stale or not installed", () => {
+    const actionHub = loadActionHubModule();
+    const state = actionHub.getActionHubActionState({
+      status: buildReadyStatus(),
+      selectedMode: "face",
+      busyAction: null,
+      runtimeMode: "local_user",
+      localOllamaStatus: "reachable",
+      selectedLocalOllamaModel: "stale:model",
+      localOllamaModels: [{ id: "llama3.1:8b" }],
+    });
+
+    expect(state.actions.loadMemoryLock.disabled).toBe(true);
+    expect(state.actions.loadMemoryLock.disabledReason).toBe(
+      "Select an installed Ollama model before continuing from a memory lock."
+    );
+  });
+
+  it("continueFromSavedLock uses buildOnboardingChatHandoffPayload for the handoff payload", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    const fnStart = source.indexOf("async function continueFromSavedLock()");
+    const fnEnd = source.indexOf(
+      "\n  async function saveMemoryLockAsActive",
+      fnStart
+    );
+    const fnSource = source.slice(fnStart, fnEnd);
+
+    expect(fnSource).toContain("buildOnboardingChatHandoffPayload");
+    expect(fnSource).toContain("actionHubState.actions.loadMemoryLock.disabledReason");
+  });
+
+  it("pasted memory lock continueFromMemoryLock uses buildOnboardingChatHandoffPayload and checks disabledReason", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    const fnStart = source.indexOf("function continueFromMemoryLock()");
+    const fnEnd = source.indexOf("\n  function createCampaignDay()", fnStart);
+    const fnSource = source.slice(fnStart, fnEnd);
+
+    expect(fnSource).toContain("buildOnboardingChatHandoffPayload");
+    expect(fnSource).toContain("actionHubState.actions.loadMemoryLock.disabledReason");
+    expect(fnSource).not.toContain("getLocalUserOllamaRuntimeSelection");
   });
 });

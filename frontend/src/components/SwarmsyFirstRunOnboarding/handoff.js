@@ -108,6 +108,32 @@ export function isLocalUserOllamaIntent(runtime = null) {
   );
 }
 
+export function buildOnboardingChatHandoffPayload({
+  message,
+  attachments = [],
+  runtime = null,
+  mode = "hosted_admin",
+  model = "",
+} = {}) {
+  const payload = {
+    message,
+    attachments: Array.isArray(attachments) ? attachments : [],
+  };
+
+  const runtimeSelection =
+    normalizeLocalUserOllamaRuntimeSelection(runtime) ||
+    getLocalUserOllamaRuntimeSelection({
+      mode,
+      model,
+    });
+
+  if (runtimeSelection) {
+    payload.runtime = runtimeSelection;
+  }
+
+  return payload;
+}
+
 export function canStartSwarmsyIntake(status, selectedMode) {
   if (selectedMode === "memory-lock") return false;
 
