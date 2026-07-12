@@ -192,6 +192,72 @@ describe("Swarmsy onboarding model", () => {
     );
   });
 
+  it("lists saved Memory Locks for a selected SWARMSY workspace", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        success: true,
+        locks: [{ id: 1, version: 2, isActive: true }],
+      }),
+    });
+    const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+
+    const response = await onboardingModel.memoryLocks("swarmsy-hive");
+
+    expect(response.locks).toHaveLength(1);
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://localhost/api/swarmsy/workspaces/swarmsy-hive/memory-locks",
+      expect.objectContaining({ headers: {} })
+    );
+  });
+
+  it("retrieves a single saved Memory Lock before chat handoff", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        success: true,
+        lock: { id: 7, content: "Memory Lock: current priority" },
+      }),
+    });
+    const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+
+    const response = await onboardingModel.memoryLock("swarmsy-hive", 7);
+
+    expect(response.lock.id).toBe(7);
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://localhost/api/swarmsy/workspaces/swarmsy-hive/memory-locks/7",
+      expect.objectContaining({ headers: {} })
+    );
+  });
+
+  it("imports pasted Memory Locks as active user-scoped storage records", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        success: true,
+        lock: { id: 8, version: 3, isActive: true },
+      }),
+    });
+    const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+
+    await onboardingModel.importMemoryLock(
+      "swarmsy-hive",
+      "Memory Lock: active state"
+    );
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://localhost/api/swarmsy/workspaces/swarmsy-hive/memory-locks/import",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          content: "Memory Lock: active state",
+          source: "pasted",
+          isActive: true,
+        }),
+      })
+    );
+  });
+
   it("passes local ComfyUI generation abort signals to fetch", async () => {
     const fetchImpl = jest.fn().mockResolvedValue({
       ok: true,

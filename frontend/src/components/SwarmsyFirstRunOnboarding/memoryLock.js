@@ -17,10 +17,26 @@ export function canContinueFromMemoryLock(status) {
 
 export function buildMemoryLockStarterMessage(
   memoryLock,
-  { identityEmpireAvailable = false } = {}
+  { identityEmpireAvailable = false, lock = null } = {}
 ) {
   const trimmedMemoryLock = `${memoryLock || ""}`.trim();
   if (!trimmedMemoryLock) return null;
+
+  const lockMetadata = lock
+    ? `Stored Memory Lock metadata:
+- Version: ${lock.version ?? "unknown"}
+- Source: ${lock.source ?? "unknown"}
+- Active: ${
+        typeof lock.isActive === "boolean"
+          ? lock.isActive
+            ? "yes"
+            : "no"
+          : "unknown"
+      }
+- Created: ${lock.createdAt ?? "unknown"}
+
+`
+    : "";
 
   const identityEmpireContext = identityEmpireAvailable
     ? "Identity Empire knowledge available: combine memory lock + current workspace memory + workspace docs + imported SPARKY Wiki Identity Empire sections as supporting local context. Use relevant audit, relaunch, offer, campaign, PR, hidden/public boundary, measurement, and next-move sections only when they fit. Do not overwrite Memory Lock or existing identity/template structure unless I explicitly confirm. Do not use web/API unless Use API is explicitly enabled for this message. Use Ollama/local-first behavior and never require online lookup."
@@ -42,6 +58,7 @@ First summarize the locked project state, then show:
 4. Next Best Action
 5. What I should ignore today
 
+${lockMetadata}
 Memory Lock:
 ${trimmedMemoryLock}`;
 }
