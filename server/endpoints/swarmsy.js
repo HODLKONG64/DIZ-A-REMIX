@@ -14,6 +14,7 @@ const {
 const { detectLocalOllama } = require("../utils/swarmsy/localUserOllama");
 const { Workspace } = require("../models/workspace");
 const { SwarmsyMemoryLock } = require("../models/swarmsyMemoryLock");
+const { SwarmsyProofReview } = require("../models/swarmsyProofReview");
 const {
   adminStatus: websiteNpcAdminStatus,
   allowedNpcIds: websiteNpcAllowedIds,
@@ -83,6 +84,31 @@ async function resolveMemoryLockRequest(request, response) {
     response.status(401).json({
       success: false,
       message: "Memory Lock storage requires an authenticated user account.",
+    });
+    return null;
+  }
+
+  const workspace = await resolveSelectedWorkspace(request, response, user);
+  if (!workspace) {
+    response.status(404).json({
+      success: false,
+      workspace: { exists: false },
+      message:
+        "Selected workspace was not found or is not available to this user.",
+    });
+    return null;
+  }
+
+  return { userId, workspace };
+}
+
+async function resolveProofReviewRequest(request, response) {
+  const user = await userFromSession(request, response);
+  const userId = Number(user?.id);
+  if (!Number.isInteger(userId) || userId <= 0) {
+    response.status(401).json({
+      success: false,
+      message: "Proof Tracker storage requires an authenticated user account.",
     });
     return null;
   }
@@ -362,6 +388,113 @@ async function swarmsyMemoryLockImport(request, response) {
     return response.status(500).json({
       success: false,
       message: "Failed to import SWARMSY Memory Lock.",
+    });
+  }
+}
+
+async function swarmsyProofReviewsList(request, response) {
+  try {
+    const context = await resolveProofReviewRequest(request, response);
+    if (!context) return;
+
+    const reviews = await SwarmsyProofReview.forUserWorkspace({
+      userId: context.userId,
+      workspaceId: context.workspace.id,
+    });
+    return response.status(200).json({
+      success: true,
+      workspace: swarmsyHiveWorkspaceSummary(context.workspace),
+      reviews,
+    });
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({
+      success: false,
+      message: "Failed to list SWARMSY Proof Reviews.",
+    });
+  }
+}
+
+async function swarmsyProofReviewShow(request, response) {
+  try {
+    const context = await resolveProofReviewRequest(request, response);
+    if (!context) return;
+
+    const reviewId = Number(request.params?.reviewId);
+    if (!Number.isInteger(reviewId) || reviewId <= 0) {
+      return response.status(404).json({
+        success: false,
+        message: "Proof Review not found.",
+      });
+    }
+
+    const review = await SwarmsyProofReview.getForUserWorkspace({
+      id: reviewId,
+      userId: context.userId,
+      workspaceId: context.workspace.id,
+    });
+    if (!review) {
+      return response.status(404).json({
+        success: false,
+        message: "Proof Review not found.",
+      });
+    }
+
+    return response.status(200).json({
+      success: true,
+      workspace: swarmsyHiveWorkspaceSummary(context.workspace),
+      review,
+    });
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({
+      success: false,
+      message: "Failed to retrieve SWARMSY Proof Review.",
+    });
+  }
+}
+
+async function swarmsyProofReviewImport(request, response) {
+  try {
+    const context = await resolveProofReviewRequest(request, response);
+    if (!context) return;
+
+    const {
+      content,
+      source = "pasted",
+      isActive = true,
+    } = reqBody(request) || {};
+    if (typeof isActive !== "boolean") {
+      return response.status(400).json({
+        success: false,
+        message: "isActive must be a boolean.",
+      });
+    }
+
+    const { review, message } = await SwarmsyProofReview.create({
+      userId: context.userId,
+      workspaceId: context.workspace.id,
+      content,
+      source,
+      isActive,
+    });
+    if (!review) {
+      return response.status(400).json({
+        success: false,
+        message: message || "Failed to import SWARMSY Proof Review.",
+      });
+    }
+
+    return response.status(200).json({
+      success: true,
+      workspace: swarmsyHiveWorkspaceSummary(context.workspace),
+      review,
+    });
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({
+      success: false,
+      message: "Failed to import SWARMSY Proof Review.",
     });
   }
 }
@@ -823,6 +956,24 @@ function swarmsyEndpoints(app) {
   );
 
   app.get(
+    "/swarmsy/workspaces/:slug/proof-reviews",
+    [validatedRequest, flexUserRoleValid([ROLES.all])],
+    swarmsyProofReviewsList
+  );
+
+  app.get(
+    "/swarmsy/workspaces/:slug/proof-reviews/:reviewId",
+    [validatedRequest, flexUserRoleValid([ROLES.all])],
+    swarmsyProofReviewShow
+  );
+
+  app.post(
+    "/swarmsy/workspaces/:slug/proof-reviews/import",
+    [validatedRequest, flexUserRoleValid([ROLES.all])],
+    swarmsyProofReviewImport
+  );
+
+  app.get(
     "/swarmsy/workspaces/:slug/sparky-prompt",
     [validatedRequest, flexUserRoleValid([ROLES.all])],
     swarmsyWorkspaceSparkyPromptStatus
@@ -924,4 +1075,7 @@ module.exports = {
   swarmsyOnboardingCreateHive,
   swarmsyOnboardingIngestRequiredDocs,
   swarmsyOnboardingStatus,
+  swarmsyProofReviewImport,
+  swarmsyProofReviewShow,
+  swarmsyProofReviewsList,
 };
