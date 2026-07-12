@@ -1078,7 +1078,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
         JSON.stringify(
           buildPendingHomeMessage({
             ...handoffPayload,
-            workspaceSlug,
+            workspaceSlug: activeStatus.workspace.slug,
             threadSlug: null,
           })
         )
@@ -1128,7 +1128,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
         JSON.stringify(
           buildPendingHomeMessage({
             ...handoffPayload,
-            workspaceSlug: activeStatus.workspace.slug,
+            workspaceSlug,
             threadSlug: null,
           })
         )
