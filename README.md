@@ -138,13 +138,14 @@ Shipped foundations include:
 - automatic recognition of clear “save this idea” instructions during an active Identity Idea brainstorm;
 - a simple returning-user home card that resumes unfinished questions or the latest active Identity Idea;
 - one-click SPARKY setup and plain-language recovery, with technical controls collapsed by default;
+- a deterministic full beginner-journey test covering setup, batched questions, Identity Idea creation, keep, SPARKY brainstorming, and final save;
 - durable, user-and-workspace-scoped Proof Review storage and authenticated API access;
 - Windows artifact, installer, integrity, and GitHub Release workflows.
 
 Important remaining product work includes:
 
 - a Proof Review history surface;
-- complete end-to-end beginner journey testing;
+- final beginner-facing wording and dead-end cleanup from the protected journey;
 - signed desktop releases and automatic updates.
 
 The Windows desktop build remains a beta. Builds are currently unsigned and do not auto-update.
