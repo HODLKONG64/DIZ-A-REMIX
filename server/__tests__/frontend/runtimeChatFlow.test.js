@@ -41,6 +41,13 @@ describe("SWARMSY runtime chat flow wiring", () => {
     );
     expect(source).toContain("if (shouldClearLegacy)");
     expect(source).toContain("sessionStorage.removeItem(PENDING_HOME_MESSAGE)");
+    expect(source).toContain("activeSwarmsyIntakeRef");
+    expect(source).toContain("SwarmsyOnboarding.activeIntakeSession");
+    expect(source).toContain("buildSwarmsyIntakeBatchProgress");
+    expect(source).toContain("saveSwarmsyIntakeAnswerBatch(currentMessage)");
+    expect(source).toContain("isSwarmsyIntakeCompleteMessage");
+    expect(source).toContain("SwarmsyOnboarding.completeIntakeSession");
+    expect(source).toContain("pending?.intakeSession?.id");
   });
 
   it("scopes pending handoff payloads to the destination workspace and thread", () => {
@@ -72,6 +79,8 @@ describe("SWARMSY runtime chat flow wiring", () => {
     expect(onboardingSource).toContain("buildPendingHomeMessage");
     expect(onboardingSource).toContain("buildOnboardingChatHandoffPayload");
     expect(onboardingSource).toContain("...handoffPayload");
+    expect(onboardingSource).toContain("intakeSession: intakeResult.session");
+    expect(onboardingSource).toContain("buildIntakeResumeMessage");
     expect(onboardingSource).toContain(
       "workspaceSlug: activeStatus.workspace.slug"
     );
@@ -85,6 +94,7 @@ describe("SWARMSY runtime chat flow wiring", () => {
     expect(pendingSource).toContain(
       "pendingThreadSlug !== normalizedThreadSlug"
     );
+    expect(pendingSource).toContain("intakeSession?.id");
   });
 
   it("sends runtime overrides in workspace and thread chat requests", () => {
