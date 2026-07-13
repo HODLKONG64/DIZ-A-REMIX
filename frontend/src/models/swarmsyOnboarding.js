@@ -376,7 +376,8 @@ const SwarmsyOnboarding = {
           status: "unavailable",
           source: "fallback",
           prompt: String(payload?.prompt || "").trim(),
-          message: "No image maker is connected yet, but your prompt is ready.",
+          message:
+            "SPARKY could not make an image this time, but your prompt is ready.",
         };
       });
   },
