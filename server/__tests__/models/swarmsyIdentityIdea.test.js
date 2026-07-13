@@ -58,9 +58,7 @@ describe("SwarmsyIdentityIdea", () => {
   });
 
   it("creates a proposed identity idea inside the insert transaction", async () => {
-    mockTransaction.$queryRawUnsafe
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ id: 5 }]);
+    mockTransaction.$queryRawUnsafe.mockResolvedValueOnce([{ id: 5 }]);
     mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([
       {
         id: 5,
@@ -99,19 +97,24 @@ describe("SwarmsyIdentityIdea", () => {
       })
     );
     expect(mockTransaction.$executeRawUnsafe).toHaveBeenCalledWith(
-      expect.stringContaining("INSERT INTO swarmsy_identity_ideas"),
+      expect.stringContaining("INSERT OR IGNORE INTO swarmsy_identity_ideas"),
       9,
       12,
       "face",
       "Visible Builder",
-      "A public identity based on showing the work."
+      "A public identity based on showing the work.",
+      expect.stringMatching(/^[a-f0-9]{64}$/)
     );
     expect(mockTransaction.$queryRawUnsafe).toHaveBeenCalledWith(
-      "SELECT last_insert_rowid() AS id"
+      expect.stringContaining("AND proposal_key = ?"),
+      9,
+      12,
+      expect.stringMatching(/^[a-f0-9]{64}$/)
     );
   });
 
   it("returns an existing identical proposal instead of creating a duplicate", async () => {
+    mockTransaction.$executeRawUnsafe.mockResolvedValueOnce(0);
     mockTransaction.$queryRawUnsafe.mockResolvedValueOnce([{ id: 5 }]);
     mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([
       {
@@ -139,7 +142,32 @@ describe("SwarmsyIdentityIdea", () => {
 
     expect(result.created).toBe(false);
     expect(result.idea.id).toBe(5);
-    expect(mockTransaction.$executeRawUnsafe).not.toHaveBeenCalled();
+    expect(mockTransaction.$executeRawUnsafe.mock.calls[0][0]).toContain(
+      "INSERT OR IGNORE"
+    );
+  });
+
+  it("rolls back cleanly when the proposal row id cannot be resolved", async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    mockTransaction.$queryRawUnsafe.mockResolvedValueOnce([]);
+
+    await expect(
+      SwarmsyIdentityIdea.createProposal({
+        userId: 12,
+        workspaceId: 9,
+        mode: "face",
+        title: "Visible Builder",
+        content: "A public identity based on showing the work.",
+      })
+    ).resolves.toEqual({
+      idea: null,
+      created: false,
+      message: "Identity Idea insert did not return an id.",
+    });
+
+    consoleErrorSpy.mockRestore();
   });
 
   it.each([
@@ -178,6 +206,7 @@ describe("SwarmsyIdentityIdea", () => {
       expect(idea.status).toBe(status);
       expect(mockPrisma.$queryRawUnsafe).toHaveBeenCalledWith(
         expect.stringContaining("AND user_id = ?"),
+        status,
         status,
         status,
         status,
