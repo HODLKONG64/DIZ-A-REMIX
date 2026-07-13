@@ -258,6 +258,147 @@ describe("Swarmsy onboarding model", () => {
     );
   });
 
+  it("loads saved beginner question progress for the selected workspace", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        success: true,
+        session: { id: 61, currentStep: 2 },
+      }),
+    });
+    const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+
+    const response =
+      await onboardingModel.activeIntakeSession("swarmsy-hive");
+
+    expect(response.session.currentStep).toBe(2);
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://localhost/api/swarmsy/workspaces/swarmsy-hive/intake-session",
+      expect.objectContaining({ headers: {} })
+    );
+  });
+
+  it("starts the beginner question path using only the selected mode", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        success: true,
+        session: { id: 61, mode: "hidden" },
+        resumed: false,
+      }),
+    });
+    const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+
+    await onboardingModel.startIntakeSession("swarmsy-hive", "hidden");
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://localhost/api/swarmsy/workspaces/swarmsy-hive/intake-session/start",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ mode: "hidden" }),
+      })
+    );
+  });
+
+  it("saves the current answer and question position", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        success: true,
+        session: { id: 61, currentStep: 3 },
+      }),
+    });
+    const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+    const answers = { goal: "build trust" };
+
+    await onboardingModel.saveIntakeProgress(
+      "swarmsy-hive",
+      61,
+      3,
+      answers
+    );
+
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://localhost/api/swarmsy/workspaces/swarmsy-hive/intake-session/61/progress",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ currentStep: 3, answers }),
+      })
+    );
+  });
+
+  it("finishes questions without sending technical configuration", async () => {
+    const fetchImpl = jest.fn().mockResolvedValue({
+      ok: true,
+      json: jest.fn().mockResolvedValue({
+        success: true,
+        nextAction: {
+          type: "create_identity_idea",
+          label: "Show me my idea",
+        },
+      }),
+    });
+    const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+
+    const response = await onboardingModel.completeIntakeSession(
+      "swarmsy-hive",
+      61
+    );
+
+    expect(response.nextAction.label).toBe("Show me my idea");
+    expect(fetchImpl).toHaveBeenCalledWith(
+      "http://localhost/api/swarmsy/workspaces/swarmsy-hive/intake-session/61/complete",
+      {
+        method: "POST",
+        headers: {},
+      }
+    );
+    expect(fetchImpl.mock.calls[0][1]).not.toHaveProperty("body");
+  });
+
+  it("returns plain SPARKY recovery shapes when write actions lose connection", async () => {
+    const fetchImpl = jest.fn().mockRejectedValue(new Error("network down"));
+    const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+
+    await expect(
+      onboardingModel.startIntakeSession("swarmsy-hive", "hidden")
+    ).resolves.toEqual({
+      success: false,
+      session: null,
+      resumed: false,
+      message: "SPARKY could not start your questions.",
+    });
+    await expect(
+      onboardingModel.saveIntakeProgress("swarmsy-hive", 61, 2, {
+        goal: "build trust",
+      })
+    ).resolves.toEqual({
+      success: false,
+      session: null,
+      message: "SPARKY could not save your answer.",
+    });
+    await expect(
+      onboardingModel.completeIntakeSession("swarmsy-hive", 61)
+    ).resolves.toEqual({
+      success: false,
+      session: null,
+      message: "SPARKY could not finish your questions.",
+    });
+  });
+
+  it("returns a plain SPARKY recovery message when progress cannot load", async () => {
+    const fetchImpl = jest.fn().mockRejectedValue(new Error("network down"));
+    const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
+
+    await expect(
+      onboardingModel.activeIntakeSession("swarmsy-hive")
+    ).resolves.toEqual({
+      success: false,
+      session: null,
+      message: "SPARKY could not resume your questions.",
+    });
+  });
+
   it("lists the current user's Identity Ideas for a workspace", async () => {
     const fetchImpl = jest.fn().mockResolvedValue({
       ok: true,
