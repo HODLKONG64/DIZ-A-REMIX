@@ -1847,16 +1847,16 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                           </button>
                         ))}
                       </div>
-                      {selectedCreativeIntensity && (
-                        <button
-                          type="button"
-                          disabled={Boolean(busyAction)}
-                          onClick={() => setSelectedCreativeIntensity(null)}
-                          className="mt-2 text-xs font-medium text-theme-text-secondary underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-                        >
-                          Ask me later
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        disabled={Boolean(busyAction)}
+                        onClick={() => setSelectedCreativeIntensity(null)}
+                        className="mt-2 text-xs font-medium text-theme-text-secondary underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {selectedCreativeIntensity
+                          ? "Clear choice — ask me later"
+                          : "Ask me later"}
+                      </button>
                     </div>
                   )}
                   {actionHubState.actions.startIntake.disabledReason && (
