@@ -9,6 +9,7 @@ export function buildPendingHomeMessage({
   message,
   attachments = [],
   runtime,
+  intakeSession = null,
   workspaceSlug = "",
   threadSlug = null,
 } = {}) {
@@ -21,6 +22,10 @@ export function buildPendingHomeMessage({
 
   if (runtime) {
     payload.runtime = runtime;
+  }
+
+  if (intakeSession?.id) {
+    payload.intakeSession = intakeSession;
   }
 
   return payload;
