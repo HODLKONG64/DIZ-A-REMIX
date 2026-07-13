@@ -15,7 +15,7 @@ export const ACTION_HUB_HELPER_COPY =
 export const ACTION_BUSY_MESSAGE =
   "Another SWARMSY action is already running. Wait for it to finish.";
 export const INTAKE_MODE_REQUIRED_MESSAGE =
-  "Choose Face Identity Mode, Hidden Identity Mode, or Existing Project first.";
+  "Choose whether SPARKY should build around you, create a hidden identity, or improve an existing project.";
 export const INTAKE_HIVE_MISSING_MESSAGE =
   "Create your SWARMSY HIVE before starting intake.";
 export const INTAKE_UNDERLOADED_MESSAGE =
