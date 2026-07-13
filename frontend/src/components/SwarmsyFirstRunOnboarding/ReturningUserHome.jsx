@@ -71,22 +71,22 @@ export default function ReturningUserHome({
     step?.kind === "intake"
       ? "Continue your questions"
       : step?.kind === "review"
-      ? "Your new idea is ready"
-      : `Continue “${step?.idea?.title || "your idea"}”`;
+        ? "Your new idea is ready"
+        : `Continue “${step?.idea?.title || "your idea"}”`;
   const description =
     step?.kind === "intake"
       ? "SPARKY saved your answers. Carry on from where you stopped—nothing needs to be entered again."
       : step?.kind === "review"
-      ? "SPARKY has an Identity Idea waiting for you. Keep it, delete it, or ask for another direction."
-      : step?.idea?.status === "saved"
-      ? "This idea is saved to your SWARMSY workspace. Keep shaping it with SPARKY whenever you are ready."
-      : "You kept this idea for discussion. Continue the same SPARKY brainstorm without starting over.";
+        ? "SPARKY has an Identity Idea waiting for you. Keep it, delete it, or ask for another direction."
+        : step?.idea?.status === "saved"
+          ? "This idea is saved to your SWARMSY workspace. Keep shaping it with SPARKY whenever you are ready."
+          : "You kept this idea for discussion. Continue the same SPARKY brainstorm without starting over.";
   const buttonLabel =
     step?.kind === "intake"
       ? "Continue your questions"
       : step?.kind === "review"
-      ? "Review my idea"
-      : "Continue with SPARKY";
+        ? "Review my idea"
+        : "Continue with SPARKY";
 
   return (
     <section
