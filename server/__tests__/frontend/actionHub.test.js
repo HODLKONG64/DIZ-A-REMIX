@@ -967,7 +967,10 @@ describe("SWARMSY HIVE action hub", () => {
     );
 
     const fnStart = source.indexOf("async function continueFromSavedLock()");
-    const fnEnd = source.indexOf("\n  async function saveMemoryLockAsActive", fnStart);
+    const fnEnd = source.indexOf(
+      "\n  async function saveMemoryLockAsActive",
+      fnStart
+    );
     const fnSource = source.slice(fnStart, fnEnd);
 
     expect(fnSource).toContain("buildOnboardingChatHandoffPayload");
@@ -1115,7 +1118,9 @@ describe("SWARMSY HIVE action hub", () => {
     const fnSource = source.slice(fnStart, fnEnd);
 
     expect(fnSource).toContain("buildOnboardingChatHandoffPayload");
-    expect(fnSource).toContain("actionHubState.actions.loadMemoryLock.disabledReason");
+    expect(fnSource).toContain(
+      "actionHubState.actions.loadMemoryLock.disabledReason"
+    );
   });
 
   it("pasted memory lock continueFromMemoryLock uses buildOnboardingChatHandoffPayload and checks disabledReason", () => {
@@ -1132,7 +1137,28 @@ describe("SWARMSY HIVE action hub", () => {
     const fnSource = source.slice(fnStart, fnEnd);
 
     expect(fnSource).toContain("buildOnboardingChatHandoffPayload");
-    expect(fnSource).toContain("actionHubState.actions.loadMemoryLock.disabledReason");
+    expect(fnSource).toContain(
+      "actionHubState.actions.loadMemoryLock.disabledReason"
+    );
     expect(fnSource).not.toContain("getLocalUserOllamaRuntimeSelection");
+  });
+
+  it("offers a plain-language WTF or SAFE choice without blocking intake", () => {
+    const source = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(source).toContain("How hard should SPARKY push?");
+    expect(source).toContain(
+      "Choose now, or SPARKY will ask after your questions."
+    );
+    expect(source).toContain("CREATIVE_INTENSITY_OPTIONS.map");
+    expect(source).toContain("aria-pressed");
+    expect(source).toContain("Ask me later");
+    expect(source).toContain("creativeIntensity: selectedCreativeIntensity");
   });
 });
