@@ -894,8 +894,8 @@ async function swarmsySparkyWikiSeedPackImport(request, response) {
     const statusCode = result.success
       ? 200
       : result.errorCode === "COLLECTOR_OFFLINE"
-      ? 503
-      : 400;
+        ? 503
+        : 400;
     return response.status(statusCode).json(result);
   } catch (error) {
     console.error(error);
