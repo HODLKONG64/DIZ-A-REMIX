@@ -44,7 +44,22 @@ describe("SWARMSY runtime chat flow wiring", () => {
     expect(source).toContain("activeSwarmsyIntakeRef");
     expect(source).toContain("SwarmsyOnboarding.activeIntakeSession");
     expect(source).toContain("buildSwarmsyIntakeBatchProgress");
-    expect(source).toContain("saveSwarmsyIntakeAnswerBatch(currentMessage)");
+    expect(source).toContain("queueSwarmsyIntakeAnswerBatch(currentMessage)");
+    expect(source).toContain("failedSwarmsyIntakeBatchesRef");
+    expect(source).toContain(
+      "failedSwarmsyIntakeBatchesRef.current.add(answer)"
+    );
+    expect(source).toContain(
+      "failedSwarmsyIntakeBatchesRef.current.delete(answer)"
+    );
+    expect(source).toContain("allAnswerBatchesSaved");
+    expect(source).toContain("swarmsyIntakeScopeRef.current += 1");
+    expect(source).toContain(
+      "swarmsyIntakeSaveRef.current = Promise.resolve(true)"
+    );
+    expect(source).toContain(
+      "failedSwarmsyIntakeBatchesRef.current = new Set()"
+    );
     expect(source).toContain("isSwarmsyIntakeCompleteMessage");
     expect(source).toContain("SwarmsyOnboarding.completeIntakeSession");
     expect(source).toContain("pending?.intakeSession?.id");
