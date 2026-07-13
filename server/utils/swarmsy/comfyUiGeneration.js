@@ -1,3 +1,4 @@
+const { randomInt } = require("crypto");
 const net = require("net");
 
 const {
@@ -13,6 +14,7 @@ const DEFAULT_POLL_INTERVAL_MS = 500;
 const DEFAULT_MAX_POLL_ATTEMPTS = 120;
 const DEFAULT_POLL_REQUEST_TIMEOUT_MS = 2_500;
 const DEFAULT_WORKFLOW_NAME = "user_supplied";
+const MAX_COMFYUI_SEED = 2_147_483_647;
 const TOKEN_PATTERN =
   /{{prompt}}|{{negativePrompt}}|{{seed}}|{{width}}|{{height}}/g;
 
@@ -83,6 +85,15 @@ function configuredWorkflowJson(
   } catch {
     return null;
   }
+}
+
+function defaultGenerationSeed() {
+  return randomInt(0, MAX_COMFYUI_SEED + 1);
+}
+
+function resolveGenerationSeed(seed, seedGenerator = defaultGenerationSeed) {
+  if (Number.isSafeInteger(seed) && seed >= 0) return seed;
+  return seedGenerator();
 }
 
 function resolveWorkflowPayload({
@@ -343,6 +354,7 @@ async function generateComfyUiImage({
   maxPollAttempts = DEFAULT_MAX_POLL_ATTEMPTS,
   now = () => new Date(),
   clientId = "swarmsy-local-user",
+  seedGenerator = defaultGenerationSeed,
 } = {}) {
   const resolvedUrl = resolveLocalImageEngineUrl(url);
   const safePrompt = String(prompt || "").trim();
@@ -389,12 +401,13 @@ async function generateComfyUiImage({
     };
   }
 
+  const resolvedSeed = resolveGenerationSeed(seed, seedGenerator);
   const workflowPayload = resolveWorkflowPayload({
     workflow,
     workflowJson,
     prompt: safePrompt,
     negativePrompt,
-    seed,
+    seed: resolvedSeed,
     size,
   });
   if (workflowPayload.error) {
@@ -488,7 +501,7 @@ async function generateComfyUiImage({
       metadata: {
         prompt: safePrompt,
         negativePrompt: String(negativePrompt || ""),
-        seed,
+        seed: resolvedSeed,
         size,
         workflow: workflowLabel(workflow),
         promptId,
@@ -518,8 +531,10 @@ module.exports = {
   buildViewUrl,
   cancelResponseBody,
   configuredWorkflowJson,
+  defaultGenerationSeed,
   generateComfyUiImage,
   hydrateWorkflowValue,
   isLocalComfyUiUrl,
+  resolveGenerationSeed,
   resolveWorkflowPayload,
 };
