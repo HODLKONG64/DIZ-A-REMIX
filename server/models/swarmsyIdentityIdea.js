@@ -115,7 +115,28 @@ const SwarmsyIdentityIdea = {
         "Identity Idea content"
       );
 
-      const insertedId = await prisma.$transaction(async (tx) => {
+      const proposal = await prisma.$transaction(async (tx) => {
+        const existingRows = await tx.$queryRawUnsafe(
+          `SELECT id
+           FROM swarmsy_identity_ideas
+           WHERE workspace_id = ?
+             AND user_id = ?
+             AND mode = ?
+             AND title = ?
+             AND content = ?
+             AND deleted_at IS NULL
+           ORDER BY id DESC
+           LIMIT 1`,
+          safeWorkspaceId,
+          safeUserId,
+          safeMode,
+          safeTitle,
+          safeContent
+        );
+        if (existingRows[0]?.id) {
+          return { id: existingRows[0].id, created: false };
+        }
+
         await tx.$executeRawUnsafe(
           `INSERT INTO swarmsy_identity_ideas
              (workspace_id, user_id, mode, status, title, content)
@@ -129,18 +150,18 @@ const SwarmsyIdentityIdea = {
         const rows = await tx.$queryRawUnsafe(
           "SELECT last_insert_rowid() AS id"
         );
-        return rows[0]?.id;
+        return { id: rows[0]?.id, created: true };
       });
 
       const idea = await this.getForUserWorkspace({
-        id: insertedId,
+        id: proposal.id,
         userId: safeUserId,
         workspaceId: safeWorkspaceId,
       });
-      return { idea, message: null };
+      return { idea, created: proposal.created, message: null };
     } catch (error) {
       console.error(error.message);
-      return { idea: null, message: error.message };
+      return { idea: null, created: false, message: error.message };
     }
   },
 
