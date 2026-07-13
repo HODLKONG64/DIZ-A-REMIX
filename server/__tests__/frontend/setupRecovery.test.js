@@ -44,6 +44,19 @@ describe("SPARKY automatic setup recovery", () => {
     });
   });
 
+  it("still offers prompt repair when the workspace documents are ready", () => {
+    expect(
+      getSparkySetupRecovery({
+        success: true,
+        workspace: { exists: true, ready: true },
+        sparkyPrompt: { missing: true },
+      })
+    ).toMatchObject({
+      title: "SPARKY needs a quick repair",
+      buttonLabel: "Fix SPARKY",
+    });
+  });
+
   it("does not claim the workspace is missing when the status check failed", () => {
     expect(
       getSparkySetupRecovery({
@@ -100,7 +113,14 @@ describe("SPARKY automatic setup recovery", () => {
     expect(source).toContain("Advanced setup details");
     expect(source).toContain("Advanced setup controls");
     expect(source).toContain('busyAction === "automatic-setup"');
-    expect(source).toContain("activeStatus?.workspace?.ready && (");
+    expect(source).toContain("const sparkyExperienceReady = Boolean(");
+    expect(source).toContain("!activeStatus?.sparkyPrompt?.missing");
+    expect(source.match(/\{sparkyExperienceReady && \(/g)).toHaveLength(2);
+    expect(source).toContain("const workspaceSlug = String(");
+    expect(source).toContain("if (!workspaceSlug)");
+    expect(source).toContain("const customPromptConfirmed =");
+    expect(source).toContain('typeof window.confirm === "function"');
+    expect(source).toContain("if (!customPromptConfirmed)");
     expect(source.indexOf("<SparkySetupRecovery")).toBeGreaterThan(
       source.indexOf("Welcome to SWARMSY HIVE")
     );
