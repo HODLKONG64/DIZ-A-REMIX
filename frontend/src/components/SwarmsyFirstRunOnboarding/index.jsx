@@ -70,23 +70,21 @@ import { LOCAL_USER_SETTINGS_SYNC_EVENT } from "@/components/SwarmsyLocalUserSet
 const IDENTITY_MODES = [
   {
     id: "face",
-    label: "Face Identity Mode",
-    description: "Build in public with SPARKY guiding the intake.",
+    label: "Build around me",
+    description:
+      "I will be the public face. SPARKY turns my story into an identity.",
   },
   {
     id: "hidden",
-    label: "Hidden Identity Mode",
-    description: "Build the hidden identity path before going public.",
+    label: "Build a hidden identity",
+    description:
+      "Keep me private. SPARKY creates a name, message, symbol, and world.",
   },
   {
     id: "existing-project",
-    label: "Existing Project",
-    description: "Continue from an existing project workspace when ready.",
-  },
-  {
-    id: "memory-lock",
-    label: "Load Memory Lock",
-    description: "Continue a returning SWARMSY project from your latest lock.",
+    label: "Bring in an existing project",
+    description:
+      "I already have something. SPARKY helps sharpen or reinvent it.",
   },
 ];
 const MEMORY_LOCK_ERROR_ID = "swarmsy-memory-lock-error";
@@ -1661,10 +1659,11 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
           </p>
           <div className="space-y-2">
             <h1 className="text-3xl font-semibold text-theme-text-primary md:text-4xl">
-              SPARKY is your project manager.
+              SPARKY helps build your identity.
             </h1>
             <p className="max-w-2xl text-base text-theme-text-secondary">
-              Are we building you as the face, or building a hidden identity?
+              Pick a starting point. SPARKY asks the questions, then creates
+              your first idea.
             </p>
           </div>
         </div>
@@ -1924,7 +1923,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                 {ACTION_HUB_TITLE}
               </p>
               <h2 className="text-2xl font-semibold text-theme-text-primary">
-                Choose the next command for SPARKY.
+                What would you like to do?
               </h2>
               <p className="max-w-3xl text-sm text-theme-text-secondary">
                 {ACTION_HUB_HELPER_COPY}
@@ -1953,20 +1952,13 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
 
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
                   {IDENTITY_MODES.map((mode) => {
-                    const selected =
-                      selectedMode === mode.id ||
-                      (mode.id === "memory-lock" && memoryLockPanelOpen);
+                    const selected = selectedMode === mode.id;
                     return (
                       <button
                         key={mode.id}
                         type="button"
                         disabled={Boolean(busyAction)}
                         onClick={() => {
-                          if (mode.id === "memory-lock") {
-                            openMemoryLockPanel();
-                            return;
-                          }
-
                           setMemoryLockPanelOpen(false);
                           setMemoryLockInput("");
                           setMemoryLockError("");
@@ -1996,12 +1988,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                   <p className="mt-2 text-sm text-theme-text-secondary">
                     {selectedIdentityMode
                       ? `${selectedIdentityMode.label} selected. ${selectedIdentityMode.description}`
-                      : "Choose Face Identity Mode, Hidden Identity Mode, or Existing Project before starting intake."}
-                  </p>
-                  <p className="mt-2 text-xs font-medium text-theme-text-secondary">
-                    {identityEmpireAvailable
-                      ? "Using local wiki knowledge when it fits this existing mode."
-                      : "No Identity Empire knowledge added yet."}
+                      : "Choose whether SPARKY should build around you, create a hidden identity, or improve something you already have."}
                   </p>
                   {selectedIdentityMode && (
                     <div className="mt-4">
@@ -2062,7 +2049,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                       disabled={actionHubState.actions.startIntake.disabled}
                       onClick={startIntake}
                     >
-                      Start Intake
+                      Start with SPARKY
                     </ActionButton>
                   </div>
                 </div>
@@ -2097,7 +2084,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                       disabled={actionHubState.actions.loadMemoryLock.disabled}
                       onClick={openMemoryLockPanel}
                     >
-                      Load Memory Lock
+                      Use saved progress
                     </ActionButton>
                   </div>
                 </div>
@@ -2391,7 +2378,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                         disabled={actionHubState.actions.reviewProof.disabled}
                         onClick={openProofReviewPanel}
                       >
-                        Review Proof / Find Proof Gaps
+                        Check my proof
                       </ActionButton>
                     </div>
                   ) : (
