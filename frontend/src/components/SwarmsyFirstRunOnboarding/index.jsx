@@ -63,6 +63,8 @@ import {
 import SwarmsyLocalUserSettingsHub from "@/components/SwarmsyLocalUserSettingsHub";
 import IdentityIdeaPanel from "./IdentityIdeaPanel";
 import ReturningUserHome from "./ReturningUserHome";
+import SparkySetupRecovery from "./SparkySetupRecovery";
+import { getSparkySetupRecovery } from "./setupRecovery";
 import { LOCAL_USER_SETTINGS_SYNC_EVENT } from "@/components/SwarmsyLocalUserSettingsHub/useLocalUserSettingsHub";
 
 const IDENTITY_MODES = [
@@ -301,6 +303,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   const [selectedCreativeIntensity, setSelectedCreativeIntensity] =
     useState(null);
   const [lastActionResult, setLastActionResult] = useState(null);
+  const [setupRecoveryResult, setSetupRecoveryResult] = useState(null);
   const [memoryLockInput, setMemoryLockInput] = useState("");
   const [memoryLockError, setMemoryLockError] = useState("");
   const [memoryLockPanelOpen, setMemoryLockPanelOpen] = useState(false);
@@ -693,6 +696,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   }, [localOllamaStatus.status, localOllamaStatus.models]);
 
   const copy = statusCopy(activeStatus);
+  const setupRecoveryStep = getSparkySetupRecovery(activeStatus);
   const identityEmpireAvailable = hasIdentityEmpireKnowledge(
     activeStatus?.sparkyWiki?.identityEmpire?.status || sparkyWikiPackStatus
   );
@@ -740,6 +744,109 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
       );
     }
     setBusyAction(null);
+  }
+
+  async function runAutomaticSparkySetup() {
+    if (busyAction) return;
+
+    setBusyAction("automatic-setup");
+    setLastActionResult(null);
+    setSetupRecoveryResult({
+      tone: "info",
+      message: "SPARKY is checking what needs fixing...",
+    });
+
+    try {
+      let currentStatus = await loadStatus();
+
+      if (!currentStatus?.workspace?.exists) {
+        const createResult = await SwarmsyOnboarding.createHive();
+        setLastActionResult({ kind: "create-hive", ...createResult });
+        if (!createResult?.success) {
+          throw new Error(
+            "SPARKY could not create its workspace. Check your connection and try again."
+          );
+        }
+        currentStatus = await loadStatus();
+      }
+
+      if (currentStatus?.sparkyPrompt?.missing) {
+        if (!currentStatus.sparkyPrompt.available) {
+          throw new Error(
+            "SPARKY's identity guide is unavailable. Restart SWARMSY, then try again."
+          );
+        }
+
+        const hasCustomPrompt =
+          currentStatus.sparkyPrompt.status === "custom_prompt";
+        if (
+          hasCustomPrompt &&
+          typeof window !== "undefined" &&
+          !window.confirm(
+            "This workspace has its own instructions. Replace them with SPARKY's SWARMSY identity guide?"
+          )
+        ) {
+          setSetupRecoveryResult({
+            tone: "info",
+            message:
+              "Nothing was changed. You can keep the current instructions.",
+          });
+          return;
+        }
+
+        const promptResult = await SwarmsyOnboarding.applySparkyPrompt(
+          currentStatus.workspace.slug,
+          true
+        );
+        setLastActionResult({ kind: "sparky-prompt", ...promptResult });
+        if (!promptResult?.success) {
+          throw new Error(
+            "SPARKY could not repair its identity guide. Restart SWARMSY, then try again."
+          );
+        }
+        currentStatus = await loadStatus();
+      }
+
+      if (doctrineUnavailable(currentStatus)) {
+        throw new Error(
+          "SPARKY cannot reach all of its setup files. Restart SWARMSY, then try again."
+        );
+      }
+
+      if (!currentStatus?.workspace?.ready) {
+        const setupResult = await SwarmsyOnboarding.ingestRequiredDocs();
+        setLastActionResult({ kind: "ingest-docs", ...setupResult });
+        if (!setupResult?.success) {
+          throw new Error(
+            setupResult?.errorCode === "COLLECTOR_OFFLINE"
+              ? "SPARKY's setup helper is not running. Restart SWARMSY, then try again."
+              : "SPARKY could not finish setup. Check your connection and try again."
+          );
+        }
+        currentStatus = await loadStatus();
+      }
+
+      if (!currentStatus?.workspace?.ready) {
+        throw new Error(
+          "SPARKY completed what it could, but one step still needs attention. Try the fix again."
+        );
+      }
+
+      setSetupRecoveryResult({
+        tone: "success",
+        message: "SPARKY is ready. Choose how you want to begin.",
+      });
+      showToast("SPARKY is ready.", "success");
+    } catch (error) {
+      setSetupRecoveryResult({
+        tone: "error",
+        message:
+          error?.message ||
+          "SPARKY could not finish setup. Restart SWARMSY, then try again.",
+      });
+    } finally {
+      setBusyAction(null);
+    }
   }
 
   async function checkLocalUserOllama() {
@@ -1546,6 +1653,13 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
           </div>
         </div>
 
+        <SparkySetupRecovery
+          step={setupRecoveryStep}
+          busy={busyAction === "automatic-setup"}
+          result={setupRecoveryResult}
+          onFix={runAutomaticSparkySetup}
+        />
+
         {activeStatus?.workspace?.ready && (
           <ReturningUserHome
             workspaceSlug={activeStatus?.workspace?.slug}
@@ -1556,78 +1670,83 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
           />
         )}
 
-        <div className="grid gap-4 lg:grid-cols-[1.4fr,0.9fr]">
-          <div className={`rounded-2xl border p-5 ${toneClasses(copy.tone)}`}>
-            <div className="flex items-start gap-3">
-              {copy.tone === "success" ? (
-                <CheckCircle size={22} weight="fill" className="mt-0.5" />
-              ) : (
-                <WarningCircle size={22} weight="fill" className="mt-0.5" />
-              )}
-              <div className="space-y-2">
-                <h2 className="text-lg font-semibold">{copy.title}</h2>
-                <p className="text-sm leading-6">{copy.description}</p>
-                {activeStatus?.doctrine?.note && (
-                  <p className="text-xs leading-5 opacity-80">
-                    {activeStatus.doctrine.note}
-                  </p>
+        <details className="rounded-2xl border border-theme-sidebar-border bg-theme-bg-secondary p-5">
+          <summary className="cursor-pointer text-sm font-medium text-theme-text-primary">
+            Advanced setup details
+          </summary>
+          <div className="mt-4 grid gap-4 lg:grid-cols-[1.4fr,0.9fr]">
+            <div className={`rounded-2xl border p-5 ${toneClasses(copy.tone)}`}>
+              <div className="flex items-start gap-3">
+                {copy.tone === "success" ? (
+                  <CheckCircle size={22} weight="fill" className="mt-0.5" />
+                ) : (
+                  <WarningCircle size={22} weight="fill" className="mt-0.5" />
                 )}
+                <div className="space-y-2">
+                  <h2 className="text-lg font-semibold">{copy.title}</h2>
+                  <p className="text-sm leading-6">{copy.description}</p>
+                  {activeStatus?.doctrine?.note && (
+                    <p className="text-xs leading-5 opacity-80">
+                      {activeStatus.doctrine.note}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="rounded-2xl border border-theme-sidebar-border bg-theme-bg-secondary p-5">
-            <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-theme-text-secondary">
-              HIVE snapshot
-            </h2>
-            <div className="mt-4 space-y-3 text-sm text-theme-text-primary">
-              <div>
-                <p className="text-theme-text-secondary">Workspace</p>
-                <p className="font-medium">
-                  {activeStatus?.workspace?.exists
-                    ? activeStatus.workspace.name
-                    : "Missing"}
-                </p>
-              </div>
-              <div>
-                <p className="text-theme-text-secondary">Readiness</p>
-                <p className="font-medium">
-                  {activeStatus?.workspace?.ready
-                    ? "Ready"
-                    : activeStatus?.workspace?.state || "setup_needed"}
-                </p>
-              </div>
-              <div>
-                <p className="text-theme-text-secondary">System prompt</p>
-                <p
-                  className={`font-medium ${
-                    sparkyPromptStatus?.applied
-                      ? "text-green-300 light:text-green-700"
-                      : "text-amber-200 light:text-amber-800"
-                  }`}
-                >
-                  {sparkyPromptStatus?.label || "SPARKY prompt missing"}
-                </p>
-                {sparkyPromptStatus?.missing && (
-                  <p className="mt-1 text-xs leading-5 text-theme-text-secondary">
-                    SPARKY prompt not applied. System Prompt Variables are
-                    placeholders, not the workspace system prompt.
+            <div className="rounded-2xl border border-theme-sidebar-border bg-theme-bg-secondary p-5">
+              <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-theme-text-secondary">
+                HIVE snapshot
+              </h2>
+              <div className="mt-4 space-y-3 text-sm text-theme-text-primary">
+                <div>
+                  <p className="text-theme-text-secondary">Workspace</p>
+                  <p className="font-medium">
+                    {activeStatus?.workspace?.exists
+                      ? activeStatus.workspace.name
+                      : "Missing"}
                   </p>
-                )}
-              </div>
-              <div>
-                <p className="text-theme-text-secondary">Doctrine docs</p>
-                <p className="font-medium">
-                  {activeStatus?.doctrine?.statusAvailable
-                    ? `${activeStatus.doctrine.requiredAttached ?? 0}/${
-                        activeStatus.doctrine.requiredLoadable ?? 0
-                      } loaded`
-                    : "Unavailable"}
-                </p>
+                </div>
+                <div>
+                  <p className="text-theme-text-secondary">Readiness</p>
+                  <p className="font-medium">
+                    {activeStatus?.workspace?.ready
+                      ? "Ready"
+                      : activeStatus?.workspace?.state || "setup_needed"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-theme-text-secondary">System prompt</p>
+                  <p
+                    className={`font-medium ${
+                      sparkyPromptStatus?.applied
+                        ? "text-green-300 light:text-green-700"
+                        : "text-amber-200 light:text-amber-800"
+                    }`}
+                  >
+                    {sparkyPromptStatus?.label || "SPARKY prompt missing"}
+                  </p>
+                  {sparkyPromptStatus?.missing && (
+                    <p className="mt-1 text-xs leading-5 text-theme-text-secondary">
+                      SPARKY prompt not applied. System Prompt Variables are
+                      placeholders, not the workspace system prompt.
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <p className="text-theme-text-secondary">Doctrine docs</p>
+                  <p className="font-medium">
+                    {activeStatus?.doctrine?.statusAvailable
+                      ? `${activeStatus.doctrine.requiredAttached ?? 0}/${
+                          activeStatus.doctrine.requiredLoadable ?? 0
+                        } loaded`
+                      : "Unavailable"}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </details>
 
         {isLocalUserMode && (
           <div id="swarmsy-image-ai-settings">
@@ -1696,75 +1815,90 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
           </div>
         )}
 
-        <div className="flex flex-wrap gap-3">
-          {!activeStatus?.workspace?.exists && (
+        <details className="rounded-2xl border border-theme-sidebar-border bg-theme-bg-secondary p-5">
+          <summary className="cursor-pointer text-sm font-medium text-theme-text-primary">
+            Advanced setup controls
+          </summary>
+          <div className="mt-4 flex flex-wrap gap-3">
+            {!activeStatus?.workspace?.exists && (
+              <ActionButton
+                icon={CheckCircle}
+                busy={busyAction === "create-hive"}
+                disabled={Boolean(busyAction) && busyAction !== "create-hive"}
+                onClick={createHive}
+              >
+                Create SWARMSY HIVE
+              </ActionButton>
+            )}
+
+            {activeStatus?.workspace?.exists &&
+              sparkyPromptStatus?.missing &&
+              sparkyPromptStatus?.available && (
+                <ActionButton
+                  icon={CheckCircle}
+                  busy={busyAction === "sparky-prompt"}
+                  disabled={
+                    Boolean(busyAction) && busyAction !== "sparky-prompt"
+                  }
+                  onClick={applySparkyPrompt}
+                >
+                  Apply/Repair SPARKY prompt
+                </ActionButton>
+              )}
+
+            {activeStatus?.workspace?.exists &&
+              !activeStatus?.workspace?.ready &&
+              !doctrineUnavailable(activeStatus) && (
+                <ActionButton
+                  icon={CheckCircle}
+                  busy={busyAction === "ingest-docs"}
+                  disabled={Boolean(busyAction) && busyAction !== "ingest-docs"}
+                  onClick={ingestRequiredDocs}
+                >
+                  Load Required Doctrine Docs
+                </ActionButton>
+              )}
+
             <ActionButton
-              icon={CheckCircle}
-              busy={busyAction === "create-hive"}
-              disabled={Boolean(busyAction) && busyAction !== "create-hive"}
-              onClick={createHive}
+              icon={ArrowClockwise}
+              busy={busyAction === "refresh"}
+              disabled={Boolean(busyAction) && busyAction !== "refresh"}
+              onClick={refreshReadiness}
             >
-              Create SWARMSY HIVE
+              Check HIVE Readiness
             </ActionButton>
-          )}
-
-          {activeStatus?.workspace?.exists &&
-            sparkyPromptStatus?.missing &&
-            sparkyPromptStatus?.available && (
-              <ActionButton
-                icon={CheckCircle}
-                busy={busyAction === "sparky-prompt"}
-                disabled={Boolean(busyAction) && busyAction !== "sparky-prompt"}
-                onClick={applySparkyPrompt}
-              >
-                Apply/Repair SPARKY prompt
-              </ActionButton>
-            )}
-
-          {activeStatus?.workspace?.exists &&
-            !activeStatus?.workspace?.ready &&
-            !doctrineUnavailable(activeStatus) && (
-              <ActionButton
-                icon={CheckCircle}
-                busy={busyAction === "ingest-docs"}
-                disabled={Boolean(busyAction) && busyAction !== "ingest-docs"}
-                onClick={ingestRequiredDocs}
-              >
-                Load Required Doctrine Docs
-              </ActionButton>
-            )}
-
-          <ActionButton
-            icon={ArrowClockwise}
-            busy={busyAction === "refresh"}
-            disabled={Boolean(busyAction) && busyAction !== "refresh"}
-            onClick={refreshReadiness}
-          >
-            Check HIVE Readiness
-          </ActionButton>
-        </div>
+          </div>
+        </details>
 
         {lastActionResult?.kind === "ingest-docs" &&
           (lastActionResult?.partial || !lastActionResult?.success) && (
             <div className="rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 text-amber-100 light:text-amber-900">
               <h2 className="text-base font-semibold">
-                Some doctrine docs could not be loaded.
+                SPARKY could not finish every setup step.
               </h2>
-              <p className="mt-2 text-sm">Review the failed items or retry.</p>
+              <p className="mt-2 text-sm">
+                Try the automatic fix again. Technical details are available
+                below if somebody is helping you.
+              </p>
               {failedItems.length > 0 && (
-                <ul className="mt-3 space-y-2 text-sm">
-                  {failedItems.map((item) => (
-                    <li key={`${item.path}-${item.reason}`}>
-                      <span className="font-medium">{item.path}</span>:{" "}
-                      {item.reason}
-                    </li>
-                  ))}
-                </ul>
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-sm font-medium">
+                    Show technical details
+                  </summary>
+                  <ul className="mt-3 space-y-2 text-sm">
+                    {failedItems.map((item) => (
+                      <li key={`${item.path}-${item.reason}`}>
+                        <span className="font-medium">{item.path}</span>:{" "}
+                        {item.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
               )}
             </div>
           )}
 
-        {activeStatus?.workspace?.exists && (
+        {activeStatus?.workspace?.ready && (
           <div
             id="swarmsy-action-hub"
             className="scroll-mt-6 rounded-2xl border border-theme-sidebar-border bg-theme-bg-secondary p-5"
