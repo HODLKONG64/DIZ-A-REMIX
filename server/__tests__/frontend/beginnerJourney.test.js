@@ -13,7 +13,7 @@ function loadFrontendHelpers(relativePath, exportedNames) {
     .concat(`\nmodule.exports = { ${exportedNames.join(", ")} };`);
   const sandbox = { module: { exports: {} }, exports: {} };
   vm.createContext(sandbox);
-  new vm.Script(source).runInContext(sandbox);
+  new vm.Script(source, { filename: relativePath }).runInContext(sandbox);
   return sandbox.module.exports;
 }
 
@@ -41,7 +41,8 @@ function loadSwarmsyOnboardingModel(fetchImpl) {
     `const API_BASE = "http://localhost/api";
 const baseHeaders = () => ({});
 const fetch = __mockFetch;
-${source}`
+${source}`,
+    { filename: "frontend/src/models/swarmsyOnboarding.js" }
   ).runInContext(sandbox);
   return sandbox.module.exports;
 }
@@ -226,6 +227,7 @@ describe("complete beginner SPARKY journey", () => {
       started.session,
       "1. I want people to question waste.\n76. Keep me anonymous."
     );
+    expect(progress).not.toBeNull();
     await api.saveIntakeProgress(
       "swarmsy-hive",
       started.session.id,
