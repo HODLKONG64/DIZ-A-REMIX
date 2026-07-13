@@ -97,6 +97,8 @@ jobs:
 
       - name: Install production server dependencies
         working-directory: server
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: yarn install --frozen-lockfile --production=true
 
       - name: Validate yarn lockfiles
