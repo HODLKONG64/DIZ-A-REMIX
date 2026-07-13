@@ -149,6 +149,9 @@ describe("SWARMSY Identity Idea frontend contract", () => {
     "save this idea",
     "Great, save that idea to workspace.",
     "save this idea to my workspace",
+    "save this idea please",
+    "save that idea, please",
+    "save it to workspace, please!",
     "perfect save it",
     "Please lock it in!",
   ])("recognises the explicit save instruction: %s", (message) => {
@@ -162,6 +165,7 @@ describe("SWARMSY Identity Idea frontend contract", () => {
     "Why save this idea?",
     "This idea could work",
     "save the image prompt",
+    "please don't save this idea",
   ])("does not treat discussion as approval: %s", (message) => {
     expect(helpers.isExplicitIdentityIdeaSaveMessage(message)).toBe(false);
   });
