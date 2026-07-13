@@ -627,6 +627,7 @@ describe("swarmsy endpoints", () => {
     Workspace.getWithUser.mockResolvedValue(workspace);
     SwarmsyIdentityIdea.createProposal.mockResolvedValue({
       idea,
+      created: true,
       message: null,
     });
 
@@ -641,7 +642,7 @@ describe("swarmsy endpoints", () => {
     });
     expect(response.status).toHaveBeenCalledWith(200);
     expect(response.json).toHaveBeenCalledWith(
-      expect.objectContaining({ success: true, idea })
+      expect.objectContaining({ success: true, idea, created: true })
     );
   });
 
