@@ -1,6 +1,4 @@
 export function getSparkySetupRecovery(status = null) {
-  if (status?.workspace?.ready) return null;
-
   if (status?.success === false) {
     return {
       title: "SPARKY could not finish checking the app",
@@ -27,6 +25,8 @@ export function getSparkySetupRecovery(status = null) {
       buttonLabel: "Fix SPARKY",
     };
   }
+
+  if (status?.workspace?.ready) return null;
 
   return {
     title: "SPARKY is nearly ready",
