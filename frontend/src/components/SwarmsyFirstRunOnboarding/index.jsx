@@ -17,6 +17,7 @@ import {
   INTAKE_LOCAL_USER_MODEL_REQUIRED_MESSAGE,
   INTAKE_LOCAL_USER_MODEL_UNVERIFIED_MESSAGE,
   ACTION_HUB_TITLE,
+  getIntakeDisabledMessage,
   getActionHubActionState,
 } from "./actionHub";
 import {
@@ -61,6 +62,7 @@ import {
 } from "@/utils/localUserBackup";
 import SwarmsyLocalUserSettingsHub from "@/components/SwarmsyLocalUserSettingsHub";
 import IdentityIdeaPanel from "./IdentityIdeaPanel";
+import ReturningUserHome from "./ReturningUserHome";
 import { LOCAL_USER_SETTINGS_SYNC_EVENT } from "@/components/SwarmsyLocalUserSettingsHub/useLocalUserSettingsHub";
 
 const IDENTITY_MODES = [
@@ -694,10 +696,6 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   const identityEmpireAvailable = hasIdentityEmpireKnowledge(
     activeStatus?.sparkyWiki?.identityEmpire?.status || sparkyWikiPackStatus
   );
-  const intakeStarter = getIntakeStarterMessage(selectedMode, {
-    identityEmpireAvailable,
-    creativeIntensity: selectedCreativeIntensity,
-  });
   const canCreateCampaignDay = canUseCalendar && Boolean(campaignDate?.trim());
   const actionHubState = getActionHubActionState({
     status: activeStatus,
@@ -1052,8 +1050,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     setBusyAction(null);
   }
 
-  async function startIntake() {
-    const disabledReason = actionHubState.actions.startIntake.disabledReason;
+  async function startIntakeForMode(mode, disabledReason = null) {
     if (disabledReason) {
       showToast(disabledReason, "warning");
       return;
@@ -1081,7 +1078,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     setBusyAction("start-intake");
     const intakeResult = await SwarmsyOnboarding.startIntakeSession(
       workspaceSlug,
-      selectedMode
+      mode
     );
     if (!intakeResult?.success || !intakeResult?.session) {
       showToast(
@@ -1096,8 +1093,12 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
       showToast("Welcome back — SPARKY found where you left off.", "info");
     }
 
+    const starterMessage = getIntakeStarterMessage(mode, {
+      identityEmpireAvailable,
+      creativeIntensity: selectedCreativeIntensity,
+    });
     const handoffPayload = buildOnboardingChatHandoffPayload({
-      message: buildIntakeResumeMessage(intakeStarter, intakeResult.session),
+      message: buildIntakeResumeMessage(starterMessage, intakeResult.session),
       attachments: [],
       mode: isLocalUserMode ? "local_user" : "hosted_admin",
       model: selectedLocalOllamaModel,
@@ -1189,6 +1190,30 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     }
 
     navigate(paths.workspace.chat(workspaceSlug));
+  }
+
+  async function startIntake() {
+    return startIntakeForMode(
+      selectedMode,
+      actionHubState.actions.startIntake.disabledReason
+    );
+  }
+
+  async function continueReturningIntake(session) {
+    const mode = session?.mode;
+    const disabledReason = getIntakeDisabledMessage(activeStatus, mode, {
+      runtimeMode: isLocalUserMode ? "local_user" : "hosted_admin",
+      localOllamaStatus: localOllamaStatus.status,
+      selectedLocalOllamaModel,
+      localOllamaModels: localOllamaStatus.models,
+    });
+    return startIntakeForMode(mode, disabledReason);
+  }
+
+  function showAllSwarmsyChoices() {
+    document
+      .getElementById("swarmsy-action-hub")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function loadSavedLocks() {
@@ -1521,6 +1546,16 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
           </div>
         </div>
 
+        {activeStatus?.workspace?.ready && (
+          <ReturningUserHome
+            workspaceSlug={activeStatus?.workspace?.slug}
+            busy={Boolean(busyAction)}
+            onContinueIntake={continueReturningIntake}
+            onContinueIdea={openIdentityIdeaChat}
+            onShowChoices={showAllSwarmsyChoices}
+          />
+        )}
+
         <div className="grid gap-4 lg:grid-cols-[1.4fr,0.9fr]">
           <div className={`rounded-2xl border p-5 ${toneClasses(copy.tone)}`}>
             <div className="flex items-start gap-3">
@@ -1730,7 +1765,10 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
           )}
 
         {activeStatus?.workspace?.exists && (
-          <div className="rounded-2xl border border-theme-sidebar-border bg-theme-bg-secondary p-5">
+          <div
+            id="swarmsy-action-hub"
+            className="scroll-mt-6 rounded-2xl border border-theme-sidebar-border bg-theme-bg-secondary p-5"
+          >
             <div className="space-y-2">
               <p className="text-sm font-semibold uppercase tracking-[0.2em] text-theme-text-secondary">
                 {ACTION_HUB_TITLE}
