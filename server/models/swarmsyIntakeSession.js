@@ -138,7 +138,11 @@ const SwarmsyIntakeSession = {
 
       return {
         session,
-        resumed: Boolean(session && session.currentStep > 0),
+        resumed: Boolean(
+          session &&
+            (session.currentStep > 0 ||
+              Object.keys(session.answers || {}).length > 0)
+        ),
         message: null,
       };
     } catch (error) {
