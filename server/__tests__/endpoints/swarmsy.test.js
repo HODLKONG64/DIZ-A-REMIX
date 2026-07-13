@@ -1146,7 +1146,10 @@ describe("swarmsy endpoints", () => {
     await swarmsyLocalUserImageEngineGenerate(request, response);
 
     expect(response.status).toHaveBeenCalledWith(200);
-    expect(response.json).toHaveBeenCalledWith({\n      ...result,\n      prompt: "stencil ape",\n    });
+    expect(response.json).toHaveBeenCalledWith({
+      ...result,
+      prompt: "stencil ape",
+    });
   });
 
   it("keeps local image generation behind existing local-user mode guard", () => {
@@ -1801,7 +1804,6 @@ describe("swarmsy endpoints", () => {
       })
     );
   });
-
 });
 
 describe("SWARMSY website NPC public bridge", () => {
