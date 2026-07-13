@@ -64,6 +64,7 @@ describe("ComfyUI local generation", () => {
     jest.clearAllMocks();
     process.env = { ...originalEnv };
     delete process.env.SWARMSY_LOCAL_COMFYUI_URL;
+    delete process.env.SWARMSY_COMFYUI_WORKFLOW_JSON;
     delete process.env.COMFYUI_BASE_URL;
   });
 
