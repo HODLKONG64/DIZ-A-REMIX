@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { SpinnerGap } from "@phosphor-icons/react";
 import SwarmsyOnboarding from "@/models/swarmsyOnboarding";
 import {
+  buildIdentityIdeaImagePrompt,
   buildIdentityIdeaSparkyMessage,
   getIdentityIdeaActions,
+  getIdentityIdeaImageMessage,
 } from "./identityIdea";
 
 const STATUS_LABELS = {
@@ -15,12 +17,16 @@ const STATUS_LABELS = {
 export default function IdentityIdeaPanel({
   workspaceSlug,
   onOpenChat,
+  onConnectImageAI,
   confirmDelete = (message) => window.confirm(message),
 }) {
   const [ideas, setIdeas] = useState([]);
   const [loading, setLoading] = useState(Boolean(workspaceSlug));
   const [busyAction, setBusyAction] = useState(null);
+  const [imageStates, setImageStates] = useState({});
+  const [copiedIdeaId, setCopiedIdeaId] = useState(null);
   const [error, setError] = useState("");
+  const attemptedIdeaIdsRef = useRef(new Set());
 
   const loadIdeas = useCallback(async () => {
     if (!workspaceSlug) {
@@ -43,9 +49,51 @@ export default function IdentityIdeaPanel({
     setIdeas(Array.isArray(result.ideas) ? result.ideas : []);
   }, [workspaceSlug]);
 
+  const attemptImage = useCallback(async (idea, { retry = false } = {}) => {
+    const prompt = buildIdentityIdeaImagePrompt(idea);
+    if (!prompt) return;
+
+    if (!retry && attemptedIdeaIdsRef.current.has(idea.id)) return;
+    attemptedIdeaIdsRef.current.add(idea.id);
+    setImageStates((current) => ({
+      ...current,
+      [idea.id]: { status: "generating", prompt, result: null },
+    }));
+
+    const result = await SwarmsyOnboarding.localUserImageEngineGenerate({
+      prompt,
+      size: "1024x1024",
+    });
+
+    setImageStates((current) => ({
+      ...current,
+      [idea.id]: {
+        status: result?.success && result?.image?.url ? "completed" : "prompt",
+        prompt: result?.prompt || prompt,
+        result,
+      },
+    }));
+  }, []);
+
   useEffect(() => {
     void loadIdeas();
   }, [loadIdeas]);
+
+  useEffect(() => {
+    ideas.forEach((idea) => {
+      void attemptImage(idea);
+    });
+  }, [attemptImage, ideas]);
+
+  async function copyImagePrompt(ideaId, prompt) {
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setCopiedIdeaId(ideaId);
+      setError("");
+    } catch {
+      setError("Your browser could not copy the prompt. Select the text and copy it.");
+    }
+  }
 
   async function recordDecision(idea, decision) {
     if (!workspaceSlug) {
@@ -96,6 +144,16 @@ export default function IdentityIdeaPanel({
       return;
     }
     onOpenChat(message);
+  }
+
+  function connectImageAI() {
+    if (typeof onConnectImageAI === "function") {
+      onConnectImageAI();
+      return;
+    }
+    setError(
+      "No image maker is connected yet. Your prompt is still ready to copy."
+    );
   }
 
   function handleAction(idea, actionId) {
@@ -150,42 +208,115 @@ export default function IdentityIdeaPanel({
         </div>
       ) : (
         <div className="mt-5 grid gap-4 lg:grid-cols-2">
-          {ideas.map((idea) => (
-            <article
-              key={idea.id}
-              className="rounded-2xl border border-theme-sidebar-border bg-theme-bg-secondary p-5"
-            >
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal">
-                {STATUS_LABELS[idea.status] || "Your idea"}
-              </p>
-              <h4 className="mt-2 text-lg font-semibold text-theme-text-primary">
-                {idea.title}
-              </h4>
-              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-theme-text-secondary">
-                {idea.content}
-              </p>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {getIdentityIdeaActions(idea).map((action) => (
-                  <button
-                    key={action.id}
-                    type="button"
-                    disabled={busyAction !== null}
-                    onClick={() => handleAction(idea, action.id)}
-                    className="rounded-lg border border-theme-sidebar-border px-3 py-2 text-sm font-medium text-theme-text-primary transition hover:border-teal hover:bg-teal/10 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {busyAction?.ideaId === idea.id &&
-                    busyAction?.actionId === action.id
-                      ? {
-                          keep: "Keeping...",
-                          save: "Saving...",
-                          delete: "Deleting...",
-                        }[action.id]
-                      : action.label}
-                  </button>
-                ))}
-              </div>
-            </article>
-          ))}
+          {ideas.map((idea) => {
+            const imageState = imageStates[idea.id];
+            const prompt =
+              imageState?.prompt || buildIdentityIdeaImagePrompt(idea);
+
+            return (
+              <article
+                key={idea.id}
+                className="rounded-2xl border border-theme-sidebar-border bg-theme-bg-secondary p-5"
+              >
+                <p className="text-xs font-semibold uppercase tracking-[0.16em] text-teal">
+                  {STATUS_LABELS[idea.status] || "Your idea"}
+                </p>
+                <h4 className="mt-2 text-lg font-semibold text-theme-text-primary">
+                  {idea.title}
+                </h4>
+                <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-theme-text-secondary">
+                  {idea.content}
+                </p>
+
+                {prompt && (
+                  <div className="mt-5 rounded-xl border border-teal/30 bg-theme-bg-menu p-4">
+                    <p className="font-semibold text-theme-text-primary">
+                      SPARKY image mockup
+                    </p>
+
+                    {imageState?.status === "generating" ? (
+                      <p className="mt-2 flex items-center gap-2 text-sm text-theme-text-secondary">
+                        <SpinnerGap className="animate-spin" size={18} />
+                        SPARKY is trying to make this image...
+                      </p>
+                    ) : (
+                      <p className="mt-2 text-sm leading-6 text-theme-text-secondary">
+                        {getIdentityIdeaImageMessage(imageState?.result)}
+                      </p>
+                    )}
+
+                    {imageState?.result?.success &&
+                      imageState.result?.image?.url && (
+                        <img
+                          src={imageState.result.image.url}
+                          alt={`SPARKY mockup for ${idea.title}`}
+                          className="mt-4 max-h-80 w-full rounded-xl object-contain"
+                        />
+                      )}
+
+                    <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-theme-text-secondary">
+                      Exact image prompt
+                    </p>
+                    <pre className="mt-2 max-h-64 overflow-y-auto whitespace-pre-wrap rounded-lg border border-theme-sidebar-border bg-theme-bg-secondary p-3 text-xs leading-5 text-theme-text-primary">
+                      {prompt}
+                    </pre>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => void copyImagePrompt(idea.id, prompt)}
+                        className="rounded-lg border border-theme-sidebar-border px-3 py-2 text-sm font-medium text-theme-text-primary transition hover:border-teal hover:bg-teal/10"
+                      >
+                        {copiedIdeaId === idea.id ? "Prompt copied" : "Copy prompt"}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={imageState?.status === "generating"}
+                        onClick={() => void attemptImage(idea, { retry: true })}
+                        className="rounded-lg border border-theme-sidebar-border px-3 py-2 text-sm font-medium text-theme-text-primary transition hover:border-teal hover:bg-teal/10 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Make another version
+                      </button>
+                      {!imageState?.result?.success && (
+                        <button
+                          type="button"
+                          onClick={connectImageAI}
+                          className="rounded-lg border border-theme-sidebar-border px-3 py-2 text-sm font-medium text-theme-text-primary transition hover:border-teal hover:bg-teal/10"
+                        >
+                          Connect image AI
+                        </button>
+                      )}
+                    </div>
+                    <p className="mt-3 text-xs leading-5 text-theme-text-secondary">
+                      You can always paste this prompt into ChatGPT or another
+                      image AI, make more versions, and pick your favourite.
+                    </p>
+                  </div>
+                )}
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {getIdentityIdeaActions(idea).map((action) => (
+                    <button
+                      key={action.id}
+                      type="button"
+                      disabled={busyAction !== null}
+                      onClick={() => handleAction(idea, action.id)}
+                      className="rounded-lg border border-theme-sidebar-border px-3 py-2 text-sm font-medium text-theme-text-primary transition hover:border-teal hover:bg-teal/10 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {busyAction?.ideaId === idea.id &&
+                      busyAction?.actionId === action.id
+                        ? {
+                            keep: "Keeping...",
+                            save: "Saving...",
+                            delete: "Deleting...",
+                          }[action.id]
+                        : action.label}
+                    </button>
+                  ))}
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
 
