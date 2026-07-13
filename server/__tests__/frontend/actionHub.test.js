@@ -1159,6 +1159,10 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).toContain("CREATIVE_INTENSITY_OPTIONS.map");
     expect(source).toContain("aria-pressed");
     expect(source).toContain("Ask me later");
+    expect(source).toContain("Clear choice — ask me later");
+    expect(source).not.toMatch(
+      /selectedCreativeIntensity\s*&&\s*\(\s*<button[\s\S]{0,500}Ask me later/
+    );
     expect(source).toContain("creativeIntensity: selectedCreativeIntensity");
   });
 });
