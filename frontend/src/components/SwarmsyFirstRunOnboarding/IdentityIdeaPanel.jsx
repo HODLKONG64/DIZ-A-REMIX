@@ -169,7 +169,14 @@ export default function IdentityIdeaPanel({
       setError("SPARKY could not open this idea. Try again.");
       return;
     }
-    onOpenChat(message);
+    onOpenChat(message, {
+      identityIdea: tryAnother
+        ? null
+        : {
+            id: idea.id,
+            title: idea.title,
+          },
+    });
   }
 
   function connectImageAI() {
