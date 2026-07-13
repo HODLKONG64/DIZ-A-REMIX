@@ -58,7 +58,9 @@ describe("SwarmsyIdentityIdea", () => {
   });
 
   it("creates a proposed identity idea inside the insert transaction", async () => {
-    mockTransaction.$queryRawUnsafe.mockResolvedValueOnce([{ id: 5 }]);
+    mockTransaction.$queryRawUnsafe
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ id: 5 }]);
     mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([
       {
         id: 5,
@@ -75,15 +77,18 @@ describe("SwarmsyIdentityIdea", () => {
       },
     ]);
 
-    const { idea, message } = await SwarmsyIdentityIdea.createProposal({
-      userId: 12,
-      workspaceId: 9,
-      mode: "face",
-      title: "Visible Builder",
-      content: "A public identity based on showing the work.",
-    });
+    const { idea, created, message } = await SwarmsyIdentityIdea.createProposal(
+      {
+        userId: 12,
+        workspaceId: 9,
+        mode: "face",
+        title: "Visible Builder",
+        content: "A public identity based on showing the work.",
+      }
+    );
 
     expect(message).toBeNull();
+    expect(created).toBe(true);
     expect(idea).toEqual(
       expect.objectContaining({
         id: 5,
@@ -106,6 +111,37 @@ describe("SwarmsyIdentityIdea", () => {
     );
   });
 
+  it("returns an existing identical proposal instead of creating a duplicate", async () => {
+    mockTransaction.$queryRawUnsafe.mockResolvedValueOnce([{ id: 5 }]);
+    mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([
+      {
+        id: 5,
+        workspace_id: 9,
+        user_id: 12,
+        mode: "face",
+        status: "proposed",
+        title: "Visible Builder",
+        content: "A public identity based on showing the work.",
+        approved_at: null,
+        deleted_at: null,
+        created_at: new Date("2026-07-12T00:00:00.000Z"),
+        updated_at: new Date("2026-07-12T00:00:00.000Z"),
+      },
+    ]);
+
+    const result = await SwarmsyIdentityIdea.createProposal({
+      userId: 12,
+      workspaceId: 9,
+      mode: "face",
+      title: "Visible Builder",
+      content: "A public identity based on showing the work.",
+    });
+
+    expect(result.created).toBe(false);
+    expect(result.idea.id).toBe(5);
+    expect(mockTransaction.$executeRawUnsafe).not.toHaveBeenCalled();
+  });
+
   it.each([
     ["keep", "kept"],
     ["save", "saved"],
@@ -114,32 +150,32 @@ describe("SwarmsyIdentityIdea", () => {
     "records the user's %s decision without leaving their scope",
     async (decision, status) => {
       mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([
-      {
+        {
+          id: 5,
+          workspace_id: 9,
+          user_id: 12,
+          mode: "face",
+          status,
+          title: "Visible Builder",
+          content: "A public identity based on showing the work.",
+          approved_at:
+            status === "saved" ? new Date("2026-07-12T01:00:00.000Z") : null,
+          deleted_at:
+            status === "deleted" ? new Date("2026-07-12T01:00:00.000Z") : null,
+          created_at: new Date("2026-07-12T00:00:00.000Z"),
+          updated_at: new Date("2026-07-12T01:00:00.000Z"),
+        },
+      ]);
+
+      const { idea, message } = await SwarmsyIdentityIdea.decide({
         id: 5,
-        workspace_id: 9,
-        user_id: 12,
-        mode: "face",
-        status,
-        title: "Visible Builder",
-        content: "A public identity based on showing the work.",
-        approved_at:
-          status === "saved" ? new Date("2026-07-12T01:00:00.000Z") : null,
-        deleted_at:
-          status === "deleted" ? new Date("2026-07-12T01:00:00.000Z") : null,
-        created_at: new Date("2026-07-12T00:00:00.000Z"),
-        updated_at: new Date("2026-07-12T01:00:00.000Z"),
-      },
-    ]);
+        userId: 12,
+        workspaceId: 9,
+        decision,
+      });
 
-    const { idea, message } = await SwarmsyIdentityIdea.decide({
-      id: 5,
-      userId: 12,
-      workspaceId: 9,
-      decision,
-    });
-
-    expect(message).toBeNull();
-    expect(idea.status).toBe(status);
+      expect(message).toBeNull();
+      expect(idea.status).toBe(status);
       expect(mockPrisma.$queryRawUnsafe).toHaveBeenCalledWith(
         expect.stringContaining("AND user_id = ?"),
         status,
@@ -183,6 +219,7 @@ describe("SwarmsyIdentityIdea", () => {
       })
     ).resolves.toEqual({
       idea: null,
+      created: false,
       message: "userId is required.",
     });
 
@@ -196,6 +233,7 @@ describe("SwarmsyIdentityIdea", () => {
       })
     ).resolves.toEqual({
       idea: null,
+      created: false,
       message: "Identity Idea content is required.",
     });
 
