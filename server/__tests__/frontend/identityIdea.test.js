@@ -26,6 +26,26 @@ function loadIdentityIdeaHelpers() {
 describe("SWARMSY Identity Idea frontend contract", () => {
   const helpers = loadIdentityIdeaHelpers();
 
+  it("only attempts automatic images in the supported local-user runtime", () => {
+    const panelSource = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/IdentityIdeaPanel.jsx"
+      ),
+      "utf8"
+    );
+    const onboardingSource = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(panelSource).toContain("if (!prompt || !canGenerateImages) return;");
+    expect(onboardingSource).toContain("canGenerateImages={isLocalUserMode}");
+  });
+
   it("offers beginner decisions for a new proposal", () => {
     expect(
       helpers.getIdentityIdeaActions({ id: 1, status: "proposed" })
@@ -103,7 +123,7 @@ describe("SWARMSY Identity Idea frontend contract", () => {
       })
     ).toContain("SPARKY created this version");
     expect(helpers.getIdentityIdeaImageMessage({ success: false })).toContain(
-      "your prompt is ready"
+      "your exact prompt is ready"
     );
   });
 
