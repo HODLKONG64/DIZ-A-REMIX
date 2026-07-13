@@ -6,6 +6,7 @@ import PromptInput, {
   PROMPT_INPUT_ID,
 } from "./PromptInput";
 import Workspace from "@/models/workspace";
+import SwarmsyOnboarding from "@/models/swarmsyOnboarding";
 import handleChat, { ABORT_STREAM_EVENT } from "@/utils/chat";
 import { isMobile } from "react-device-detect";
 import { SidebarMobileHeader } from "../../Sidebar";
@@ -42,6 +43,8 @@ import MemoriesSidebar from "./MemoriesSidebar";
 import {
   normalizeLocalUserOllamaRuntimeSelection,
   isLocalUserOllamaIntent,
+  buildSwarmsyIntakeProgress,
+  SWARMSY_INTAKE_TOTAL_QUESTIONS,
 } from "@/components/SwarmsyFirstRunOnboarding/handoff";
 import { getPendingHomeMessageForDestination } from "@/utils/pendingHomeMessage";
 
@@ -86,6 +89,7 @@ export default function ChatContainer({
   const { chatHistoryRef } = useChatContainerQuickScroll();
   const pendingMessageChecked = useRef(false);
   const pendingResetRef = useRef(false);
+  const activeSwarmsyIntakeRef = useRef(null);
   const initialStoredLocalRuntime = getStoredLocalUserRuntimeForWorkspace(
     workspace?.slug
   );
@@ -134,6 +138,54 @@ export default function ChatContainer({
       new CustomEvent(PROMPT_INPUT_EVENT, {
         detail: { messageContent, writeMode },
       })
+    );
+  }
+
+  async function saveSwarmsyIntakeAnswer(answer) {
+    const session = activeSwarmsyIntakeRef.current;
+    const progress = buildSwarmsyIntakeProgress({
+      session,
+      messages: chatHistory,
+      answer,
+    });
+    if (!progress) return;
+
+    const previousSession = session;
+    activeSwarmsyIntakeRef.current = { ...session, ...progress };
+    const result = await SwarmsyOnboarding.saveIntakeProgress(
+      workspace.slug,
+      session.id,
+      progress.currentStep,
+      progress.answers
+    );
+    if (!result?.success || !result?.session) {
+      activeSwarmsyIntakeRef.current = previousSession;
+      window.toastr?.warning(
+        "Your message was sent, but SPARKY could not save this answer. Please try that answer again.",
+        "Answer not saved"
+      );
+      return;
+    }
+
+    activeSwarmsyIntakeRef.current = result.session;
+    if (
+      progress.questionNumber !== SWARMSY_INTAKE_TOTAL_QUESTIONS ||
+      !["face", "hidden"].includes(result.session.mode)
+    ) {
+      return;
+    }
+
+    const completed = await SwarmsyOnboarding.completeIntakeSession(
+      workspace.slug,
+      result.session.id
+    );
+    if (completed?.success && completed?.session) {
+      activeSwarmsyIntakeRef.current = null;
+      return;
+    }
+    window.toastr?.warning(
+      "All answers are saved, but SPARKY could not close the question stage. You can continue safely and try again later.",
+      "Questions saved"
     );
   }
 
@@ -194,6 +246,7 @@ export default function ChatContainer({
     setChatHistory(prevChatHistory);
     setMessageEmit("");
     setLoadingResponse(true);
+    void saveSwarmsyIntakeAnswer(currentMessage);
   };
 
   function endSTTSession() {
@@ -347,6 +400,22 @@ export default function ChatContainer({
   }, [workspace?.slug, threadSlug]);
 
   useEffect(() => {
+    let cancelled = false;
+    activeSwarmsyIntakeRef.current = null;
+    if (!workspace?.slug) return;
+
+    SwarmsyOnboarding.activeIntakeSession(workspace.slug).then((result) => {
+      if (!cancelled && result?.success && result?.session) {
+        activeSwarmsyIntakeRef.current = result.session;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [workspace?.slug, threadSlug]);
+
+  useEffect(() => {
     if (pendingMessageChecked.current || !workspace?.slug) return;
     pendingMessageChecked.current = true;
 
@@ -360,6 +429,9 @@ export default function ChatContainer({
     }
 
     if (pending?.message) {
+      if (pending?.intakeSession?.id) {
+        activeSwarmsyIntakeRef.current = pending.intakeSession;
+      }
       // Mark this as a Local User session if the pending message carries a local
       // user Ollama intent (regardless of whether the model is valid), so the
       // missing-model guard can fire on follow-up messages if validation fails.
@@ -420,7 +492,9 @@ export default function ChatContainer({
             JSON.stringify(currentPending?.attachments || []) ===
               JSON.stringify(latestPending?.attachments || []) &&
             JSON.stringify(currentPending?.runtime || null) ===
-              JSON.stringify(latestPending?.runtime || null)
+              JSON.stringify(latestPending?.runtime || null) &&
+            JSON.stringify(currentPending?.intakeSession || null) ===
+              JSON.stringify(latestPending?.intakeSession || null)
           ) {
             sessionStorage.removeItem(PENDING_HOME_MESSAGE);
           }
