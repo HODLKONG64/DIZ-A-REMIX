@@ -21,6 +21,7 @@ import {
 } from "./actionHub";
 import {
   buildOnboardingChatHandoffPayload,
+  buildIntakeResumeMessage,
   CREATIVE_INTENSITY_OPTIONS,
   getIntakeStarterMessage,
   hasIdentityEmpireKnowledge,
@@ -1096,7 +1097,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     }
 
     const handoffPayload = buildOnboardingChatHandoffPayload({
-      message: intakeStarter,
+      message: buildIntakeResumeMessage(intakeStarter, intakeResult.session),
       attachments: [],
       mode: isLocalUserMode ? "local_user" : "hosted_admin",
       model: selectedLocalOllamaModel,
@@ -1108,6 +1109,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
         JSON.stringify(
           buildPendingHomeMessage({
             ...handoffPayload,
+            intakeSession: intakeResult.session,
             workspaceSlug,
             threadSlug: null,
           })
