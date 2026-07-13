@@ -68,6 +68,17 @@ describe("SWARMSY runtime chat flow wiring", () => {
       source.indexOf("SwarmsyOnboarding.proposeIdentityIdea")
     ).toBeLessThan(source.indexOf("SwarmsyOnboarding.completeIntakeSession"));
     expect(source).toContain("pending?.intakeSession?.id");
+    expect(source).toContain("activeSwarmsyIdentityIdeaRef");
+    expect(source).toContain(
+      "activeSwarmsyIdentityIdeaRef.current = pending?.identityIdea?.id"
+    );
+    expect(source).toContain(
+      'if (promptMessage.userMessage.trim() === "/reset")'
+    );
+    expect(source).toContain("activeSwarmsyIdentityIdeaRef.current = null");
+    expect(source).toContain("isExplicitIdentityIdeaSaveMessage(message)");
+    expect(source).toContain("SwarmsyOnboarding.decideIdentityIdea(");
+    expect(source).toContain('identityIdea.id,\n      "save"');
   });
 
   it("scopes pending handoff payloads to the destination workspace and thread", () => {
@@ -115,6 +126,8 @@ describe("SWARMSY runtime chat flow wiring", () => {
       "pendingThreadSlug !== normalizedThreadSlug"
     );
     expect(pendingSource).toContain("intakeSession?.id");
+    expect(onboardingSource).toContain("identityIdea,");
+    expect(pendingSource).toContain("payload.identityIdea");
   });
 
   it("sends runtime overrides in workspace and thread chat requests", () => {

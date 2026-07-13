@@ -1140,7 +1140,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     showToast("Image AI settings are here.", "info");
   }
 
-  function openIdentityIdeaChat(message) {
+  function openIdentityIdeaChat(message, { identityIdea = null } = {}) {
     const workspaceSlug = activeStatus?.workspace?.slug;
     if (!workspaceSlug) {
       showToast(
@@ -1174,6 +1174,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
         JSON.stringify(
           buildPendingHomeMessage({
             ...handoffPayload,
+            identityIdea,
             workspaceSlug,
             threadSlug: null,
           })

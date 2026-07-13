@@ -13,7 +13,7 @@ SWARMSY is not intended to feel like developer software, an AI control panel, or
 The default experience must be conversational and forgiving:
 
 1. The user starts creating an identity.
-2. SPARKY asks one simple question at a time.
+2. SPARKY presents the full question set in clear sections, lets the user answer everything they can in one or several batches, then asks only important missing or unclear follow-ups.
 3. The app saves progress automatically.
 4. Before the idea is created, the user chooses **WTF** or **SAFE**. If they skip it, SPARKY defaults to WTF.
 5. SPARKY creates a unique identity idea from the answers.
@@ -95,7 +95,7 @@ SPARKY must not silently overwrite an approved identity, Memory Lock, or project
 New user-facing work should follow these rules:
 
 - Prefer ordinary language such as “Start,” “Continue,” “Keep,” “Delete,” “Try another,” and “Save this idea.”
-- Ask one clear question at a time.
+- Present intake questions in clear sections and accept full or partial answer batches; ask one clear follow-up at a time only when something important is missing or unclear.
 - Explain why a question matters only when useful.
 - Save progress without requiring a technical action.
 - Offer a safe way to skip, go back, change an answer, or try again.
@@ -135,12 +135,12 @@ Shipped foundations include:
 - durable, user-and-workspace-scoped Memory Lock storage, API access, frontend helpers, and a minimal viewer/import surface;
 - durable beginner intake sessions that save full or partial answer batches and restore them when the user returns;
 - automatic capture of finished SPARKY chat proposals into structured Identity Idea records;
+- automatic recognition of clear “save this idea” instructions during an active Identity Idea brainstorm;
 - durable, user-and-workspace-scoped Proof Review storage and authenticated API access;
 - Windows artifact, installer, integrity, and GitHub Release workflows.
 
 Important remaining product work includes:
 
-- automatic recognition of an explicit “save this idea” instruction from brainstorming chat;
 - a simple returning-user home screen;
 - automatic setup and plain-language recovery;
 - a Proof Review history surface;

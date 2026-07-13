@@ -48,6 +48,7 @@ import {
   isSwarmsyIntakeCompleteMessage,
 } from "@/components/SwarmsyFirstRunOnboarding/handoff";
 import { getPendingHomeMessageForDestination } from "@/utils/pendingHomeMessage";
+import { isExplicitIdentityIdeaSaveMessage } from "@/components/SwarmsyFirstRunOnboarding/identityIdea";
 
 function getStoredLocalUserRuntimeForWorkspace(workspaceSlug = "") {
   const storedRuntime = safeJsonParse(
@@ -95,6 +96,7 @@ export default function ChatContainer({
   const swarmsyIntakeScopeRef = useRef(0);
   const failedSwarmsyIntakeBatchesRef = useRef(new Set());
   const completedSwarmsyIntakeMessageRef = useRef(null);
+  const activeSwarmsyIdentityIdeaRef = useRef(null);
   const initialStoredLocalRuntime = getStoredLocalUserRuntimeForWorkspace(
     workspace?.slug
   );
@@ -184,6 +186,37 @@ export default function ChatContainer({
       .then(() => saveSwarmsyIntakeAnswerBatch(answer, intakeScope));
   }
 
+  async function saveActiveSwarmsyIdentityIdea(message) {
+    const identityIdea = activeSwarmsyIdentityIdeaRef.current;
+    if (!identityIdea?.id || !isExplicitIdentityIdeaSaveMessage(message)) {
+      return;
+    }
+
+    const result = await SwarmsyOnboarding.decideIdentityIdea(
+      workspace.slug,
+      identityIdea.id,
+      "save"
+    );
+    if (!result?.success || !result?.idea) {
+      window.toastr?.warning(
+        "SPARKY heard you, but could not save this idea. Your chat is still here, so please use Save this idea and try again.",
+        "Idea not saved"
+      );
+      return;
+    }
+
+    activeSwarmsyIdentityIdeaRef.current = {
+      ...identityIdea,
+      ...result.idea,
+    };
+    window.toastr?.success(
+      `“${
+        result.idea.title || identityIdea.title || "Your idea"
+      }” is saved to this workspace.`,
+      "Idea saved"
+    );
+  }
+
   const handleSubmit = async (event, metadata = {}) => {
     event.preventDefault();
     const currentMessage =
@@ -242,6 +275,7 @@ export default function ChatContainer({
     setMessageEmit("");
     setLoadingResponse(true);
     queueSwarmsyIntakeAnswerBatch(currentMessage);
+    void saveActiveSwarmsyIdentityIdea(currentMessage);
   };
 
   function endSTTSession() {
@@ -396,6 +430,7 @@ export default function ChatContainer({
     swarmsyIntakeSaveRef.current = Promise.resolve(true);
     failedSwarmsyIntakeBatchesRef.current = new Set();
     completedSwarmsyIntakeMessageRef.current = null;
+    activeSwarmsyIdentityIdeaRef.current = null;
   }, [workspace?.slug, threadSlug]);
 
   useEffect(() => {
@@ -500,6 +535,9 @@ export default function ChatContainer({
       if (pending?.intakeSession?.id) {
         activeSwarmsyIntakeRef.current = pending.intakeSession;
       }
+      activeSwarmsyIdentityIdeaRef.current = pending?.identityIdea?.id
+        ? pending.identityIdea
+        : null;
       // Mark this as a Local User session if the pending message carries a local
       // user Ollama intent (regardless of whether the model is valid), so the
       // missing-model guard can fire on follow-up messages if validation fails.
@@ -602,6 +640,10 @@ export default function ChatContainer({
       }
 
       if (!promptMessage || !promptMessage?.userMessage) return false;
+
+      if (promptMessage.userMessage.trim() === "/reset") {
+        activeSwarmsyIdentityIdeaRef.current = null;
+      }
 
       // If running and edit or regeneration, this history will already have attachments
       // so no need to parse the current state.

@@ -14,7 +14,7 @@ function loadIdentityIdeaHelpers() {
     .replace(/export const /g, "const ")
     .replace(/export function /g, "function ")
     .concat(
-      "\nmodule.exports = { IDENTITY_IDEA_ACTION_LABELS, IDENTITY_IMAGE_SUCCESS_MESSAGE, IDENTITY_IMAGE_FALLBACK_MESSAGE, getIdentityIdeaActions, buildIdentityIdeaImagePrompt, getIdentityIdeaImageMessage, buildIdentityIdeaSparkyMessage };"
+      "\nmodule.exports = { IDENTITY_IDEA_ACTION_LABELS, IDENTITY_IMAGE_SUCCESS_MESSAGE, IDENTITY_IMAGE_FALLBACK_MESSAGE, getIdentityIdeaActions, buildIdentityIdeaImagePrompt, getIdentityIdeaImageMessage, buildIdentityIdeaSparkyMessage, isExplicitIdentityIdeaSaveMessage };"
     );
 
   const sandbox = { module: { exports: {} }, exports: {} };
@@ -143,5 +143,30 @@ describe("SWARMSY Identity Idea frontend contract", () => {
         content: " ",
       })
     ).toBeNull();
+  });
+
+  it.each([
+    "save this idea",
+    "Great, save that idea to workspace.",
+    "save this idea to my workspace",
+    "save this idea please",
+    "save that idea, please",
+    "save it to workspace, please!",
+    "perfect save it",
+    "Please lock it in!",
+  ])("recognises the explicit save instruction: %s", (message) => {
+    expect(helpers.isExplicitIdentityIdeaSaveMessage(message)).toBe(true);
+  });
+
+  it.each([
+    "I might save this idea later",
+    "Don't save this idea",
+    "Should I save this idea?",
+    "Why save this idea?",
+    "This idea could work",
+    "save the image prompt",
+    "please don't save this idea",
+  ])("does not treat discussion as approval: %s", (message) => {
+    expect(helpers.isExplicitIdentityIdeaSaveMessage(message)).toBe(false);
   });
 });

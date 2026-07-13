@@ -10,6 +10,7 @@ export function buildPendingHomeMessage({
   attachments = [],
   runtime,
   intakeSession = null,
+  identityIdea = null,
   workspaceSlug = "",
   threadSlug = null,
 } = {}) {
@@ -26,6 +27,14 @@ export function buildPendingHomeMessage({
 
   if (intakeSession?.id) {
     payload.intakeSession = intakeSession;
+  }
+
+  const identityIdeaId = Number(identityIdea?.id);
+  if (Number.isInteger(identityIdeaId) && identityIdeaId > 0) {
+    payload.identityIdea = {
+      id: identityIdeaId,
+      title: String(identityIdea?.title || "").trim(),
+    };
   }
 
   return payload;
