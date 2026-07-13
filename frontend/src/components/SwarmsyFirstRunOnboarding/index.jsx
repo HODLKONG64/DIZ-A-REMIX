@@ -21,6 +21,7 @@ import {
 } from "./actionHub";
 import {
   buildOnboardingChatHandoffPayload,
+  CREATIVE_INTENSITY_OPTIONS,
   getIntakeStarterMessage,
   hasIdentityEmpireKnowledge,
 } from "./handoff";
@@ -294,6 +295,8 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   const [loading, setLoading] = useState(true);
   const [busyAction, setBusyAction] = useState(null);
   const [selectedMode, setSelectedMode] = useState(null);
+  const [selectedCreativeIntensity, setSelectedCreativeIntensity] =
+    useState(null);
   const [lastActionResult, setLastActionResult] = useState(null);
   const [memoryLockInput, setMemoryLockInput] = useState("");
   const [memoryLockError, setMemoryLockError] = useState("");
@@ -692,6 +695,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
   );
   const intakeStarter = getIntakeStarterMessage(selectedMode, {
     identityEmpireAvailable,
+    creativeIntensity: selectedCreativeIntensity,
   });
   const canCreateCampaignDay = canUseCalendar && Boolean(campaignDate?.trim());
   const actionHubState = getActionHubActionState({
@@ -1808,6 +1812,53 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
                       ? "Using local wiki knowledge when it fits this existing mode."
                       : "No Identity Empire knowledge added yet."}
                   </p>
+                  {selectedIdentityMode && (
+                    <div className="mt-4">
+                      <p className="text-sm font-semibold text-theme-text-primary">
+                        How hard should SPARKY push?
+                      </p>
+                      <p className="mt-1 text-xs text-theme-text-secondary">
+                        Choose now, or SPARKY will ask after your questions.
+                      </p>
+                      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                        {CREATIVE_INTENSITY_OPTIONS.map((option) => (
+                          <button
+                            key={option.id}
+                            type="button"
+                            aria-pressed={
+                              selectedCreativeIntensity === option.id
+                            }
+                            disabled={Boolean(busyAction)}
+                            onClick={() =>
+                              setSelectedCreativeIntensity(option.id)
+                            }
+                            className={`rounded-xl border p-3 text-left transition ${
+                              selectedCreativeIntensity === option.id
+                                ? "border-teal bg-teal/10"
+                                : "border-theme-sidebar-border hover:bg-theme-bg-menu"
+                            } disabled:cursor-not-allowed disabled:opacity-60`}
+                          >
+                            <span className="block text-sm font-semibold text-theme-text-primary">
+                              {option.label}
+                            </span>
+                            <span className="mt-1 block text-xs text-theme-text-secondary">
+                              {option.description}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                      <button
+                        type="button"
+                        disabled={Boolean(busyAction)}
+                        onClick={() => setSelectedCreativeIntensity(null)}
+                        className="mt-2 text-xs font-medium text-theme-text-secondary underline underline-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {selectedCreativeIntensity
+                          ? "Clear choice — ask me later"
+                          : "Ask me later"}
+                      </button>
+                    </div>
+                  )}
                   {actionHubState.actions.startIntake.disabledReason && (
                     <p className="mt-3 text-sm text-theme-text-secondary">
                       {actionHubState.actions.startIntake.disabledReason}

@@ -15,12 +15,21 @@ The default experience must be conversational and forgiving:
 1. The user starts creating an identity.
 2. SPARKY asks one simple question at a time.
 3. The app saves progress automatically.
-4. SPARKY creates a unique identity idea from the answers.
-5. The user can **Keep**, **Delete**, or **Try Another**.
-6. A kept idea becomes a simple SPARKY brainstorming conversation.
-7. The user can ask “why?”, request changes, reject details, or explore alternatives.
-8. Nothing becomes an approved project idea until the user explicitly asks to save it.
-9. When the user says something like “Great, save that idea,” the approved idea is stored in the owning workspace and can be continued later.
+4. Before the idea is created, the user chooses **WTF** or **SAFE**. If they skip it, SPARKY defaults to WTF.
+5. SPARKY creates a unique identity idea from the answers.
+6. The user can **Keep**, **Delete**, or **Try Another**.
+7. A kept idea becomes a simple SPARKY brainstorming conversation.
+8. The user can ask “why?”, request changes, reject details, or explore alternatives.
+9. Nothing becomes an approved project idea until the user explicitly asks to save it.
+10. When the user says something like “Great, save that idea,” the approved idea is stored in the owning workspace and can be continued later.
+
+Every Identity Idea must have three simple hooks:
+
+- **MESSAGE** — the key line or thought people remember.
+- **DOODAD** — a recognisable visual thing, such as a rat, smiley, animal silhouette, symbol, or strange object.
+- **PLACEMENT** — a fictional, legal concept-mockup setting that makes the message hit harder.
+
+**WTF** means maximum raw, strange, provocative shock-marketing energy while remaining legal, non-hateful, and non-harmful. **SAFE** means bold and memorable but easier to share; it must never collapse into generic corporate branding.
 
 Advanced systems may exist internally, but normal users should not need to understand or operate them.
 

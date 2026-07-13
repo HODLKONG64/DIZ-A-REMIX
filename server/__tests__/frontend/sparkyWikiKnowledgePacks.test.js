@@ -18,6 +18,8 @@ function loadHandoffModule() {
 module.exports = {
   INTAKE_PROMPT_PATH,
   INTAKE_STARTERS,
+  CREATIVE_INTENSITY_OPTIONS,
+  getCreativeIntensityInstruction,
   getIntakeStarterMessage,
   hasIdentityEmpireKnowledge,
 };`);
@@ -120,6 +122,44 @@ describe("SPARKY Wiki knowledge pack frontend flow", () => {
       "continue the existing intake without blocking on a pack picker"
     );
     expect(face).not.toContain("Identity Empire knowledge available");
+  });
+
+  it("asks for WTF or SAFE after the intake when the user chooses later", () => {
+    const { getIntakeStarterMessage } = loadHandoffModule();
+    const face = getIntakeStarterMessage("face");
+
+    expect(face).toContain("After the intake questions");
+    expect(face).toContain("choose WTF or SAFE");
+    expect(face).toContain("default to WTF");
+    expect(face).toContain("MESSAGE (the key line)");
+    expect(face).toContain("DOODAD (the recognisable visual thing)");
+    expect(face).toContain(
+      "PLACEMENT (a fictional, legal concept-mockup setting"
+    );
+  });
+
+  it("passes a selected WTF direction to SPARKY without asking again", () => {
+    const { getIntakeStarterMessage } = loadHandoffModule();
+    const face = getIntakeStarterMessage("face", {
+      creativeIntensity: "wtf",
+    });
+
+    expect(face).toContain("Creative intensity: WTF");
+    expect(face).toContain("raw, strange, provocative shock-marketing energy");
+    expect(face).toContain("legal, non-hateful, and non-harmful");
+    expect(face).toContain("Do not ask me to choose again");
+    expect(face).not.toContain("After the intake questions");
+  });
+
+  it("keeps SAFE bold instead of turning the idea corporate", () => {
+    const { getIntakeStarterMessage } = loadHandoffModule();
+    const hidden = getIntakeStarterMessage("hidden", {
+      creativeIntensity: "safe",
+    });
+
+    expect(hidden).toContain("Creative intensity: SAFE");
+    expect(hidden).toContain("bold and memorable");
+    expect(hidden).toContain("never make it generic or corporate bland");
   });
 
   it("preserves Memory Lock and forbids overwrite without confirmation when wiki support is available", () => {
