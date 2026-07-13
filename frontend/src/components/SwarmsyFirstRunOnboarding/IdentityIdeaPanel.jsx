@@ -49,40 +49,62 @@ export default function IdentityIdeaPanel({
     setIdeas(Array.isArray(result.ideas) ? result.ideas : []);
   }, [workspaceSlug]);
 
-  const attemptImage = useCallback(async (idea, { retry = false } = {}) => {
-    const prompt = buildIdentityIdeaImagePrompt(idea);
-    if (!prompt) return;
+  const attemptImage = useCallback(
+    async (idea, { retry = false } = {}) => {
+      const prompt = buildIdentityIdeaImagePrompt(idea);
+      if (!prompt) return;
 
-    if (!retry && attemptedIdeaIdsRef.current.has(idea.id)) return;
-    attemptedIdeaIdsRef.current.add(idea.id);
-    setImageStates((current) => ({
-      ...current,
-      [idea.id]: { status: "generating", prompt, result: null },
-    }));
+      const sessionKey = `swarmsy:image-attempt:${workspaceSlug}:${idea.id}`;
+      let attemptedThisSession = false;
+      try {
+        attemptedThisSession = sessionStorage.getItem(sessionKey) === "1";
+      } catch {
+        attemptedThisSession = false;
+      }
+      if (
+        !retry &&
+        (attemptedIdeaIdsRef.current.has(idea.id) || attemptedThisSession)
+      )
+        return;
+      attemptedIdeaIdsRef.current.add(idea.id);
+      try {
+        sessionStorage.setItem(sessionKey, "1");
+      } catch {
+        // A blocked browser store must never block the image attempt or prompt.
+      }
+      setImageStates((current) => ({
+        ...current,
+        [idea.id]: { status: "generating", prompt, result: null },
+      }));
 
-    const result = await SwarmsyOnboarding.localUserImageEngineGenerate({
-      prompt,
-      size: "1024x1024",
-    });
+      const result = await SwarmsyOnboarding.localUserImageEngineGenerate({
+        prompt,
+        size: "1024x1024",
+      });
 
-    setImageStates((current) => ({
-      ...current,
-      [idea.id]: {
-        status: result?.success && result?.image?.url ? "completed" : "prompt",
-        prompt: result?.prompt || prompt,
-        result,
-      },
-    }));
-  }, []);
+      setImageStates((current) => ({
+        ...current,
+        [idea.id]: {
+          status:
+            result?.success && result?.image?.url ? "completed" : "prompt",
+          prompt: result?.prompt || prompt,
+          result,
+        },
+      }));
+    },
+    [workspaceSlug]
+  );
 
   useEffect(() => {
     void loadIdeas();
   }, [loadIdeas]);
 
   useEffect(() => {
-    ideas.forEach((idea) => {
-      void attemptImage(idea);
-    });
+    ideas
+      .filter((idea) => idea.status === "proposed")
+      .forEach((idea) => {
+        void attemptImage(idea);
+      });
   }, [attemptImage, ideas]);
 
   async function copyImagePrompt(ideaId, prompt) {
@@ -91,7 +113,9 @@ export default function IdentityIdeaPanel({
       setCopiedIdeaId(ideaId);
       setError("");
     } catch {
-      setError("Your browser could not copy the prompt. Select the text and copy it.");
+      setError(
+        "Your browser could not copy the prompt. Select the text and copy it."
+      );
     }
   }
 
@@ -267,7 +291,9 @@ export default function IdentityIdeaPanel({
                         onClick={() => void copyImagePrompt(idea.id, prompt)}
                         className="rounded-lg border border-theme-sidebar-border px-3 py-2 text-sm font-medium text-theme-text-primary transition hover:border-teal hover:bg-teal/10"
                       >
-                        {copiedIdeaId === idea.id ? "Prompt copied" : "Copy prompt"}
+                        {copiedIdeaId === idea.id
+                          ? "Prompt copied"
+                          : "Copy prompt"}
                       </button>
                       <button
                         type="button"
