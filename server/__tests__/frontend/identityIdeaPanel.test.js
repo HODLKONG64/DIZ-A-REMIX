@@ -34,6 +34,8 @@ describe("visible SWARMSY Identity Idea panel", () => {
     expect(panelSource).toContain(
       "buildIdentityIdeaSparkyMessage(idea, { tryAnother })"
     );
+    expect(panelSource).toContain("identityIdea: tryAnother");
+    expect(panelSource).toContain("id: idea.id");
   });
 
   it("blocks idea decisions and chat when no workspace is open", () => {
@@ -69,18 +71,14 @@ describe("visible SWARMSY Identity Idea panel", () => {
     );
     expect(onboardingSource).toContain("<IdentityIdeaPanel");
     expect(onboardingSource).toContain("onOpenChat={openIdentityIdeaChat}");
-    expect(onboardingSource).toContain(
-      "buildOnboardingChatHandoffPayload({"
-    );
+    expect(onboardingSource).toContain("buildOnboardingChatHandoffPayload({");
     expect(onboardingSource).toContain(
       'mode: isLocalUserMode ? "local_user" : "hosted_admin"'
     );
   });
 
   it("preserves the local-user model safety check before opening chat", () => {
-    expect(onboardingSource).toContain(
-      "if (!hasVerifiedLocalOllamaModels)"
-    );
+    expect(onboardingSource).toContain("if (!hasVerifiedLocalOllamaModels)");
     expect(onboardingSource).toContain(
       "if (!selectedLocalOllamaModel || !selectedLocalOllamaModelIsInstalled)"
     );
