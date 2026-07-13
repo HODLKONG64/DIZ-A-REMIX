@@ -73,6 +73,18 @@ function hydrateWorkflowValue(value, replacements) {
   );
 }
 
+function configuredWorkflowJson(
+  rawWorkflow = process.env.SWARMSY_COMFYUI_WORKFLOW_JSON
+) {
+  if (!rawWorkflow) return null;
+  try {
+    const parsed = JSON.parse(rawWorkflow);
+    return isObjectShaped(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 function resolveWorkflowPayload({
   workflow,
   workflowJson,
@@ -85,7 +97,7 @@ function resolveWorkflowPayload({
     ? workflowJson
     : isObjectShaped(workflow)
       ? workflow
-      : null;
+      : configuredWorkflowJson();
 
   if (!sourceWorkflow) {
     return {
@@ -497,6 +509,7 @@ module.exports = {
   DEFAULT_POLL_REQUEST_TIMEOUT_MS,
   buildViewUrl,
   cancelResponseBody,
+  configuredWorkflowJson,
   generateComfyUiImage,
   hydrateWorkflowValue,
   isLocalComfyUiUrl,
