@@ -133,15 +133,14 @@ Shipped foundations include:
 - local ComfyUI readiness and generation MVP, with ComfyUI and workflows supplied by the user;
 - explicit per-message API routing for configured providers;
 - durable, user-and-workspace-scoped Memory Lock storage, API access, frontend helpers, and a minimal viewer/import surface;
+- durable beginner intake sessions that save full or partial answer batches and restore them when the user returns;
 - durable, user-and-workspace-scoped Proof Review storage and authenticated API access;
 - Windows artifact, installer, integrity, and GitHub Release workflows.
 
 Important remaining product work includes:
 
-- a saved and resumable beginner question flow;
-- structured Identity Idea records;
-- Keep, Delete, and Try Another decisions;
-- an explicit chat-to-saved-idea approval flow;
+- automatic capture of SPARKY's finished chat proposal into its structured Identity Idea record;
+- automatic recognition of an explicit “save this idea” instruction from brainstorming chat;
 - a simple returning-user home screen;
 - automatic setup and plain-language recovery;
 - a Proof Review history surface;
