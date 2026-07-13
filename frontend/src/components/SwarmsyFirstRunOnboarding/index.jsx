@@ -1739,7 +1739,10 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
             <IdentityIdeaPanel
               workspaceSlug={activeStatus?.workspace?.slug}
               onOpenChat={openIdentityIdeaChat}
-              onConnectImageAI={openImageAISettings}
+              canGenerateImages={isLocalUserMode}
+              onConnectImageAI={
+                isLocalUserMode ? openImageAISettings : undefined
+              }
             />
 
             <div className="mt-6 grid gap-4 lg:grid-cols-2">
