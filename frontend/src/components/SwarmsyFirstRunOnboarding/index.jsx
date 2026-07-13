@@ -1120,6 +1120,20 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     navigate(paths.workspace.chat(activeStatus.workspace.slug));
   }
 
+  function openImageAISettings() {
+    const settings = document.getElementById("swarmsy-image-ai-settings");
+    if (!settings) {
+      showToast(
+        "No image maker is connected yet. You can still copy the prompt and use it in ChatGPT or another image AI.",
+        "info"
+      );
+      return;
+    }
+
+    settings.scrollIntoView({ behavior: "smooth", block: "start" });
+    showToast("Image AI settings are here.", "info");
+  }
+
   function openIdentityIdeaChat(message) {
     const workspaceSlug = activeStatus?.workspace?.slug;
     if (!workspaceSlug) {
@@ -1574,8 +1588,9 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
         </div>
 
         {isLocalUserMode && (
-          <SwarmsyLocalUserSettingsHub
-            controller={{
+          <div id="swarmsy-image-ai-settings">
+            <SwarmsyLocalUserSettingsHub
+              controller={{
               isHostedAdminMode: false,
               isLocalUserMode,
               isCheckingLocalOllama: busyAction === "local-ollama-refresh",
@@ -1634,8 +1649,9 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
               sparkyWikiPackMessage,
               importIdentityEmpireSeedPack,
               isImportingSparkyWikiPack: busyAction === "sparky-wiki-import",
-            }}
-          />
+              }}
+            />
+          </div>
         )}
 
         <div className="flex flex-wrap gap-3">
@@ -1723,6 +1739,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
             <IdentityIdeaPanel
               workspaceSlug={activeStatus?.workspace?.slug}
               onOpenChat={openIdentityIdeaChat}
+              onConnectImageAI={openImageAISettings}
             />
 
             <div className="mt-6 grid gap-4 lg:grid-cols-2">
