@@ -20,6 +20,7 @@ module.exports = {
   INTAKE_STARTERS,
   CREATIVE_INTENSITY_OPTIONS,
   SWARMSY_INTAKE_COMPLETE_MESSAGE,
+  buildIdentityIdeaProposalFromSparkyMessage,
   buildIntakeResumeMessage,
   buildSwarmsyIntakeBatchProgress,
   getCreativeIntensityInstruction,
@@ -256,7 +257,7 @@ describe("SPARKY Wiki knowledge pack frontend flow", () => {
     );
     expect(
       isSwarmsyIntakeCompleteMessage(
-        "Your answers are saved. Here is your Identity Idea.\n\nMESSAGE: ...\nDOODAD: ...\nPLACEMENT: ..."
+        "Your answers are saved. Here is your Identity Idea.\n\nTITLE: The Quiet Signal\nMESSAGE: ...\nDOODAD: ...\nPLACEMENT: ..."
       )
     ).toBe(true);
     expect(
@@ -270,6 +271,28 @@ describe("SPARKY Wiki knowledge pack frontend flow", () => {
       )
     ).toBe(false);
     expect(isSwarmsyIntakeCompleteMessage("Tell me more.")).toBe(false);
+  });
+
+  it("turns SPARKY's finished response into a structured proposal", () => {
+    const { buildIdentityIdeaProposalFromSparkyMessage } = loadHandoffModule();
+    const content = `Your answers are saved. Here is your Identity Idea.
+
+TITLE: The Quiet Signal
+Creative intensity: WTF
+MESSAGE: Notice what power ignores.
+DOODAD: A one-eyed harbour rat.
+PLACEMENT: A fictional permission-based sea-wall mockup.`;
+
+    expect(
+      buildIdentityIdeaProposalFromSparkyMessage(content, "hidden")
+    ).toEqual({
+      mode: "hidden",
+      title: "The Quiet Signal",
+      content,
+    });
+    expect(
+      buildIdentityIdeaProposalFromSparkyMessage(content, "invalid")
+    ).toBeNull();
   });
 
   it("preserves Memory Lock and forbids overwrite without confirmation when wiki support is available", () => {
