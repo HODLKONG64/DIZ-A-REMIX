@@ -535,9 +535,9 @@ export default function ChatContainer({
       if (pending?.intakeSession?.id) {
         activeSwarmsyIntakeRef.current = pending.intakeSession;
       }
-      if (pending?.identityIdea?.id) {
-        activeSwarmsyIdentityIdeaRef.current = pending.identityIdea;
-      }
+      activeSwarmsyIdentityIdeaRef.current = pending?.identityIdea?.id
+        ? pending.identityIdea
+        : null;
       // Mark this as a Local User session if the pending message carries a local
       // user Ollama intent (regardless of whether the model is valid), so the
       // missing-model guard can fire on follow-up messages if validation fails.
@@ -640,6 +640,10 @@ export default function ChatContainer({
       }
 
       if (!promptMessage || !promptMessage?.userMessage) return false;
+
+      if (promptMessage.userMessage.trim() === "/reset") {
+        activeSwarmsyIdentityIdeaRef.current = null;
+      }
 
       // If running and edit or regeneration, this history will already have attachments
       // so no need to parse the current state.
