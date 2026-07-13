@@ -150,8 +150,8 @@ describe("Swarmsy onboarding model", () => {
       engine: "comfyui",
       status: "unavailable",
       source: "fallback",
-      message:
-        "ComfyUI is not connected. Start your local image engine before image generation.",
+      prompt: "poster",
+      message: "No image maker is connected yet, but your prompt is ready.",
     });
   });
 
