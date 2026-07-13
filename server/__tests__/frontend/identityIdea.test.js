@@ -14,7 +14,7 @@ function loadIdentityIdeaHelpers() {
     .replace(/export const /g, "const ")
     .replace(/export function /g, "function ")
     .concat(
-      "\nmodule.exports = { IDENTITY_IDEA_ACTION_LABELS, getIdentityIdeaActions, buildIdentityIdeaSparkyMessage };"
+      "\nmodule.exports = { IDENTITY_IDEA_ACTION_LABELS, IDENTITY_IMAGE_SUCCESS_MESSAGE, IDENTITY_IMAGE_FALLBACK_MESSAGE, getIdentityIdeaActions, buildIdentityIdeaImagePrompt, getIdentityIdeaImageMessage, buildIdentityIdeaSparkyMessage };"
     );
 
   const sandbox = { module: { exports: {} }, exports: {} };
@@ -25,6 +25,26 @@ function loadIdentityIdeaHelpers() {
 
 describe("SWARMSY Identity Idea frontend contract", () => {
   const helpers = loadIdentityIdeaHelpers();
+
+  it("only attempts automatic images in the supported local-user runtime", () => {
+    const panelSource = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/IdentityIdeaPanel.jsx"
+      ),
+      "utf8"
+    );
+    const onboardingSource = fs.readFileSync(
+      path.resolve(
+        __dirname,
+        "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
+      ),
+      "utf8"
+    );
+
+    expect(panelSource).toContain("if (!prompt || !canGenerateImages) return;");
+    expect(onboardingSource).toContain("canGenerateImages={isLocalUserMode}");
+  });
 
   it("offers beginner decisions for a new proposal", () => {
     expect(
@@ -78,6 +98,42 @@ describe("SWARMSY Identity Idea frontend contract", () => {
     expect(message).toContain("create a clearly different identity idea");
     expect(message).toContain("Do not overwrite or save the current idea");
     expect(message).toContain("Keep, Delete, or Try Another");
+  });
+
+  it("builds every mockup prompt around message, doodad, and placement", () => {
+    const prompt = helpers.buildIdentityIdeaImagePrompt({
+      title: "River Warning",
+      content:
+        "WTF mode. A melting smiley beside a rising river and the line THE WATER REMEMBERS.",
+    });
+
+    expect(prompt).toContain("MESSAGE");
+    expect(prompt).toContain("DOODAD");
+    expect(prompt).toContain("PLACEMENT");
+    expect(prompt).toContain("fictional, legal mockup location");
+    expect(prompt).toContain("SAFE or WTF intensity");
+    expect(prompt).toContain("do not depict instructions for trespass");
+  });
+
+  it("always gives users plain image guidance whether generation works or not", () => {
+    expect(
+      helpers.getIdentityIdeaImageMessage({
+        success: true,
+        image: { url: "http://localhost/image.png" },
+      })
+    ).toContain("SPARKY created this version");
+    expect(helpers.getIdentityIdeaImageMessage({ success: false })).toContain(
+      "your exact prompt is ready"
+    );
+  });
+
+  it("does not build an image prompt from an incomplete idea", () => {
+    expect(
+      helpers.buildIdentityIdeaImagePrompt({
+        title: "Missing content",
+        content: " ",
+      })
+    ).toBeNull();
   });
 
   it("does not create a chat handoff from an incomplete idea", () => {

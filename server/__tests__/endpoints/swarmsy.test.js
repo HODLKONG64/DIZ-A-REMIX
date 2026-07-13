@@ -1104,7 +1104,7 @@ describe("swarmsy endpoints", () => {
 
     expect(generateComfyUiImage).toHaveBeenCalledWith(request.body);
     expect(response.status).toHaveBeenCalledWith(400);
-    expect(response.json).toHaveBeenCalledWith(result);
+    expect(response.json).toHaveBeenCalledWith({ ...result, prompt: "" });
   });
 
   it("returns HTTP 400 when local image generation blocks a non-local URL", async () => {
@@ -1124,7 +1124,7 @@ describe("swarmsy endpoints", () => {
     await swarmsyLocalUserImageEngineGenerate(request, response);
 
     expect(response.status).toHaveBeenCalledWith(400);
-    expect(response.json).toHaveBeenCalledWith(result);
+    expect(response.json).toHaveBeenCalledWith({ ...result, prompt: "poster" });
   });
 
   it("returns unavailable when local ComfyUI generation cannot connect", async () => {
@@ -1146,7 +1146,10 @@ describe("swarmsy endpoints", () => {
     await swarmsyLocalUserImageEngineGenerate(request, response);
 
     expect(response.status).toHaveBeenCalledWith(200);
-    expect(response.json).toHaveBeenCalledWith(result);
+    expect(response.json).toHaveBeenCalledWith({
+      ...result,
+      prompt: "stencil ape",
+    });
   });
 
   it("keeps local image generation behind existing local-user mode guard", () => {
@@ -1801,7 +1804,6 @@ describe("swarmsy endpoints", () => {
       })
     );
   });
-
 });
 
 describe("SWARMSY website NPC public bridge", () => {

@@ -1120,6 +1120,20 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
     navigate(paths.workspace.chat(activeStatus.workspace.slug));
   }
 
+  function openImageAISettings() {
+    const settings = document.getElementById("swarmsy-image-ai-settings");
+    if (!settings) {
+      showToast(
+        "No image maker is connected yet. You can still copy the prompt and use it in ChatGPT or another image AI.",
+        "info"
+      );
+      return;
+    }
+
+    settings.scrollIntoView({ behavior: "smooth", block: "start" });
+    showToast("Image AI settings are here.", "info");
+  }
+
   function openIdentityIdeaChat(message) {
     const workspaceSlug = activeStatus?.workspace?.slug;
     if (!workspaceSlug) {
@@ -1574,68 +1588,70 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
         </div>
 
         {isLocalUserMode && (
-          <SwarmsyLocalUserSettingsHub
-            controller={{
-              isHostedAdminMode: false,
-              isLocalUserMode,
-              isCheckingLocalOllama: busyAction === "local-ollama-refresh",
-              isCheckingLocalImageEngine,
-              localOllamaStatus,
-              localImageEngineStatus,
-              localOllamaStatusTone: localOllamaTone,
-              localOllamaStatusTitle: localOllamaTitle,
-              hasVerifiedLocalOllamaModels,
-              selectedLocalOllamaModel,
-              savedLocalOllamaModel: readLocalUserOllamaModelSelection(),
-              currentModelLabel:
-                localOllamaStatus.models.find(
-                  (model) => model.id === selectedLocalOllamaModel
-                )?.name ||
-                selectedLocalOllamaModel ||
-                readLocalUserOllamaModelSelection(),
-              localOllamaSelectionMessage,
-              checkLocalUserOllama,
-              checkLocalImageEngine,
-              onSelectLocalOllamaModel: (nextModelId) => {
-                const normalizedModelId = String(nextModelId || "").trim();
-                setSelectedLocalOllamaModel(normalizedModelId);
-                persistLocalUserOllamaModelSelection(normalizedModelId);
-                setLocalOllamaSelectionMessage(null);
-                if (
-                  typeof window !== "undefined" &&
-                  hasDesktopLocalSettingsBridge({ targetWindow: window })
-                ) {
-                  void mirrorDesktopLocalUserOllamaModelSelection(
-                    normalizedModelId,
-                    {
-                      targetWindow: window,
-                    }
-                  ).then((mirrored) => {
-                    if (!mirrored.ok) {
-                      showToast(
-                        "Desktop local settings sync failed. Browser Local User storage remains active.",
-                        "warning"
-                      );
-                    }
-                  });
-                }
-                window.dispatchEvent(
-                  new CustomEvent(LOCAL_USER_SETTINGS_SYNC_EVENT, {
-                    detail: {
-                      reason: "model_selection",
-                      model: normalizedModelId,
-                    },
-                  })
-                );
-              },
-              exportBackupToFile,
-              importBackupFromText,
-              sparkyWikiPackStatus,
-              sparkyWikiPackMessage,
-              importIdentityEmpireSeedPack,
-              isImportingSparkyWikiPack: busyAction === "sparky-wiki-import",
-            }}
-          />
+          <div id="swarmsy-image-ai-settings">
+            <SwarmsyLocalUserSettingsHub
+              controller={{
+                isHostedAdminMode: false,
+                isLocalUserMode,
+                isCheckingLocalOllama: busyAction === "local-ollama-refresh",
+                isCheckingLocalImageEngine,
+                localOllamaStatus,
+                localImageEngineStatus,
+                localOllamaStatusTone: localOllamaTone,
+                localOllamaStatusTitle: localOllamaTitle,
+                hasVerifiedLocalOllamaModels,
+                selectedLocalOllamaModel,
+                savedLocalOllamaModel: readLocalUserOllamaModelSelection(),
+                currentModelLabel:
+                  localOllamaStatus.models.find(
+                    (model) => model.id === selectedLocalOllamaModel
+                  )?.name ||
+                  selectedLocalOllamaModel ||
+                  readLocalUserOllamaModelSelection(),
+                localOllamaSelectionMessage,
+                checkLocalUserOllama,
+                checkLocalImageEngine,
+                onSelectLocalOllamaModel: (nextModelId) => {
+                  const normalizedModelId = String(nextModelId || "").trim();
+                  setSelectedLocalOllamaModel(normalizedModelId);
+                  persistLocalUserOllamaModelSelection(normalizedModelId);
+                  setLocalOllamaSelectionMessage(null);
+                  if (
+                    typeof window !== "undefined" &&
+                    hasDesktopLocalSettingsBridge({ targetWindow: window })
+                  ) {
+                    void mirrorDesktopLocalUserOllamaModelSelection(
+                      normalizedModelId,
+                      {
+                        targetWindow: window,
+                      }
+                    ).then((mirrored) => {
+                      if (!mirrored.ok) {
+                        showToast(
+                          "Desktop local settings sync failed. Browser Local User storage remains active.",
+                          "warning"
+                        );
+                      }
+                    });
+                  }
+                  window.dispatchEvent(
+                    new CustomEvent(LOCAL_USER_SETTINGS_SYNC_EVENT, {
+                      detail: {
+                        reason: "model_selection",
+                        model: normalizedModelId,
+                      },
+                    })
+                  );
+                },
+                exportBackupToFile,
+                importBackupFromText,
+                sparkyWikiPackStatus,
+                sparkyWikiPackMessage,
+                importIdentityEmpireSeedPack,
+                isImportingSparkyWikiPack: busyAction === "sparky-wiki-import",
+              }}
+            />
+          </div>
         )}
 
         <div className="flex flex-wrap gap-3">
@@ -1723,6 +1739,10 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
             <IdentityIdeaPanel
               workspaceSlug={activeStatus?.workspace?.slug}
               onOpenChat={openIdentityIdeaChat}
+              canGenerateImages={isLocalUserMode}
+              onConnectImageAI={
+                isLocalUserMode ? openImageAISettings : undefined
+              }
             />
 
             <div className="mt-6 grid gap-4 lg:grid-cols-2">

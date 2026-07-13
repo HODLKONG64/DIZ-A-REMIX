@@ -35,6 +35,35 @@ export function getIdentityIdeaActions(idea = null) {
   return [];
 }
 
+export const IDENTITY_IMAGE_SUCCESS_MESSAGE =
+  "SPARKY created this version. Here is the exact prompt. Use it in another image AI for more versions, then choose your favourite.";
+export const IDENTITY_IMAGE_FALLBACK_MESSAGE =
+  "SPARKY could not make an image this time, but your exact prompt is ready. Copy it into ChatGPT or any image AI to create versions.";
+
+export function buildIdentityIdeaImagePrompt(idea = null) {
+  const title = String(idea?.title || "").trim();
+  const content = String(idea?.content || "").trim();
+  if (!title || !content) return null;
+
+  return `Create one striking, polished concept mockup for a SWARMSY identity called "${title}".
+
+Creative direction:
+${content}
+
+Build the visual around three clearly connected parts:
+1. MESSAGE: make the central statement or tagline readable and emotionally immediate.
+2. DOODAD: include one simple, memorable, repeatable symbol, animal, object, face, or silhouette.
+3. PLACEMENT: show the idea in a fictional, legal mockup location that strengthens the message.
+
+Keep it raw, distinctive, stencil-friendly, and easy to recognise at a glance. Follow the requested SAFE or WTF intensity if it appears in the creative direction. This is concept art only: do not depict instructions for trespass, vandalism, property damage, or unsafe activity. Do not add unrelated logos, watermarks, or extra slogans.`;
+}
+
+export function getIdentityIdeaImageMessage(result = null) {
+  return result?.success && result?.image?.url
+    ? IDENTITY_IMAGE_SUCCESS_MESSAGE
+    : IDENTITY_IMAGE_FALLBACK_MESSAGE;
+}
+
 export function buildIdentityIdeaSparkyMessage(
   idea,
   { tryAnother = false } = {}

@@ -375,8 +375,9 @@ const SwarmsyOnboarding = {
           engine: "comfyui",
           status: "unavailable",
           source: "fallback",
+          prompt: String(payload?.prompt || "").trim(),
           message:
-            "ComfyUI is not connected. Start your local image engine before image generation.",
+            "SPARKY could not make an image this time, but your prompt is ready.",
         };
       });
   },

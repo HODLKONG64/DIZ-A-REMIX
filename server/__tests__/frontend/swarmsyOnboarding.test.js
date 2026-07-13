@@ -150,8 +150,9 @@ describe("Swarmsy onboarding model", () => {
       engine: "comfyui",
       status: "unavailable",
       source: "fallback",
+      prompt: "poster",
       message:
-        "ComfyUI is not connected. Start your local image engine before image generation.",
+        "SPARKY could not make an image this time, but your prompt is ready.",
     });
   });
 
@@ -268,8 +269,7 @@ describe("Swarmsy onboarding model", () => {
     });
     const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
 
-    const response =
-      await onboardingModel.activeIntakeSession("swarmsy-hive");
+    const response = await onboardingModel.activeIntakeSession("swarmsy-hive");
 
     expect(response.session.currentStep).toBe(2);
     expect(fetchImpl).toHaveBeenCalledWith(
@@ -311,12 +311,7 @@ describe("Swarmsy onboarding model", () => {
     const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
     const answers = { goal: "build trust" };
 
-    await onboardingModel.saveIntakeProgress(
-      "swarmsy-hive",
-      61,
-      3,
-      answers
-    );
+    await onboardingModel.saveIntakeProgress("swarmsy-hive", 61, 3, answers);
 
     expect(fetchImpl).toHaveBeenCalledWith(
       "http://localhost/api/swarmsy/workspaces/swarmsy-hive/intake-session/61/progress",
@@ -475,11 +470,7 @@ describe("Swarmsy onboarding model", () => {
       });
       const onboardingModel = loadSwarmsyOnboardingModule(fetchImpl);
 
-      await onboardingModel.decideIdentityIdea(
-        "swarmsy-hive",
-        51,
-        decision
-      );
+      await onboardingModel.decideIdentityIdea("swarmsy-hive", 51, decision);
 
       expect(fetchImpl).toHaveBeenCalledWith(
         "http://localhost/api/swarmsy/workspaces/swarmsy-hive/identity-ideas/51/decision",

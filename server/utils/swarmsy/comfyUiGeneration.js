@@ -1,3 +1,4 @@
+const { randomInt } = require("crypto");
 const net = require("net");
 
 const {
@@ -13,6 +14,7 @@ const DEFAULT_POLL_INTERVAL_MS = 500;
 const DEFAULT_MAX_POLL_ATTEMPTS = 120;
 const DEFAULT_POLL_REQUEST_TIMEOUT_MS = 2_500;
 const DEFAULT_WORKFLOW_NAME = "user_supplied";
+const MAX_COMFYUI_SEED = 2_147_483_647;
 const TOKEN_PATTERN =
   /{{prompt}}|{{negativePrompt}}|{{seed}}|{{width}}|{{height}}/g;
 
@@ -73,6 +75,27 @@ function hydrateWorkflowValue(value, replacements) {
   );
 }
 
+function configuredWorkflowJson(
+  rawWorkflow = process.env.SWARMSY_COMFYUI_WORKFLOW_JSON
+) {
+  if (!rawWorkflow) return null;
+  try {
+    const parsed = JSON.parse(rawWorkflow);
+    return isObjectShaped(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function defaultGenerationSeed() {
+  return randomInt(0, MAX_COMFYUI_SEED + 1);
+}
+
+function resolveGenerationSeed(seed, seedGenerator = defaultGenerationSeed) {
+  if (Number.isSafeInteger(seed) && seed >= 0) return seed;
+  return seedGenerator();
+}
+
 function resolveWorkflowPayload({
   workflow,
   workflowJson,
@@ -85,7 +108,7 @@ function resolveWorkflowPayload({
     ? workflowJson
     : isObjectShaped(workflow)
       ? workflow
-      : null;
+      : configuredWorkflowJson();
 
   if (!sourceWorkflow) {
     return {
@@ -258,7 +281,9 @@ async function pollComfyUiHistory({
     if (!response?.ok) {
       return {
         success: false,
-        message: `ComfyUI history returned HTTP ${response?.status ?? "unknown"}.`,
+        message: `ComfyUI history returned HTTP ${
+          response?.status ?? "unknown"
+        }.`,
       };
     }
 
@@ -292,7 +317,9 @@ async function retrieveComfyUiImage({ fetchImpl, baseUrl, image, timeoutMs }) {
     if (!response?.ok) {
       return {
         success: false,
-        message: `ComfyUI image retrieval returned HTTP ${response?.status ?? "unknown"}.`,
+        message: `ComfyUI image retrieval returned HTTP ${
+          response?.status ?? "unknown"
+        }.`,
       };
     }
 
@@ -327,6 +354,7 @@ async function generateComfyUiImage({
   maxPollAttempts = DEFAULT_MAX_POLL_ATTEMPTS,
   now = () => new Date(),
   clientId = "swarmsy-local-user",
+  seedGenerator = defaultGenerationSeed,
 } = {}) {
   const resolvedUrl = resolveLocalImageEngineUrl(url);
   const safePrompt = String(prompt || "").trim();
@@ -373,12 +401,13 @@ async function generateComfyUiImage({
     };
   }
 
+  const resolvedSeed = resolveGenerationSeed(seed, seedGenerator);
   const workflowPayload = resolveWorkflowPayload({
     workflow,
     workflowJson,
     prompt: safePrompt,
     negativePrompt,
-    seed,
+    seed: resolvedSeed,
     size,
   });
   if (workflowPayload.error) {
@@ -408,7 +437,9 @@ async function generateComfyUiImage({
         engine: "comfyui",
         status: "failed",
         url: resolvedUrl,
-        message: `ComfyUI generation request returned HTTP ${submitted.response?.status ?? "unknown"}.`,
+        message: `ComfyUI generation request returned HTTP ${
+          submitted.response?.status ?? "unknown"
+        }.`,
       };
     }
 
@@ -470,7 +501,7 @@ async function generateComfyUiImage({
       metadata: {
         prompt: safePrompt,
         negativePrompt: String(negativePrompt || ""),
-        seed,
+        seed: resolvedSeed,
         size,
         workflow: workflowLabel(workflow),
         promptId,
@@ -484,7 +515,9 @@ async function generateComfyUiImage({
       engine: "comfyui",
       status: "failed",
       url: resolvedUrl,
-      message: `ComfyUI generation failed: ${String(error?.message || "unknown error")}`,
+      message: `ComfyUI generation failed: ${String(
+        error?.message || "unknown error"
+      )}`,
     };
   }
 }
@@ -497,8 +530,11 @@ module.exports = {
   DEFAULT_POLL_REQUEST_TIMEOUT_MS,
   buildViewUrl,
   cancelResponseBody,
+  configuredWorkflowJson,
+  defaultGenerationSeed,
   generateComfyUiImage,
   hydrateWorkflowValue,
   isLocalComfyUiUrl,
+  resolveGenerationSeed,
   resolveWorkflowPayload,
 };

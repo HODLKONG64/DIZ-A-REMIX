@@ -996,12 +996,13 @@ async function swarmsyLocalUserOllamaStatus(_request, response) {
 }
 
 async function swarmsyLocalUserImageEngineGenerate(request, response) {
+  const prompt = String(request.body?.prompt || "").trim();
   try {
     const result = await generateComfyUiImage(request.body || {});
     const statusCode = ["invalid_request", "blocked"].includes(result.status)
       ? 400
       : 200;
-    return response.status(statusCode).json(result);
+    return response.status(statusCode).json({ ...result, prompt });
   } catch (error) {
     console.error(error);
     return response.status(500).json({
@@ -1009,7 +1010,9 @@ async function swarmsyLocalUserImageEngineGenerate(request, response) {
       mode: "local_user",
       engine: "comfyui",
       status: "failed",
-      message: "Failed to generate image with local ComfyUI.",
+      prompt,
+      message:
+        "SPARKY could not make the image here, but your prompt is ready.",
     });
   }
 }
