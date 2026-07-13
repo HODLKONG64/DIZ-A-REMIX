@@ -356,13 +356,13 @@ PLACEMENT: A fictional permission-based sea-wall mockup.`;
       "{memoryLockPanelOpen &&",
       beginnerChoicesStart
     );
+    expect(beginnerChoicesStart).toBeGreaterThan(-1);
+    expect(beginnerChoicesEnd).toBeGreaterThan(beginnerChoicesStart);
+
     const beginnerChoices = onboardingSource.slice(
       beginnerChoicesStart,
       beginnerChoicesEnd
     );
-
-    expect(beginnerChoicesStart).toBeGreaterThan(-1);
-    expect(beginnerChoicesEnd).toBeGreaterThan(beginnerChoicesStart);
     expect(beginnerChoices).not.toMatch(/Identity Empire|local wiki knowledge/);
     expect(hubSource).toContain("Identity Empire knowledge available");
     expect(hubSource).toContain("never requires Use API");
