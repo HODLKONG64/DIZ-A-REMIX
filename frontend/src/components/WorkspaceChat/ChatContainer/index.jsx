@@ -6,6 +6,7 @@ import PromptInput, {
   PROMPT_INPUT_ID,
 } from "./PromptInput";
 import Workspace from "@/models/workspace";
+import SwarmsyOnboarding from "@/models/swarmsyOnboarding";
 import handleChat, { ABORT_STREAM_EVENT } from "@/utils/chat";
 import { isMobile } from "react-device-detect";
 import { SidebarMobileHeader } from "../../Sidebar";
@@ -42,6 +43,8 @@ import MemoriesSidebar from "./MemoriesSidebar";
 import {
   normalizeLocalUserOllamaRuntimeSelection,
   isLocalUserOllamaIntent,
+  buildSwarmsyIntakeBatchProgress,
+  isSwarmsyIntakeCompleteMessage,
 } from "@/components/SwarmsyFirstRunOnboarding/handoff";
 import { getPendingHomeMessageForDestination } from "@/utils/pendingHomeMessage";
 
@@ -86,6 +89,9 @@ export default function ChatContainer({
   const { chatHistoryRef } = useChatContainerQuickScroll();
   const pendingMessageChecked = useRef(false);
   const pendingResetRef = useRef(false);
+  const activeSwarmsyIntakeRef = useRef(null);
+  const swarmsyIntakeSaveRef = useRef(Promise.resolve());
+  const completedSwarmsyIntakeMessageRef = useRef(null);
   const initialStoredLocalRuntime = getStoredLocalUserRuntimeForWorkspace(
     workspace?.slug
   );
@@ -134,6 +140,31 @@ export default function ChatContainer({
       new CustomEvent(PROMPT_INPUT_EVENT, {
         detail: { messageContent, writeMode },
       })
+    );
+  }
+
+  async function saveSwarmsyIntakeAnswerBatch(answer) {
+    const session = activeSwarmsyIntakeRef.current;
+    const progress = buildSwarmsyIntakeBatchProgress(session, answer);
+    if (!progress) return;
+
+    const previousSession = session;
+    activeSwarmsyIntakeRef.current = { ...session, ...progress };
+    const result = await SwarmsyOnboarding.saveIntakeProgress(
+      workspace.slug,
+      session.id,
+      progress.currentStep,
+      progress.answers
+    );
+    if (result?.success && result?.session) {
+      activeSwarmsyIntakeRef.current = result.session;
+      return;
+    }
+
+    activeSwarmsyIntakeRef.current = previousSession;
+    window.toastr?.warning(
+      "Your message was sent, but SPARKY could not save this answer batch. Please try sending it again.",
+      "Answers not saved"
     );
   }
 
@@ -194,6 +225,7 @@ export default function ChatContainer({
     setChatHistory(prevChatHistory);
     setMessageEmit("");
     setLoadingResponse(true);
+    swarmsyIntakeSaveRef.current = saveSwarmsyIntakeAnswerBatch(currentMessage);
   };
 
   function endSTTSession() {
@@ -344,7 +376,62 @@ export default function ChatContainer({
     activeLocalUserRuntimeRef.current = scopedStoredRuntime.runtime;
     isLocalUserSessionRef.current = scopedStoredRuntime.isLocalUserSession;
     pendingMessageChecked.current = false;
+    completedSwarmsyIntakeMessageRef.current = null;
   }, [workspace?.slug, threadSlug]);
+
+  useEffect(() => {
+    let cancelled = false;
+    activeSwarmsyIntakeRef.current = null;
+    if (!workspace?.slug) return;
+
+    SwarmsyOnboarding.activeIntakeSession(workspace.slug).then((result) => {
+      if (!cancelled && result?.success && result?.session) {
+        activeSwarmsyIntakeRef.current = result.session;
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [workspace?.slug, threadSlug]);
+
+  useEffect(() => {
+    if (loadingResponse || !activeSwarmsyIntakeRef.current) return;
+    const latestAssistantMessage = [...chatHistory]
+      .reverse()
+      .find((message) => message?.role === "assistant" && !message?.pending);
+    if (
+      !latestAssistantMessage ||
+      !isSwarmsyIntakeCompleteMessage(latestAssistantMessage.content)
+    ) {
+      return;
+    }
+
+    const completionKey =
+      latestAssistantMessage.uuid || latestAssistantMessage.content;
+    if (completedSwarmsyIntakeMessageRef.current === completionKey) return;
+    completedSwarmsyIntakeMessageRef.current = completionKey;
+
+    async function completeIntake() {
+      await swarmsyIntakeSaveRef.current;
+      const session = activeSwarmsyIntakeRef.current;
+      if (!session?.id) return;
+      const result = await SwarmsyOnboarding.completeIntakeSession(
+        workspace.slug,
+        session.id
+      );
+      if (result?.success && result?.session) {
+        activeSwarmsyIntakeRef.current = null;
+        return;
+      }
+      window.toastr?.warning(
+        "Your answers are saved, but SPARKY could not close the question stage. You can keep working and try again later.",
+        "Answers saved"
+      );
+    }
+
+    void completeIntake();
+  }, [chatHistory, loadingResponse, workspace?.slug]);
 
   useEffect(() => {
     if (pendingMessageChecked.current || !workspace?.slug) return;
@@ -360,6 +447,9 @@ export default function ChatContainer({
     }
 
     if (pending?.message) {
+      if (pending?.intakeSession?.id) {
+        activeSwarmsyIntakeRef.current = pending.intakeSession;
+      }
       // Mark this as a Local User session if the pending message carries a local
       // user Ollama intent (regardless of whether the model is valid), so the
       // missing-model guard can fire on follow-up messages if validation fails.
@@ -420,7 +510,9 @@ export default function ChatContainer({
             JSON.stringify(currentPending?.attachments || []) ===
               JSON.stringify(latestPending?.attachments || []) &&
             JSON.stringify(currentPending?.runtime || null) ===
-              JSON.stringify(latestPending?.runtime || null)
+              JSON.stringify(latestPending?.runtime || null) &&
+            JSON.stringify(currentPending?.intakeSession || null) ===
+              JSON.stringify(latestPending?.intakeSession || null)
           ) {
             sessionStorage.removeItem(PENDING_HOME_MESSAGE);
           }
