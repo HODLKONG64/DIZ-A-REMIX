@@ -81,13 +81,38 @@ describe("SwarmsyIntakeSession", () => {
     expect(mockTransaction.$executeRawUnsafe).not.toHaveBeenCalled();
   });
 
+  it("recognises saved answer batches even before a numbered position is known", async () => {
+    mockTransaction.$queryRawUnsafe.mockResolvedValueOnce([
+      row({
+        current_step: 0,
+        answers: '{"_submissions":[{"number":1,"content":"rough answers"}]}',
+      }),
+    ]);
+
+    const result = await SwarmsyIntakeSession.startOrResume({
+      userId: 12,
+      workspaceId: 9,
+      mode: "hidden",
+    });
+
+    expect(result.resumed).toBe(true);
+    expect(result.session.answers._submissions).toHaveLength(1);
+    expect(mockTransaction.$executeRawUnsafe).not.toHaveBeenCalled();
+  });
+
   it("creates the next version inside one transaction when none is active", async () => {
     mockTransaction.$queryRawUnsafe
       .mockResolvedValueOnce([])
       .mockResolvedValueOnce([{ version: 3 }])
       .mockResolvedValueOnce([{ id: 8 }])
       .mockResolvedValueOnce([
-        row({ id: 8, version: 3, mode: "face", current_step: 0, answers: "{}" }),
+        row({
+          id: 8,
+          version: 3,
+          mode: "face",
+          current_step: 0,
+          answers: "{}",
+        }),
       ]);
     mockTransaction.$executeRawUnsafe.mockResolvedValueOnce(1);
 
