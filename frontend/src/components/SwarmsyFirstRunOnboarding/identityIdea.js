@@ -40,6 +40,29 @@ export const IDENTITY_IMAGE_SUCCESS_MESSAGE =
 export const IDENTITY_IMAGE_FALLBACK_MESSAGE =
   "SPARKY could not make an image this time, but your exact prompt is ready. Copy it into ChatGPT or any image AI to create versions.";
 
+export function isExplicitIdentityIdeaSaveMessage(message = "") {
+  const content = String(message || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[.!]+$/g, "")
+    .trim();
+  if (!content) return false;
+
+  if (
+    /\b(?:don't|do not|dont|not yet|not ready|maybe|later|should|why|how|if)\b/.test(
+      content
+    )
+  ) {
+    return false;
+  }
+
+  return [
+    /^(?:(?:great|perfect|love it|yes|yep|ok|okay|done|that's it|that is it)[,\s-]*)?(?:please\s+)?save\s+(?:this|that|the)\s+idea(?:\s+to\s+(?:(?:my|the|this)\s+)?workspace)?$/,
+    /^(?:(?:great|perfect|love it|yes|yep|ok|okay|done|that's it|that is it)[,\s-]*)?(?:please\s+)?save\s+it(?:\s+to\s+(?:(?:my|the|this)\s+)?workspace)?$/,
+    /^(?:(?:great|perfect|love it|yes|yep|ok|okay)[,\s-]*)?(?:please\s+)?lock\s+it\s+in$/,
+  ].some((pattern) => pattern.test(content));
+}
+
 export function buildIdentityIdeaImagePrompt(idea = null) {
   const title = String(idea?.title || "").trim();
   const content = String(idea?.content || "").trim();
