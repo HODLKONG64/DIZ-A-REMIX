@@ -57,9 +57,9 @@ export function isExplicitIdentityIdeaSaveMessage(message = "") {
   }
 
   return [
-    /^(?:(?:great|perfect|love it|yes|yep|ok|okay|done|that's it|that is it)[,\s-]*)?(?:please\s+)?save\s+(?:this|that|the)\s+idea(?:\s+to\s+(?:(?:my|the|this)\s+)?workspace)?$/,
-    /^(?:(?:great|perfect|love it|yes|yep|ok|okay|done|that's it|that is it)[,\s-]*)?(?:please\s+)?save\s+it(?:\s+to\s+(?:(?:my|the|this)\s+)?workspace)?$/,
-    /^(?:(?:great|perfect|love it|yes|yep|ok|okay)[,\s-]*)?(?:please\s+)?lock\s+it\s+in$/,
+    /^(?:(?:great|perfect|love it|yes|yep|ok|okay|done|that's it|that is it)[,\s-]*)?(?:please\s+)?save\s+(?:this|that|the)\s+idea(?:\s+to\s+(?:(?:my|the|this)\s+)?workspace)?(?:\s*,?\s*please)?$/,
+    /^(?:(?:great|perfect|love it|yes|yep|ok|okay|done|that's it|that is it)[,\s-]*)?(?:please\s+)?save\s+it(?:\s+to\s+(?:(?:my|the|this)\s+)?workspace)?(?:\s*,?\s*please)?$/,
+    /^(?:(?:great|perfect|love it|yes|yep|ok|okay)[,\s-]*)?(?:please\s+)?lock\s+it\s+in(?:\s*,?\s*please)?$/,
   ].some((pattern) => pattern.test(content));
 }
 
