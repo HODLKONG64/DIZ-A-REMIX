@@ -333,7 +333,7 @@ PLACEMENT: A fictional permission-based sea-wall mockup.`;
     expect(prompt).toContain("Use Ollama/local-first");
   });
 
-  it("adds a status line without forcing a pack-picker-first UX", () => {
+  it("keeps knowledge status out of the beginner choices but available in settings", () => {
     const onboardingSource = fs.readFileSync(
       path.resolve(
         __dirname,
@@ -349,12 +349,21 @@ PLACEMENT: A fictional permission-based sea-wall mockup.`;
       "utf8"
     );
 
-    expect(onboardingSource).toContain(
-      "Using local wiki knowledge when it fits this existing mode."
+    const beginnerChoicesStart = onboardingSource.indexOf(
+      'id="swarmsy-action-hub"'
     );
-    expect(onboardingSource).toContain(
-      "No Identity Empire knowledge added yet."
+    const beginnerChoicesEnd = onboardingSource.indexOf(
+      "{memoryLockPanelOpen &&",
+      beginnerChoicesStart
     );
+    const beginnerChoices = onboardingSource.slice(
+      beginnerChoicesStart,
+      beginnerChoicesEnd
+    );
+
+    expect(beginnerChoicesStart).toBeGreaterThan(-1);
+    expect(beginnerChoicesEnd).toBeGreaterThan(beginnerChoicesStart);
+    expect(beginnerChoices).not.toMatch(/Identity Empire|local wiki knowledge/);
     expect(hubSource).toContain("Identity Empire knowledge available");
     expect(hubSource).toContain("never requires Use API");
     expect(onboardingSource).not.toContain(
