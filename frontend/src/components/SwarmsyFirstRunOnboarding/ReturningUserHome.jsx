@@ -28,16 +28,22 @@ export default function ReturningUserHome({
     Promise.all([
       SwarmsyOnboarding.activeIntakeSession(workspaceSlug),
       SwarmsyOnboarding.identityIdeas(workspaceSlug),
-    ]).then(([intakeResult, ideasResult]) => {
-      if (cancelled) return;
-      setStep(
-        getReturningUserStep({
-          session: intakeResult?.success ? intakeResult.session : null,
-          ideas: ideasResult?.success ? ideasResult.ideas : [],
-        })
-      );
-      setLoading(false);
-    });
+    ])
+      .then(([intakeResult, ideasResult]) => {
+        if (cancelled) return;
+        setStep(
+          getReturningUserStep({
+            session: intakeResult?.success ? intakeResult.session : null,
+            ideas: ideasResult?.success ? ideasResult.ideas : [],
+          })
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setStep(null);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
 
     return () => {
       cancelled = true;
