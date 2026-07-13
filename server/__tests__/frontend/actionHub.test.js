@@ -594,7 +594,7 @@ describe("SWARMSY HIVE action hub", () => {
       'mode: isLocalUserMode ? "local_user" : "hosted_admin"'
     );
     expect(source).toMatch(
-      /function startIntake\(\)[\s\S]*?const handoffPayload = buildOnboardingChatHandoffPayload\({[\s\S]*?mode: isLocalUserMode \? "local_user" : "hosted_admin",[\s\S]*?model: selectedLocalOllamaModel,[\s\S]*?}\);/m
+      /function startIntakeForMode\([\s\S]*?const handoffPayload = buildOnboardingChatHandoffPayload\({[\s\S]*?mode: isLocalUserMode \? "local_user" : "hosted_admin",[\s\S]*?model: selectedLocalOllamaModel,[\s\S]*?}\);/m
     );
     expect(source).toMatch(
       /function continueFromMemoryLock\(\)[\s\S]*?const handoffPayload = buildOnboardingChatHandoffPayload\({[\s\S]*?mode: isLocalUserMode \? "local_user" : "hosted_admin",[\s\S]*?model: selectedLocalOllamaModel,[\s\S]*?}\);/m

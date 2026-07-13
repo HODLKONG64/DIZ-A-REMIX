@@ -136,12 +136,12 @@ Shipped foundations include:
 - durable beginner intake sessions that save full or partial answer batches and restore them when the user returns;
 - automatic capture of finished SPARKY chat proposals into structured Identity Idea records;
 - automatic recognition of clear “save this idea” instructions during an active Identity Idea brainstorm;
+- a simple returning-user home card that resumes unfinished questions or the latest active Identity Idea;
 - durable, user-and-workspace-scoped Proof Review storage and authenticated API access;
 - Windows artifact, installer, integrity, and GitHub Release workflows.
 
 Important remaining product work includes:
 
-- a simple returning-user home screen;
 - automatic setup and plain-language recovery;
 - a Proof Review history surface;
 - complete end-to-end beginner journey testing;
