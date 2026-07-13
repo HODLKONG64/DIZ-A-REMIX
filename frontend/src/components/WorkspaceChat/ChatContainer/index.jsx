@@ -90,7 +90,9 @@ export default function ChatContainer({
   const pendingMessageChecked = useRef(false);
   const pendingResetRef = useRef(false);
   const activeSwarmsyIntakeRef = useRef(null);
-  const swarmsyIntakeSaveRef = useRef(Promise.resolve());
+  const swarmsyIntakeSaveRef = useRef(Promise.resolve(true));
+  const swarmsyIntakeScopeRef = useRef(0);
+  const failedSwarmsyIntakeBatchesRef = useRef(new Set());
   const completedSwarmsyIntakeMessageRef = useRef(null);
   const initialStoredLocalRuntime = getStoredLocalUserRuntimeForWorkspace(
     workspace?.slug
@@ -143,10 +145,11 @@ export default function ChatContainer({
     );
   }
 
-  async function saveSwarmsyIntakeAnswerBatch(answer) {
+  async function saveSwarmsyIntakeAnswerBatch(answer, intakeScope) {
+    if (intakeScope !== swarmsyIntakeScopeRef.current) return true;
     const session = activeSwarmsyIntakeRef.current;
     const progress = buildSwarmsyIntakeBatchProgress(session, answer);
-    if (!progress) return;
+    if (!progress) return true;
 
     const previousSession = session;
     activeSwarmsyIntakeRef.current = { ...session, ...progress };
@@ -156,16 +159,28 @@ export default function ChatContainer({
       progress.currentStep,
       progress.answers
     );
+    if (intakeScope !== swarmsyIntakeScopeRef.current) return true;
     if (result?.success && result?.session) {
       activeSwarmsyIntakeRef.current = result.session;
-      return;
+      failedSwarmsyIntakeBatchesRef.current.delete(answer);
+      return failedSwarmsyIntakeBatchesRef.current.size === 0;
     }
 
     activeSwarmsyIntakeRef.current = previousSession;
+    failedSwarmsyIntakeBatchesRef.current.add(answer);
     window.toastr?.warning(
       "Your message was sent, but SPARKY could not save this answer batch. Please try sending it again.",
       "Answers not saved"
     );
+    return false;
+  }
+
+  function queueSwarmsyIntakeAnswerBatch(answer) {
+    const intakeScope = swarmsyIntakeScopeRef.current;
+    const previousSave = swarmsyIntakeSaveRef.current;
+    swarmsyIntakeSaveRef.current = previousSave
+      .catch(() => false)
+      .then(() => saveSwarmsyIntakeAnswerBatch(answer, intakeScope));
   }
 
   const handleSubmit = async (event, metadata = {}) => {
@@ -225,7 +240,7 @@ export default function ChatContainer({
     setChatHistory(prevChatHistory);
     setMessageEmit("");
     setLoadingResponse(true);
-    swarmsyIntakeSaveRef.current = saveSwarmsyIntakeAnswerBatch(currentMessage);
+    queueSwarmsyIntakeAnswerBatch(currentMessage);
   };
 
   function endSTTSession() {
@@ -376,6 +391,9 @@ export default function ChatContainer({
     activeLocalUserRuntimeRef.current = scopedStoredRuntime.runtime;
     isLocalUserSessionRef.current = scopedStoredRuntime.isLocalUserSession;
     pendingMessageChecked.current = false;
+    swarmsyIntakeScopeRef.current += 1;
+    swarmsyIntakeSaveRef.current = Promise.resolve(true);
+    failedSwarmsyIntakeBatchesRef.current = new Set();
     completedSwarmsyIntakeMessageRef.current = null;
   }, [workspace?.slug, threadSlug]);
 
@@ -411,19 +429,29 @@ export default function ChatContainer({
       latestAssistantMessage.uuid || latestAssistantMessage.content;
     if (completedSwarmsyIntakeMessageRef.current === completionKey) return;
     completedSwarmsyIntakeMessageRef.current = completionKey;
+    const intakeScope = swarmsyIntakeScopeRef.current;
 
     async function completeIntake() {
-      await swarmsyIntakeSaveRef.current;
+      const allAnswerBatchesSaved = await swarmsyIntakeSaveRef.current;
+      if (
+        !allAnswerBatchesSaved ||
+        intakeScope !== swarmsyIntakeScopeRef.current
+      ) {
+        completedSwarmsyIntakeMessageRef.current = null;
+        return;
+      }
       const session = activeSwarmsyIntakeRef.current;
       if (!session?.id) return;
       const result = await SwarmsyOnboarding.completeIntakeSession(
         workspace.slug,
         session.id
       );
+      if (intakeScope !== swarmsyIntakeScopeRef.current) return;
       if (result?.success && result?.session) {
         activeSwarmsyIntakeRef.current = null;
         return;
       }
+      completedSwarmsyIntakeMessageRef.current = null;
       window.toastr?.warning(
         "Your answers are saved, but SPARKY could not close the question stage. You can keep working and try again later.",
         "Answers saved"
