@@ -295,6 +295,23 @@ PLACEMENT: A fictional permission-based sea-wall mockup.`;
     ).toBeNull();
   });
 
+  it("derives a title for legacy completions that predate the TITLE field", () => {
+    const { buildIdentityIdeaProposalFromSparkyMessage } = loadHandoffModule();
+    const content = `Your answers are saved. Here is your Identity Idea.
+
+MESSAGE: Notice what power ignores.
+DOODAD: A one-eyed harbour rat.
+PLACEMENT: A fictional permission-based sea-wall mockup.`;
+
+    expect(
+      buildIdentityIdeaProposalFromSparkyMessage(content, "hidden")
+    ).toEqual({
+      mode: "hidden",
+      title: "Notice what power ignores.",
+      content,
+    });
+  });
+
   it("preserves Memory Lock and forbids overwrite without confirmation when wiki support is available", () => {
     const { buildMemoryLockStarterMessage } = loadMemoryLockModule();
 
