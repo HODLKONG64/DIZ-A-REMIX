@@ -1,4 +1,5 @@
 const prisma = require("../utils/prisma");
+const { createHash } = require("crypto");
 
 function toInt(value, field = "value") {
   const number = Number(value);
@@ -35,6 +36,12 @@ function normalizeDecision(value) {
   if (!SwarmsyIdentityIdea.VALID_DECISIONS.includes(decision))
     throw new Error(`Invalid Identity Idea decision: ${decision || "missing"}`);
   return decision;
+}
+
+function proposalKey({ mode, title, content }) {
+  return createHash("sha256")
+    .update(`${mode}\u0000${title}\u0000${content}`)
+    .digest("hex");
 }
 
 function publicIdea(row = null) {
@@ -114,43 +121,41 @@ const SwarmsyIdentityIdea = {
         content,
         "Identity Idea content"
       );
+      const safeProposalKey = proposalKey({
+        mode: safeMode,
+        title: safeTitle,
+        content: safeContent,
+      });
 
       const proposal = await prisma.$transaction(async (tx) => {
-        const existingRows = await tx.$queryRawUnsafe(
+        const inserted = await tx.$executeRawUnsafe(
+          `INSERT OR IGNORE INTO swarmsy_identity_ideas
+             (workspace_id, user_id, mode, status, title, content, proposal_key)
+           VALUES (?, ?, ?, 'proposed', ?, ?, ?)`,
+          safeWorkspaceId,
+          safeUserId,
+          safeMode,
+          safeTitle,
+          safeContent,
+          safeProposalKey
+        );
+        const rows = await tx.$queryRawUnsafe(
           `SELECT id
            FROM swarmsy_identity_ideas
            WHERE workspace_id = ?
              AND user_id = ?
-             AND mode = ?
-             AND title = ?
-             AND content = ?
+             AND proposal_key = ?
              AND deleted_at IS NULL
-           ORDER BY id DESC
            LIMIT 1`,
           safeWorkspaceId,
           safeUserId,
-          safeMode,
-          safeTitle,
-          safeContent
+          safeProposalKey
         );
-        if (existingRows[0]?.id) {
-          return { id: existingRows[0].id, created: false };
+        const id = Number(rows[0]?.id);
+        if (!Number.isInteger(id) || id <= 0) {
+          throw new Error("Identity Idea insert did not return an id.");
         }
-
-        await tx.$executeRawUnsafe(
-          `INSERT INTO swarmsy_identity_ideas
-             (workspace_id, user_id, mode, status, title, content)
-           VALUES (?, ?, ?, 'proposed', ?, ?)`,
-          safeWorkspaceId,
-          safeUserId,
-          safeMode,
-          safeTitle,
-          safeContent
-        );
-        const rows = await tx.$queryRawUnsafe(
-          "SELECT last_insert_rowid() AS id"
-        );
-        return { id: rows[0]?.id, created: true };
+        return { id, created: Number(inserted) > 0 };
       });
 
       const idea = await this.getForUserWorkspace({
@@ -182,12 +187,14 @@ const SwarmsyIdentityIdea = {
          SET status = ?,
              approved_at = CASE WHEN ? = 'saved' THEN CURRENT_TIMESTAMP ELSE approved_at END,
              deleted_at = CASE WHEN ? = 'deleted' THEN CURRENT_TIMESTAMP ELSE deleted_at END,
+             proposal_key = CASE WHEN ? = 'deleted' THEN NULL ELSE proposal_key END,
              updated_at = CURRENT_TIMESTAMP
          WHERE id = ?
            AND workspace_id = ?
            AND user_id = ?
            AND deleted_at IS NULL
          RETURNING *`,
+        status,
         status,
         status,
         status,
