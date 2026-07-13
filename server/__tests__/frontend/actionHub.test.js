@@ -101,6 +101,16 @@ describe("SWARMSY HIVE action hub", () => {
     expect(state.actions.reviewProof.disabled).toBe(false);
   });
 
+  it("uses the same plain labels when no starting choice is selected", () => {
+    const actionHub = loadActionHubModule();
+
+    expect(
+      actionHub.getIntakeDisabledMessage(buildReadyStatus(), null)
+    ).toBe(
+      "Choose whether SPARKY should build around you, create a hidden identity, or improve an existing project."
+    );
+  });
+
   it("blocks local-user intake without a selected installed Ollama model", () => {
     const actionHub = loadActionHubModule();
     const state = actionHub.getActionHubActionState({
