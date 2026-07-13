@@ -156,7 +156,13 @@ describe("ComfyUI local generation", () => {
 
   it("uses a configured workflow so beginner image attempts can run automatically", async () => {
     process.env.SWARMSY_COMFYUI_WORKFLOW_JSON = JSON.stringify({
-      "1": { inputs: { text: "{{prompt}}", width: "{{width}}" } },
+      "1": {
+        inputs: {
+          text: "{{prompt}}",
+          width: "{{width}}",
+          seed: "{{seed}}",
+        },
+      },
     });
     const fetchImpl = mockSuccessfulComfyUiFetch();
 
@@ -165,13 +171,16 @@ describe("ComfyUI local generation", () => {
       size: "640x640",
       fetchImpl,
       pollIntervalMs: 0,
+      seedGenerator: () => 8675309,
     });
 
     expect(result.success).toBe(true);
     expect(submittedWorkflow(fetchImpl)["1"].inputs).toEqual({
       text: "a legal stencil-style river mockup",
       width: 640,
+      seed: 8675309,
     });
+    expect(result.metadata.seed).toBe(8675309);
   });
 
   it("ignores malformed configured workflow JSON", () => {
