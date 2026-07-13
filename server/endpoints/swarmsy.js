@@ -764,13 +764,15 @@ async function swarmsyIdentityIdeaPropose(request, response) {
     if (!context) return;
 
     const { mode, title, content } = reqBody(request) || {};
-    const { idea, message } = await SwarmsyIdentityIdea.createProposal({
-      userId: context.userId,
-      workspaceId: context.workspace.id,
-      mode,
-      title,
-      content,
-    });
+    const { idea, created, message } = await SwarmsyIdentityIdea.createProposal(
+      {
+        userId: context.userId,
+        workspaceId: context.workspace.id,
+        mode,
+        title,
+        content,
+      }
+    );
     if (!idea) {
       return response.status(400).json({
         success: false,
@@ -782,6 +784,7 @@ async function swarmsyIdentityIdeaPropose(request, response) {
       success: true,
       workspace: swarmsyHiveWorkspaceSummary(context.workspace),
       idea,
+      created,
     });
   } catch (error) {
     console.error(error);
