@@ -35,7 +35,6 @@ export function getIdentityIdeaActions(idea = null) {
   return [];
 }
 
-
 export const IDENTITY_IMAGE_SUCCESS_MESSAGE =
   "SPARKY created this version. Here is the exact prompt. Use it in another image AI for more versions, then choose your favourite.";
 export const IDENTITY_IMAGE_FALLBACK_MESSAGE =
