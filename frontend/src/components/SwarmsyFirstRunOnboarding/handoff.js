@@ -9,6 +9,21 @@ export const IDENTITY_EMPIRE_AVAILABLE_STATUSES = new Set([
   "using_local_wiki_knowledge",
 ]);
 
+export const CREATIVE_INTENSITY_OPTIONS = [
+  {
+    id: "wtf",
+    label: "WTF",
+    description:
+      "Raw, strange, and provocative. Still legal, never hateful, and never harmful.",
+  },
+  {
+    id: "safe",
+    label: "SAFE",
+    description:
+      "Still bold and memorable, but easier to share. Never corporate bland.",
+  },
+];
+
 export const BASE_INTAKE_CONTEXT_NOTE =
   "Use existing SWARMSY intake templates as the workflow. Use current workspace memory and workspace docs first; supporting context must keep the existing user identity/template structure.";
 
@@ -30,18 +45,45 @@ export function getSeedPackContextNote({
     : NO_SEED_PACK_CONTEXT_NOTE;
 }
 
+export function normalizeCreativeIntensity(value) {
+  const intensity = String(value || "")
+    .trim()
+    .toLowerCase();
+  return CREATIVE_INTENSITY_OPTIONS.some((option) => option.id === intensity)
+    ? intensity
+    : null;
+}
+
+export function getCreativeIntensityInstruction(value = null) {
+  const intensity = normalizeCreativeIntensity(value);
+  const requiredIdeaShape =
+    "Every Identity Idea must clearly include Creative intensity, MESSAGE (the key line), DOODAD (the recognisable visual thing), and PLACEMENT (a fictional, legal concept-mockup setting that strengthens the message).";
+
+  if (intensity === "wtf") {
+    return `Creative intensity: WTF. Push for maximum raw, strange, provocative shock-marketing energy while staying legal, non-hateful, and non-harmful. Do not ask me to choose again. ${requiredIdeaShape}`;
+  }
+
+  if (intensity === "safe") {
+    return `Creative intensity: SAFE. Keep it bold and memorable but easier to share; never make it generic or corporate bland. Do not ask me to choose again. ${requiredIdeaShape}`;
+  }
+
+  return `After the intake questions and before creating an Identity Idea, ask me to choose WTF or SAFE. Explain WTF as raw, strange, and provocative but still legal, non-hateful, and non-harmful; explain SAFE as bold and memorable but easier to share and never corporate bland. If I skip the choice, default to WTF. ${requiredIdeaShape}`;
+}
+
 export function buildIntakeStarterMessage(
   mode,
-  { identityEmpireAvailable = false } = {}
+  { identityEmpireAvailable = false, creativeIntensity = null } = {}
 ) {
   const seedPackContextNote = getSeedPackContextNote({
     identityEmpireAvailable,
   });
+  const creativeIntensityInstruction =
+    getCreativeIntensityInstruction(creativeIntensity);
 
   const starters = {
-    face: `Start my SWARMSY intake in Face Identity Mode. Load and follow ${INTAKE_PROMPT_PATH}. ${seedPackContextNote} For Identity Empire support, prioritize public identity, founder story, proof, offer, campaign, PR, local reputation, and public-facing brand sections. Do not invent or shorten the 76-question intake unless I ask.`,
-    hidden: `Start my SWARMSY intake in Hidden Identity Mode. Load and follow ${INTAKE_PROMPT_PATH}. ${seedPackContextNote} For Identity Empire support, prioritize alias, pseudonym, hidden-identity safety, persona, public/private boundary, indirect proof, and reveal strategy sections. Do not invent or shorten the 76-question intake unless I ask.`,
-    "existing-project": `Help me import an existing project into SWARMSY HIVE. ${seedPackContextNote} First ask what project notes, links, proof, assets, products, social channels, and existing lore I already have. For Identity Empire support, use audit, weak positioning, relaunch, offer rebuild, campaign refresh, content distribution, and measurement sections before rebuilding anything.`,
+    face: `Start my SWARMSY intake in Face Identity Mode. Load and follow ${INTAKE_PROMPT_PATH}. ${seedPackContextNote} For Identity Empire support, prioritize public identity, founder story, proof, offer, campaign, PR, local reputation, and public-facing brand sections. Do not invent or shorten the 76-question intake unless I ask. ${creativeIntensityInstruction}`,
+    hidden: `Start my SWARMSY intake in Hidden Identity Mode. Load and follow ${INTAKE_PROMPT_PATH}. ${seedPackContextNote} For Identity Empire support, prioritize alias, pseudonym, hidden-identity safety, persona, public/private boundary, indirect proof, and reveal strategy sections. Do not invent or shorten the 76-question intake unless I ask. ${creativeIntensityInstruction}`,
+    "existing-project": `Help me import an existing project into SWARMSY HIVE. ${seedPackContextNote} First ask what project notes, links, proof, assets, products, social channels, and existing lore I already have. For Identity Empire support, use audit, weak positioning, relaunch, offer rebuild, campaign refresh, content distribution, and measurement sections before rebuilding anything. ${creativeIntensityInstruction}`,
   };
 
   return starters[mode] || null;
@@ -63,10 +105,13 @@ export const INTAKE_STARTERS = {
 
 export function getIntakeStarterMessage(
   mode,
-  { identityEmpireAvailable = false } = {}
+  { identityEmpireAvailable = false, creativeIntensity = null } = {}
 ) {
   if (!mode) return null;
-  return buildIntakeStarterMessage(mode, { identityEmpireAvailable });
+  return buildIntakeStarterMessage(mode, {
+    identityEmpireAvailable,
+    creativeIntensity,
+  });
 }
 
 export function getLocalUserOllamaRuntimeSelection({
