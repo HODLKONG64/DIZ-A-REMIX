@@ -43,6 +43,7 @@ import MemoriesSidebar from "./MemoriesSidebar";
 import {
   normalizeLocalUserOllamaRuntimeSelection,
   isLocalUserOllamaIntent,
+  buildIdentityIdeaProposalFromSparkyMessage,
   buildSwarmsyIntakeBatchProgress,
   isSwarmsyIntakeCompleteMessage,
 } from "@/components/SwarmsyFirstRunOnboarding/handoff";
@@ -442,6 +443,27 @@ export default function ChatContainer({
       }
       const session = activeSwarmsyIntakeRef.current;
       if (!session?.id) return;
+      const proposal = buildIdentityIdeaProposalFromSparkyMessage(
+        latestAssistantMessage.content,
+        session.mode
+      );
+      if (!proposal) {
+        completedSwarmsyIntakeMessageRef.current = null;
+        return;
+      }
+      const capturedIdea = await SwarmsyOnboarding.proposeIdentityIdea(
+        workspace.slug,
+        proposal
+      );
+      if (intakeScope !== swarmsyIntakeScopeRef.current) return;
+      if (!capturedIdea?.success || !capturedIdea?.idea) {
+        completedSwarmsyIntakeMessageRef.current = null;
+        window.toastr?.warning(
+          "SPARKY finished your idea, but could not add it to Your Identity Ideas. Your answers are still saved, so please try again.",
+          "Idea not added"
+        );
+        return;
+      }
       const result = await SwarmsyOnboarding.completeIntakeSession(
         workspace.slug,
         session.id

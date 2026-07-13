@@ -75,15 +75,18 @@ describe("SwarmsyIdentityIdea", () => {
       },
     ]);
 
-    const { idea, message } = await SwarmsyIdentityIdea.createProposal({
-      userId: 12,
-      workspaceId: 9,
-      mode: "face",
-      title: "Visible Builder",
-      content: "A public identity based on showing the work.",
-    });
+    const { idea, created, message } = await SwarmsyIdentityIdea.createProposal(
+      {
+        userId: 12,
+        workspaceId: 9,
+        mode: "face",
+        title: "Visible Builder",
+        content: "A public identity based on showing the work.",
+      }
+    );
 
     expect(message).toBeNull();
+    expect(created).toBe(true);
     expect(idea).toEqual(
       expect.objectContaining({
         id: 5,
@@ -94,16 +97,77 @@ describe("SwarmsyIdentityIdea", () => {
       })
     );
     expect(mockTransaction.$executeRawUnsafe).toHaveBeenCalledWith(
-      expect.stringContaining("INSERT INTO swarmsy_identity_ideas"),
+      expect.stringContaining("INSERT OR IGNORE INTO swarmsy_identity_ideas"),
       9,
       12,
       "face",
       "Visible Builder",
-      "A public identity based on showing the work."
+      "A public identity based on showing the work.",
+      expect.stringMatching(/^[a-f0-9]{64}$/)
     );
     expect(mockTransaction.$queryRawUnsafe).toHaveBeenCalledWith(
-      "SELECT last_insert_rowid() AS id"
+      expect.stringContaining("AND proposal_key = ?"),
+      9,
+      12,
+      expect.stringMatching(/^[a-f0-9]{64}$/)
     );
+  });
+
+  it("returns an existing identical proposal instead of creating a duplicate", async () => {
+    mockTransaction.$executeRawUnsafe.mockResolvedValueOnce(0);
+    mockTransaction.$queryRawUnsafe.mockResolvedValueOnce([{ id: 5 }]);
+    mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([
+      {
+        id: 5,
+        workspace_id: 9,
+        user_id: 12,
+        mode: "face",
+        status: "proposed",
+        title: "Visible Builder",
+        content: "A public identity based on showing the work.",
+        approved_at: null,
+        deleted_at: null,
+        created_at: new Date("2026-07-12T00:00:00.000Z"),
+        updated_at: new Date("2026-07-12T00:00:00.000Z"),
+      },
+    ]);
+
+    const result = await SwarmsyIdentityIdea.createProposal({
+      userId: 12,
+      workspaceId: 9,
+      mode: "face",
+      title: "Visible Builder",
+      content: "A public identity based on showing the work.",
+    });
+
+    expect(result.created).toBe(false);
+    expect(result.idea.id).toBe(5);
+    expect(mockTransaction.$executeRawUnsafe.mock.calls[0][0]).toContain(
+      "INSERT OR IGNORE"
+    );
+  });
+
+  it("rolls back cleanly when the proposal row id cannot be resolved", async () => {
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+    mockTransaction.$queryRawUnsafe.mockResolvedValueOnce([]);
+
+    await expect(
+      SwarmsyIdentityIdea.createProposal({
+        userId: 12,
+        workspaceId: 9,
+        mode: "face",
+        title: "Visible Builder",
+        content: "A public identity based on showing the work.",
+      })
+    ).resolves.toEqual({
+      idea: null,
+      created: false,
+      message: "Identity Idea insert did not return an id.",
+    });
+
+    consoleErrorSpy.mockRestore();
   });
 
   it.each([
@@ -114,34 +178,35 @@ describe("SwarmsyIdentityIdea", () => {
     "records the user's %s decision without leaving their scope",
     async (decision, status) => {
       mockPrisma.$queryRawUnsafe.mockResolvedValueOnce([
-      {
+        {
+          id: 5,
+          workspace_id: 9,
+          user_id: 12,
+          mode: "face",
+          status,
+          title: "Visible Builder",
+          content: "A public identity based on showing the work.",
+          approved_at:
+            status === "saved" ? new Date("2026-07-12T01:00:00.000Z") : null,
+          deleted_at:
+            status === "deleted" ? new Date("2026-07-12T01:00:00.000Z") : null,
+          created_at: new Date("2026-07-12T00:00:00.000Z"),
+          updated_at: new Date("2026-07-12T01:00:00.000Z"),
+        },
+      ]);
+
+      const { idea, message } = await SwarmsyIdentityIdea.decide({
         id: 5,
-        workspace_id: 9,
-        user_id: 12,
-        mode: "face",
-        status,
-        title: "Visible Builder",
-        content: "A public identity based on showing the work.",
-        approved_at:
-          status === "saved" ? new Date("2026-07-12T01:00:00.000Z") : null,
-        deleted_at:
-          status === "deleted" ? new Date("2026-07-12T01:00:00.000Z") : null,
-        created_at: new Date("2026-07-12T00:00:00.000Z"),
-        updated_at: new Date("2026-07-12T01:00:00.000Z"),
-      },
-    ]);
+        userId: 12,
+        workspaceId: 9,
+        decision,
+      });
 
-    const { idea, message } = await SwarmsyIdentityIdea.decide({
-      id: 5,
-      userId: 12,
-      workspaceId: 9,
-      decision,
-    });
-
-    expect(message).toBeNull();
-    expect(idea.status).toBe(status);
+      expect(message).toBeNull();
+      expect(idea.status).toBe(status);
       expect(mockPrisma.$queryRawUnsafe).toHaveBeenCalledWith(
         expect.stringContaining("AND user_id = ?"),
+        status,
         status,
         status,
         status,
@@ -183,6 +248,7 @@ describe("SwarmsyIdentityIdea", () => {
       })
     ).resolves.toEqual({
       idea: null,
+      created: false,
       message: "userId is required.",
     });
 
@@ -196,6 +262,7 @@ describe("SwarmsyIdentityIdea", () => {
       })
     ).resolves.toEqual({
       idea: null,
+      created: false,
       message: "Identity Idea content is required.",
     });
 

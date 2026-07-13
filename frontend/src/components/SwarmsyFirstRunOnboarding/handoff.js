@@ -59,7 +59,7 @@ export function normalizeCreativeIntensity(value) {
 export function getCreativeIntensityInstruction(value = null) {
   const intensity = normalizeCreativeIntensity(value);
   const requiredIdeaShape =
-    "Every Identity Idea must clearly include Creative intensity, MESSAGE (the key line), DOODAD (the recognisable visual thing), and PLACEMENT (a fictional, legal concept-mockup setting that strengthens the message).";
+    "Every Identity Idea must clearly include TITLE (a short identity name), Creative intensity, MESSAGE (the key line), DOODAD (the recognisable visual thing), and PLACEMENT (a fictional, legal concept-mockup setting that strengthens the message).";
 
   if (intensity === "wtf") {
     return `Creative intensity: WTF. Push for maximum raw, strange, provocative shock-marketing energy while staying legal, non-hateful, and non-harmful. Do not ask me to choose again. ${requiredIdeaShape}`;
@@ -130,6 +130,43 @@ export function isSwarmsyIntakeCompleteMessage(message = "") {
   return ["MESSAGE", "DOODAD", "PLACEMENT"].every((field) =>
     new RegExp(`\\b${field}\\s*:`, "i").test(content)
   );
+}
+
+function getSparkyIdeaField(content, field) {
+  const match = String(content || "").match(
+    new RegExp(
+      `(?:^|\\n)\\s*(?:#{1,6}\\s*)?(?:\\*\\*)?${field}(?:\\*\\*)?\\s*:\\s*(?:\\*\\*)?([^\\n]+)`,
+      "i"
+    )
+  );
+  return String(match?.[1] || "")
+    .replace(/\*\*/g, "")
+    .trim();
+}
+
+export function buildIdentityIdeaProposalFromSparkyMessage(
+  message = "",
+  mode = ""
+) {
+  const content = String(message || "").trim();
+  const safeMode = String(mode || "")
+    .trim()
+    .toLowerCase();
+  if (
+    !isSwarmsyIntakeCompleteMessage(content) ||
+    !["face", "hidden", "existing-project"].includes(safeMode)
+  ) {
+    return null;
+  }
+
+  const title = (
+    getSparkyIdeaField(content, "TITLE") ||
+    getSparkyIdeaField(content, "MESSAGE") ||
+    "SPARKY Identity Idea"
+  ).slice(0, 120);
+  if (!title) return null;
+
+  return { mode: safeMode, title, content };
 }
 
 export function buildIntakeStarterMessage(
