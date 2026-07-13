@@ -134,12 +134,12 @@ Shipped foundations include:
 - explicit per-message API routing for configured providers;
 - durable, user-and-workspace-scoped Memory Lock storage, API access, frontend helpers, and a minimal viewer/import surface;
 - durable beginner intake sessions that save full or partial answer batches and restore them when the user returns;
+- automatic capture of finished SPARKY chat proposals into structured Identity Idea records;
 - durable, user-and-workspace-scoped Proof Review storage and authenticated API access;
 - Windows artifact, installer, integrity, and GitHub Release workflows.
 
 Important remaining product work includes:
 
-- automatic capture of SPARKY's finished chat proposal into its structured Identity Idea record;
 - automatic recognition of an explicit “save this idea” instruction from brainstorming chat;
 - a simple returning-user home screen;
 - automatic setup and plain-language recovery;
