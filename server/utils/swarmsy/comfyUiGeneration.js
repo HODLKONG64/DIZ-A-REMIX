@@ -96,8 +96,8 @@ function resolveWorkflowPayload({
   const sourceWorkflow = isObjectShaped(workflowJson)
     ? workflowJson
     : isObjectShaped(workflow)
-    ? workflow
-    : configuredWorkflowJson();
+      ? workflow
+      : configuredWorkflowJson();
 
   if (!sourceWorkflow) {
     return {
