@@ -697,6 +697,9 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
 
   const copy = statusCopy(activeStatus);
   const setupRecoveryStep = getSparkySetupRecovery(activeStatus);
+  const sparkyExperienceReady = Boolean(
+    activeStatus?.workspace?.ready && !activeStatus?.sparkyPrompt?.missing
+  );
   const identityEmpireAvailable = hasIdentityEmpireKnowledge(
     activeStatus?.sparkyWiki?.identityEmpire?.status || sparkyWikiPackStatus
   );
@@ -779,13 +782,14 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
 
         const hasCustomPrompt =
           currentStatus.sparkyPrompt.status === "custom_prompt";
-        if (
-          hasCustomPrompt &&
-          typeof window !== "undefined" &&
-          !window.confirm(
-            "This workspace has its own instructions. Replace them with SPARKY's SWARMSY identity guide?"
-          )
-        ) {
+        const customPromptConfirmed =
+          !hasCustomPrompt ||
+          (typeof window !== "undefined" &&
+            typeof window.confirm === "function" &&
+            window.confirm(
+              "This workspace has its own instructions. Replace them with SPARKY's SWARMSY identity guide?"
+            ));
+        if (!customPromptConfirmed) {
           setSetupRecoveryResult({
             tone: "info",
             message:
@@ -794,8 +798,17 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
           return;
         }
 
+        const workspaceSlug = String(
+          currentStatus?.workspace?.slug || ""
+        ).trim();
+        if (!workspaceSlug) {
+          throw new Error(
+            "SPARKY could not identify its workspace. Restart SWARMSY, then try again."
+          );
+        }
+
         const promptResult = await SwarmsyOnboarding.applySparkyPrompt(
-          currentStatus.workspace.slug,
+          workspaceSlug,
           true
         );
         setLastActionResult({ kind: "sparky-prompt", ...promptResult });
@@ -826,7 +839,10 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
         currentStatus = await loadStatus();
       }
 
-      if (!currentStatus?.workspace?.ready) {
+      if (
+        !currentStatus?.workspace?.ready ||
+        currentStatus?.sparkyPrompt?.missing
+      ) {
         throw new Error(
           "SPARKY completed what it could, but one step still needs attention. Try the fix again."
         );
@@ -1660,7 +1676,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
           onFix={runAutomaticSparkySetup}
         />
 
-        {activeStatus?.workspace?.ready && (
+        {sparkyExperienceReady && (
           <ReturningUserHome
             workspaceSlug={activeStatus?.workspace?.slug}
             busy={Boolean(busyAction)}
@@ -1898,7 +1914,7 @@ export default function SwarmsyFirstRunOnboarding({ children = null }) {
             </div>
           )}
 
-        {activeStatus?.workspace?.ready && (
+        {sparkyExperienceReady && (
           <div
             id="swarmsy-action-hub"
             className="scroll-mt-6 rounded-2xl border border-theme-sidebar-border bg-theme-bg-secondary p-5"
