@@ -151,7 +151,8 @@ describe("Swarmsy onboarding model", () => {
       status: "unavailable",
       source: "fallback",
       prompt: "poster",
-      message: "No image maker is connected yet, but your prompt is ready.",
+      message:
+        "SPARKY could not make an image this time, but your prompt is ready.",
     });
   });
 
