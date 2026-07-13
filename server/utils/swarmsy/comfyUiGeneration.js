@@ -96,8 +96,8 @@ function resolveWorkflowPayload({
   const sourceWorkflow = isObjectShaped(workflowJson)
     ? workflowJson
     : isObjectShaped(workflow)
-      ? workflow
-      : configuredWorkflowJson();
+    ? workflow
+    : configuredWorkflowJson();
 
   if (!sourceWorkflow) {
     return {
@@ -270,7 +270,9 @@ async function pollComfyUiHistory({
     if (!response?.ok) {
       return {
         success: false,
-        message: `ComfyUI history returned HTTP ${response?.status ?? "unknown"}.`,
+        message: `ComfyUI history returned HTTP ${
+          response?.status ?? "unknown"
+        }.`,
       };
     }
 
@@ -304,7 +306,9 @@ async function retrieveComfyUiImage({ fetchImpl, baseUrl, image, timeoutMs }) {
     if (!response?.ok) {
       return {
         success: false,
-        message: `ComfyUI image retrieval returned HTTP ${response?.status ?? "unknown"}.`,
+        message: `ComfyUI image retrieval returned HTTP ${
+          response?.status ?? "unknown"
+        }.`,
       };
     }
 
@@ -420,7 +424,9 @@ async function generateComfyUiImage({
         engine: "comfyui",
         status: "failed",
         url: resolvedUrl,
-        message: `ComfyUI generation request returned HTTP ${submitted.response?.status ?? "unknown"}.`,
+        message: `ComfyUI generation request returned HTTP ${
+          submitted.response?.status ?? "unknown"
+        }.`,
       };
     }
 
@@ -496,7 +502,9 @@ async function generateComfyUiImage({
       engine: "comfyui",
       status: "failed",
       url: resolvedUrl,
-      message: `ComfyUI generation failed: ${String(error?.message || "unknown error")}`,
+      message: `ComfyUI generation failed: ${String(
+        error?.message || "unknown error"
+      )}`,
     };
   }
 }
