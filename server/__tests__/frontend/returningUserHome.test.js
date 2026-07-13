@@ -70,6 +70,9 @@ describe("SWARMSY returning-user home", () => {
     expect(source).toContain("SPARKY is finding where you left off");
     expect(source).toContain("SwarmsyOnboarding.activeIntakeSession");
     expect(source).toContain("SwarmsyOnboarding.identityIdeas");
+    expect(source).toContain(".catch(() => {");
+    expect(source).toContain(".finally(() => {");
+    expect(source).toContain("if (!cancelled) setLoading(false)");
     expect(source).toContain("buildIdentityIdeaSparkyMessage(step.idea)");
     expect(source).toContain("identityIdea:");
     expect(source).not.toMatch(/database|Prisma|API key|vector database/i);
