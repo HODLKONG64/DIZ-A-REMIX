@@ -1,5 +1,6 @@
 const {
   DEFAULT_POLL_REQUEST_TIMEOUT_MS,
+  configuredWorkflowJson,
   generateComfyUiImage,
   isLocalComfyUiUrl,
   resolveWorkflowPayload,
@@ -150,6 +151,31 @@ describe("ComfyUI local generation", () => {
       message:
         "ComfyUI is not connected. Start your local image engine before image generation.",
     });
+  });
+
+  it("uses a configured workflow so beginner image attempts can run automatically", async () => {
+    process.env.SWARMSY_COMFYUI_WORKFLOW_JSON = JSON.stringify({
+      "1": { inputs: { text: "{{prompt}}", width: "{{width}}" } },
+    });
+    const fetchImpl = mockSuccessfulComfyUiFetch();
+
+    const result = await generateComfyUiImage({
+      prompt: "a legal stencil-style river mockup",
+      size: "640x640",
+      fetchImpl,
+      pollIntervalMs: 0,
+    });
+
+    expect(result.success).toBe(true);
+    expect(submittedWorkflow(fetchImpl)["1"].inputs).toEqual({
+      text: "a legal stencil-style river mockup",
+      width: 640,
+    });
+  });
+
+  it("ignores malformed configured workflow JSON", () => {
+    expect(configuredWorkflowJson("{not-json")).toBeNull();
+    expect(configuredWorkflowJson("[]")).toBeNull();
   });
 
   it("requires object-shaped workflow JSON and does not auto-select or download models", async () => {
