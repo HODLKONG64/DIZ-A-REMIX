@@ -127,9 +127,21 @@ export function isSwarmsyIntakeCompleteMessage(message = "") {
     return false;
   }
 
-  return ["TITLE", "MESSAGE", "DOODAD", "PLACEMENT"].every((field) =>
+  return ["MESSAGE", "DOODAD", "PLACEMENT"].every((field) =>
     new RegExp(`\\b${field}\\s*:`, "i").test(content)
   );
+}
+
+function getSparkyIdeaField(content, field) {
+  const match = String(content || "").match(
+    new RegExp(
+      `(?:^|\\n)\\s*(?:#{1,6}\\s*)?(?:\\*\\*)?${field}(?:\\*\\*)?\\s*:\\s*(?:\\*\\*)?([^\\n]+)`,
+      "i"
+    )
+  );
+  return String(match?.[1] || "")
+    .replace(/\*\*/g, "")
+    .trim();
 }
 
 export function buildIdentityIdeaProposalFromSparkyMessage(
@@ -147,13 +159,11 @@ export function buildIdentityIdeaProposalFromSparkyMessage(
     return null;
   }
 
-  const titleMatch = content.match(
-    /(?:^|\n)\s*(?:#{1,6}\s*)?(?:\*\*)?TITLE(?:\*\*)?\s*:\s*(?:\*\*)?([^\n]+)/i
-  );
-  const title = String(titleMatch?.[1] || "")
-    .replace(/\*\*/g, "")
-    .trim()
-    .slice(0, 120);
+  const title = (
+    getSparkyIdeaField(content, "TITLE") ||
+    getSparkyIdeaField(content, "MESSAGE") ||
+    "SPARKY Identity Idea"
+  ).slice(0, 120);
   if (!title) return null;
 
   return { mode: safeMode, title, content };
