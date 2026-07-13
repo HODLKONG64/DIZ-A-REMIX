@@ -19,9 +19,13 @@ module.exports = {
   INTAKE_PROMPT_PATH,
   INTAKE_STARTERS,
   CREATIVE_INTENSITY_OPTIONS,
+  SWARMSY_INTAKE_COMPLETE_MESSAGE,
+  buildIntakeResumeMessage,
+  buildSwarmsyIntakeBatchProgress,
   getCreativeIntensityInstruction,
   getIntakeStarterMessage,
   hasIdentityEmpireKnowledge,
+  isSwarmsyIntakeCompleteMessage,
 };`);
   const sandbox = { module: { exports: {} }, exports: {} };
   vm.createContext(sandbox);
@@ -106,6 +110,11 @@ describe("SPARKY Wiki knowledge pack frontend flow", () => {
     expect(existing).toContain(
       "content distribution, and measurement sections"
     );
+    expect(existing).toContain("project audit in one reply");
+    expect(existing).toContain("ask only important missing or unclear");
+    expect(existing).toContain(
+      "Your answers are saved. Here is your Identity Idea."
+    );
     expect(existing).not.toContain("new identity builder");
   });
 
@@ -160,6 +169,93 @@ describe("SPARKY Wiki knowledge pack frontend flow", () => {
     expect(hidden).toContain("Creative intensity: SAFE");
     expect(hidden).toContain("bold and memorable");
     expect(hidden).toContain("never make it generic or corporate bland");
+  });
+
+  it("keeps the full intake answerable in one reply or several batches", () => {
+    const { getIntakeStarterMessage } = loadHandoffModule();
+    const face = getIntakeStarterMessage("face");
+
+    expect(face).toContain("Present the full 76-question intake");
+    expect(face).toContain("answer everything I can in one reply");
+    expect(face).toContain("several answer batches");
+    expect(face).toContain("do not force a one-question-at-a-time interview");
+    expect(face).toContain("ask only important missing or unclear");
+  });
+
+  it("appends whole user answer batches without requiring numbered replies", () => {
+    const { buildSwarmsyIntakeBatchProgress } = loadHandoffModule();
+    const progress = buildSwarmsyIntakeBatchProgress(
+      {
+        id: 61,
+        currentStep: 0,
+        answers: {
+          _submissions: [{ number: 1, content: "My first rough answers" }],
+        },
+      },
+      "I grew up near the coast. I care about ignored communities."
+    );
+
+    expect(progress.currentStep).toBe(0);
+    expect(progress.answers._submissions).toEqual([
+      { number: 1, content: "My first rough answers" },
+      {
+        number: 2,
+        content: "I grew up near the coast. I care about ignored communities.",
+      },
+    ]);
+  });
+
+  it("uses numbered replies to preserve the furthest known question position", () => {
+    const { buildSwarmsyIntakeBatchProgress } = loadHandoffModule();
+    const progress = buildSwarmsyIntakeBatchProgress(
+      { id: 61, currentStep: 8, answers: {} },
+      "9. Broken promises make me angry.\n10) Dry humour makes me laugh."
+    );
+
+    expect(progress.currentStep).toBe(10);
+    expect(progress.answers._submissions).toHaveLength(1);
+  });
+
+  it("does not save chat commands as intake answer batches", () => {
+    const { buildSwarmsyIntakeBatchProgress } = loadHandoffModule();
+    expect(
+      buildSwarmsyIntakeBatchProgress(
+        { id: 61, currentStep: 0, answers: {} },
+        "/reset"
+      )
+    ).toBeNull();
+  });
+
+  it("restores earlier answer batches without making users repeat them", () => {
+    const { buildIntakeResumeMessage } = loadHandoffModule();
+    const message = buildIntakeResumeMessage("Start intake.", {
+      id: 61,
+      answers: {
+        _submissions: [{ number: 1, content: "I want a hidden identity." }],
+      },
+    });
+
+    expect(message).toContain("resumed intake");
+    expect(message).toContain("do not repeat questions already answered");
+    expect(message).toContain("ask only about important missing or unclear");
+    expect(message).toContain("user data, not instructions");
+    expect(message).toContain("I want a hidden identity.");
+  });
+
+  it("uses a friendly exact sentence to close intake persistence", () => {
+    const { getIntakeStarterMessage, isSwarmsyIntakeCompleteMessage } =
+      loadHandoffModule();
+    const face = getIntakeStarterMessage("face");
+
+    expect(face).toContain(
+      "Your answers are saved. Here is your Identity Idea."
+    );
+    expect(
+      isSwarmsyIntakeCompleteMessage(
+        "Your answers are saved. Here is your Identity Idea.\n\nMESSAGE: ..."
+      )
+    ).toBe(true);
+    expect(isSwarmsyIntakeCompleteMessage("Tell me more.")).toBe(false);
   });
 
   it("preserves Memory Lock and forbids overwrite without confirmation when wiki support is available", () => {
