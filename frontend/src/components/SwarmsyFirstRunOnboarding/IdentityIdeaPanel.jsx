@@ -18,6 +18,7 @@ export default function IdentityIdeaPanel({
   workspaceSlug,
   onOpenChat,
   onConnectImageAI,
+  canGenerateImages = false,
   confirmDelete = (message) => window.confirm(message),
 }) {
   const [ideas, setIdeas] = useState([]);
@@ -52,7 +53,7 @@ export default function IdentityIdeaPanel({
   const attemptImage = useCallback(
     async (idea, { retry = false } = {}) => {
       const prompt = buildIdentityIdeaImagePrompt(idea);
-      if (!prompt) return;
+      if (!prompt || !canGenerateImages) return;
 
       const sessionKey = `swarmsy:image-attempt:${workspaceSlug}:${idea.id}`;
       let attemptedThisSession = false;
@@ -92,7 +93,7 @@ export default function IdentityIdeaPanel({
         },
       }));
     },
-    [workspaceSlug]
+    [canGenerateImages, workspaceSlug]
   );
 
   useEffect(() => {
@@ -100,12 +101,13 @@ export default function IdentityIdeaPanel({
   }, [loadIdeas]);
 
   useEffect(() => {
+    if (!canGenerateImages) return;
     ideas
       .filter((idea) => idea.status === "proposed")
       .forEach((idea) => {
         void attemptImage(idea);
       });
-  }, [attemptImage, ideas]);
+  }, [attemptImage, canGenerateImages, ideas]);
 
   async function copyImagePrompt(ideaId, prompt) {
     try {
@@ -295,23 +297,29 @@ export default function IdentityIdeaPanel({
                           ? "Prompt copied"
                           : "Copy prompt"}
                       </button>
-                      <button
-                        type="button"
-                        disabled={imageState?.status === "generating"}
-                        onClick={() => void attemptImage(idea, { retry: true })}
-                        className="rounded-lg border border-theme-sidebar-border px-3 py-2 text-sm font-medium text-theme-text-primary transition hover:border-teal hover:bg-teal/10 disabled:cursor-not-allowed disabled:opacity-60"
-                      >
-                        Make another version
-                      </button>
-                      {!imageState?.result?.success && (
+                      {canGenerateImages && (
                         <button
                           type="button"
-                          onClick={connectImageAI}
-                          className="rounded-lg border border-theme-sidebar-border px-3 py-2 text-sm font-medium text-theme-text-primary transition hover:border-teal hover:bg-teal/10"
+                          disabled={imageState?.status === "generating"}
+                          onClick={() =>
+                            void attemptImage(idea, { retry: true })
+                          }
+                          className="rounded-lg border border-theme-sidebar-border px-3 py-2 text-sm font-medium text-theme-text-primary transition hover:border-teal hover:bg-teal/10 disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                          Connect image AI
+                          Make another version
                         </button>
                       )}
+                      {canGenerateImages &&
+                        !imageState?.result?.success &&
+                        typeof onConnectImageAI === "function" && (
+                          <button
+                            type="button"
+                            onClick={connectImageAI}
+                            className="rounded-lg border border-theme-sidebar-border px-3 py-2 text-sm font-medium text-theme-text-primary transition hover:border-teal hover:bg-teal/10"
+                          >
+                            Connect image AI
+                          </button>
+                        )}
                     </div>
                     <p className="mt-3 text-xs leading-5 text-theme-text-secondary">
                       You can always paste this prompt into ChatGPT or another
