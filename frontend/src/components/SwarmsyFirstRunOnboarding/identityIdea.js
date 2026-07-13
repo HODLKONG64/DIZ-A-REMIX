@@ -38,7 +38,7 @@ export function getIdentityIdeaActions(idea = null) {
 export const IDENTITY_IMAGE_SUCCESS_MESSAGE =
   "SPARKY created this version. Here is the exact prompt. Use it in another image AI for more versions, then choose your favourite.";
 export const IDENTITY_IMAGE_FALLBACK_MESSAGE =
-  "SPARKY tried to make this image. No image maker is connected yet, but your prompt is ready. Copy it into ChatGPT or any image AI to create versions.";
+  "SPARKY could not make an image this time, but your exact prompt is ready. Copy it into ChatGPT or any image AI to create versions.";
 
 export function buildIdentityIdeaImagePrompt(idea = null) {
   const title = String(idea?.title || "").trim();
