@@ -22,7 +22,7 @@ SetCompressor /SOLID lzma
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
-!insertmacro MUI_FINISHPAGE_RUN "$INSTDIR\SWARMSY Desktop.exe"
+!define MUI_FINISHPAGE_RUN "$INSTDIR\SWARMSY Desktop.exe"
 !insertmacro MUI_PAGE_FINISH
 
 !insertmacro MUI_UNPAGE_CONFIRM
