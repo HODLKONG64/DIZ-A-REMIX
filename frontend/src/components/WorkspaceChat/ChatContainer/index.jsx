@@ -45,10 +45,16 @@ import {
   isLocalUserOllamaIntent,
   buildIdentityIdeaProposalFromSparkyMessage,
   buildSwarmsyIntakeBatchProgress,
+  hasSwarmsyIntakeCompletionSignal,
   isSwarmsyIntakeCompleteMessage,
 } from "@/components/SwarmsyFirstRunOnboarding/handoff";
 import { getPendingHomeMessageForDestination } from "@/utils/pendingHomeMessage";
 import { isExplicitIdentityIdeaSaveMessage } from "@/components/SwarmsyFirstRunOnboarding/identityIdea";
+import {
+  clearActiveSwarmsyIdentityIdea,
+  getActiveSwarmsyIdentityIdea,
+  storeActiveSwarmsyIdentityIdea,
+} from "@/utils/activeSwarmsyIdentityIdea";
 
 function getStoredLocalUserRuntimeForWorkspace(workspaceSlug = "") {
   const storedRuntime = safeJsonParse(
@@ -96,7 +102,12 @@ export default function ChatContainer({
   const swarmsyIntakeScopeRef = useRef(0);
   const failedSwarmsyIntakeBatchesRef = useRef(new Set());
   const completedSwarmsyIntakeMessageRef = useRef(null);
-  const activeSwarmsyIdentityIdeaRef = useRef(null);
+  const activeSwarmsyIdentityIdeaRef = useRef(
+    getActiveSwarmsyIdentityIdea({
+      workspaceSlug: workspace?.slug,
+      threadSlug,
+    })
+  );
   const initialStoredLocalRuntime = getStoredLocalUserRuntimeForWorkspace(
     workspace?.slug
   );
@@ -209,6 +220,10 @@ export default function ChatContainer({
       ...identityIdea,
       ...result.idea,
     };
+    storeActiveSwarmsyIdentityIdea(
+      { workspaceSlug: workspace?.slug, threadSlug },
+      activeSwarmsyIdentityIdeaRef.current
+    );
     window.toastr?.success(
       `“${
         result.idea.title || identityIdea.title || "Your idea"
@@ -430,7 +445,10 @@ export default function ChatContainer({
     swarmsyIntakeSaveRef.current = Promise.resolve(true);
     failedSwarmsyIntakeBatchesRef.current = new Set();
     completedSwarmsyIntakeMessageRef.current = null;
-    activeSwarmsyIdentityIdeaRef.current = null;
+    activeSwarmsyIdentityIdeaRef.current = getActiveSwarmsyIdentityIdea({
+      workspaceSlug: workspace?.slug,
+      threadSlug,
+    });
   }, [workspace?.slug, threadSlug]);
 
   useEffect(() => {
@@ -454,16 +472,21 @@ export default function ChatContainer({
     const latestAssistantMessage = [...chatHistory]
       .reverse()
       .find((message) => message?.role === "assistant" && !message?.pending);
-    if (
-      !latestAssistantMessage ||
-      !isSwarmsyIntakeCompleteMessage(latestAssistantMessage.content)
-    ) {
-      return;
-    }
+    if (!latestAssistantMessage) return;
 
     const completionKey =
       latestAssistantMessage.uuid || latestAssistantMessage.content;
     if (completedSwarmsyIntakeMessageRef.current === completionKey) return;
+    if (!isSwarmsyIntakeCompleteMessage(latestAssistantMessage.content)) {
+      if (hasSwarmsyIntakeCompletionSignal(latestAssistantMessage.content)) {
+        completedSwarmsyIntakeMessageRef.current = completionKey;
+        window.toastr?.warning(
+          "SPARKY made an Identity Idea, but one of MESSAGE, DOODAD, or PLACEMENT is missing. Ask SPARKY to show the complete idea again so it can be added to Your Identity Ideas.",
+          "Idea needs one more detail"
+        );
+      }
+      return;
+    }
     completedSwarmsyIntakeMessageRef.current = completionKey;
     const intakeScope = swarmsyIntakeScopeRef.current;
 
@@ -535,9 +558,19 @@ export default function ChatContainer({
       if (pending?.intakeSession?.id) {
         activeSwarmsyIntakeRef.current = pending.intakeSession;
       }
-      activeSwarmsyIdentityIdeaRef.current = pending?.identityIdea?.id
-        ? pending.identityIdea
-        : null;
+      if (pending?.identityIdea?.id) {
+        activeSwarmsyIdentityIdeaRef.current = pending.identityIdea;
+        storeActiveSwarmsyIdentityIdea(
+          { workspaceSlug: workspace?.slug, threadSlug },
+          pending.identityIdea
+        );
+      } else {
+        activeSwarmsyIdentityIdeaRef.current = null;
+        clearActiveSwarmsyIdentityIdea({
+          workspaceSlug: workspace?.slug,
+          threadSlug,
+        });
+      }
       // Mark this as a Local User session if the pending message carries a local
       // user Ollama intent (regardless of whether the model is valid), so the
       // missing-model guard can fire on follow-up messages if validation fails.
@@ -643,6 +676,10 @@ export default function ChatContainer({
 
       if (promptMessage.userMessage.trim() === "/reset") {
         activeSwarmsyIdentityIdeaRef.current = null;
+        clearActiveSwarmsyIdentityIdea({
+          workspaceSlug: workspace?.slug,
+          threadSlug,
+        });
       }
 
       // If running and edit or regeneration, this history will already have attachments
