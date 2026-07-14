@@ -1,9 +1,12 @@
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
+const { EventEmitter } = require("events");
 const {
+  cleanupFirstRunData,
   findLoadedDesktopPage,
   firstRunPaths,
+  requestText,
   stopWindowsProcessTree,
   validateFirstRunFiles,
 } = require("../../../desktop/scripts/desktop-runtime-launch-smoke.cjs");
@@ -14,14 +17,37 @@ describe("packaged desktop runtime launch smoke", () => {
       { type: "service_worker", url: "http://127.0.0.1:3210/sw.js" },
       { type: "page", url: "devtools://devtools/bundled/inspector.html" },
       { type: "page", url: "http://127.0.0.1:3210/" },
+      { type: "page", url: "http://127.0.0.1:3210/diagnostics" },
+      { type: "page", url: "http://127.0.0.1:3210/onboarding" },
     ];
 
-    expect(findLoadedDesktopPage(targets, "http://127.0.0.1:3210")).toEqual(
+    expect(
+      findLoadedDesktopPage(targets, "http://127.0.0.1:3210/onboarding")
+    ).toEqual(targets[4]);
+    expect(findLoadedDesktopPage(targets, "http://127.0.0.1:3210/")).toEqual(
       targets[2]
     );
     expect(
-      findLoadedDesktopPage(targets, "http://127.0.0.1:9999")
+      findLoadedDesktopPage(targets, "http://127.0.0.1:3210/missing")
     ).toBeUndefined();
+  });
+
+  it("rejects a failed response stream so the readiness loop can retry", async () => {
+    const response = new EventEmitter();
+    response.statusCode = 200;
+    const request = new EventEmitter();
+    request.destroy = jest.fn();
+    const httpGetImpl = jest.fn((_url, _options, onResponse) => {
+      process.nextTick(() => {
+        onResponse(response);
+        response.emit("error", new Error("connection reset"));
+      });
+      return request;
+    });
+
+    await expect(
+      requestText("http://127.0.0.1:3210", { httpGetImpl })
+    ).rejects.toThrow("connection reset");
   });
 
   it("requires the database, generated secrets, and managed runtime manifest", () => {
@@ -52,6 +78,28 @@ describe("packaged desktop runtime launch smoke", () => {
       { stdio: "inherit", windowsHide: true }
     );
     expect(stopWindowsProcessTree(null, { spawnSyncImpl })).toBe(false);
+  });
+
+  it("removes fresh smoke-test data with Windows retry protection", () => {
+    const rmSyncImpl = jest.fn();
+
+    expect(cleanupFirstRunData("C:\\Temp\\swarmsy-smoke", { rmSyncImpl })).toBe(
+      true
+    );
+    expect(rmSyncImpl).toHaveBeenCalledWith("C:\\Temp\\swarmsy-smoke", {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 250,
+    });
+    expect(
+      cleanupFirstRunData("C:\\Temp\\swarmsy-smoke", {
+        rmSyncImpl: () => {
+          throw new Error("locked");
+        },
+      })
+    ).toBe(false);
+    expect(cleanupFirstRunData("", { rmSyncImpl })).toBe(false);
   });
 
   it("wires the real launch check after structural artifact validation", () => {

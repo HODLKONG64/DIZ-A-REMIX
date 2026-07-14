@@ -27,11 +27,12 @@ Every packaging-impacting pull request must pass **Launch packaged desktop and v
 - the packaged EXE starts and stays running;
 - the managed local server becomes reachable on a clean temporary port;
 - the server returns the built SWARMSY frontend shell;
-- Electron opens a page served by that same local server;
+- Electron reaches the `/onboarding` first-run page served by that same local server;
 - a fresh SQLite database is created outside the installed application files;
 - fresh JWT and signature secrets are generated locally;
 - the managed-runtime manifest is created;
-- the complete desktop and server process tree can be stopped after the check.
+- the complete desktop and server process tree can be stopped after the check;
+- temporary first-run test data is removed after the process tree stops.
 
 This catches missing packaged dependencies, migration failures, runtime startup failures, broken frontend packaging, and Electron-to-server loading failures that file-presence checks cannot catch.
 
