@@ -8,6 +8,7 @@ const artifactsRoot = path.join(repoRoot, "desktop", "artifacts");
 const appName = "swarmsy-desktop-win32-x64";
 const packageRoot = path.join(artifactsRoot, appName);
 const appResourcesRoot = path.join(packageRoot, "resources", "app");
+const serverRuntimeRoot = path.join(appResourcesRoot, "server");
 const frontendBuildEntry = path.join(
   repoRoot,
   "frontend",
@@ -23,7 +24,6 @@ const copyEntries = [
   { from: "desktop/foundation", to: "desktop/foundation" },
   { from: "desktop/runtime", to: "desktop/runtime" },
   { from: "frontend/dist", to: "frontend/dist" },
-  { from: "server", to: "server" },
 ];
 
 function ensureExists(targetPath, label = targetPath) {
@@ -74,13 +74,66 @@ function shouldExcludeRuntimeCopy(source) {
   ].some((fragment) => portablePathIncludes(portable, fragment));
 }
 
-function copyDirectory(from, to) {
+function copyDirectory(from, to, { excludeNodeModules = false } = {}) {
   ensureExists(from);
   fs.mkdirSync(path.dirname(to), { recursive: true });
   fs.cpSync(from, to, {
     recursive: true,
-    filter: (source) => !shouldExcludeRuntimeCopy(source),
+    filter: (source) =>
+      !(excludeNodeModules && isUnderNodeModules(source)) &&
+      !shouldExcludeRuntimeCopy(source),
   });
+}
+
+function installProductionServerDependencies({
+  runtimeServerPath = serverRuntimeRoot,
+  platform = process.platform,
+  spawnSyncImpl = spawnSync,
+} = {}) {
+  ensureExists(path.join(runtimeServerPath, "package.json"), "Server package.json");
+  ensureExists(path.join(runtimeServerPath, "yarn.lock"), "Server yarn.lock");
+
+  const yarnCommand = platform === "win32" ? "yarn.cmd" : "yarn";
+  const args = [
+    "install",
+    "--production=true",
+    "--frozen-lockfile",
+    "--non-interactive",
+  ];
+  const result = spawnSyncImpl(yarnCommand, args, {
+    cwd: runtimeServerPath,
+    stdio: "inherit",
+    env: { ...process.env, NODE_ENV: "production" },
+  });
+
+  if (result.error || result.status !== 0) {
+    throw (
+      result.error ||
+      new Error(
+        `${yarnCommand} exited with ${result.status} while installing the production server runtime.`
+      )
+    );
+  }
+
+  ensureExists(
+    path.join(runtimeServerPath, "node_modules"),
+    "Production server node_modules"
+  );
+  ensureExists(
+    path.join(runtimeServerPath, "node_modules", "@prisma", "client", "package.json"),
+    "Prisma client runtime"
+  );
+  ensureExists(
+    path.join(runtimeServerPath, "node_modules", "prisma", "package.json"),
+    "Prisma CLI runtime"
+  );
+}
+
+function copyServerRuntime() {
+  copyDirectory(path.join(repoRoot, "server"), serverRuntimeRoot, {
+    excludeNodeModules: true,
+  });
+  installProductionServerDependencies({ runtimeServerPath: serverRuntimeRoot });
 }
 
 function writeDesktopPackageJson() {
@@ -130,9 +183,10 @@ function packageAppResources() {
       path.join(appResourcesRoot, entry.to)
     );
   }
+  copyServerRuntime();
   copyDirectory(
     path.join(repoRoot, "frontend", "dist"),
-    path.join(appResourcesRoot, "server", "public")
+    path.join(serverRuntimeRoot, "public")
   );
   writeDesktopPackageJson();
 }
@@ -204,12 +258,17 @@ if (require.main === module) {
 }
 
 module.exports = {
+  appResourcesRoot,
   buildArchiveCommand,
   copyDirectory,
   copyEntries,
+  copyServerRuntime,
   createZipArchive,
+  installProductionServerDependencies,
   isUnderNodeModules,
   main,
+  packageAppResources,
+  serverRuntimeRoot,
   shouldExcludeRuntimeCopy,
   toPortableLower,
 };
