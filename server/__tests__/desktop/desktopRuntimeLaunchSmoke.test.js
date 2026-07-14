@@ -55,17 +55,13 @@ describe("packaged desktop runtime launch smoke", () => {
       path.join(os.tmpdir(), "swarmsy-launch-smoke-test-")
     );
     const files = firstRunPaths(userDataRoot);
-    const database = files.databaseCandidates[files.databaseCandidates.length - 1];
-    fs.mkdirSync(path.dirname(database), { recursive: true });
-    fs.writeFileSync(database, "created");
-
-    for (const file of [files.jwtSecret, files.signatureSecret, files.runtimeManifest]) {
+    for (const file of Object.values(files)) {
       fs.mkdirSync(path.dirname(file), { recursive: true });
       fs.writeFileSync(file, "created");
     }
 
-    expect(validateFirstRunFiles(userDataRoot)).toEqual({ ...files, database });
-    fs.rmSync(database);
+    expect(validateFirstRunFiles(userDataRoot)).toEqual(files);
+    fs.rmSync(files.database);
     expect(() => validateFirstRunFiles(userDataRoot)).toThrow(
       "First-run database was not created"
     );

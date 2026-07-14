@@ -126,18 +126,8 @@ function findLoadedDesktopPage(targets, expectedUrl) {
 
 function firstRunPaths(userDataRoot) {
   const runtimeRoot = path.join(userDataRoot, "local-user-data", "runtime");
-  const managedAppServerRoot = path.join(
-    userDataRoot,
-    "managed-local-runtime",
-    "app",
-    "server"
-  );
   return {
-    databaseCandidates: [
-      path.join(runtimeRoot, "anythingllm.db"),
-      path.join(runtimeRoot, "storage", "anythingllm.db"),
-      path.join(managedAppServerRoot, "storage", "anythingllm.db"),
-    ],
+    database: path.join(runtimeRoot, "anythingllm.db"),
     jwtSecret: path.join(runtimeRoot, "local-runtime.jwt"),
     signatureSecret: path.join(runtimeRoot, "local-runtime.sig"),
     runtimeManifest: path.join(
@@ -150,27 +140,13 @@ function firstRunPaths(userDataRoot) {
 
 function validateFirstRunFiles(userDataRoot) {
   const files = firstRunPaths(userDataRoot);
-  const database = files.databaseCandidates.find((candidate) =>
-    fs.existsSync(candidate)
-  );
-  if (!database)
-    fail(
-      `First-run database was not created: ${files.databaseCandidates.join(" or ")}`
-    );
-  if (fs.statSync(database).size <= 0)
-    fail(`First-run database is empty: ${database}`);
-
-  for (const [label, file] of Object.entries({
-    jwtSecret: files.jwtSecret,
-    signatureSecret: files.signatureSecret,
-    runtimeManifest: files.runtimeManifest,
-  })) {
+  for (const [label, file] of Object.entries(files)) {
     if (!fs.existsSync(file))
       fail(`First-run ${label} was not created: ${file}`);
     if (fs.statSync(file).size <= 0)
       fail(`First-run ${label} is empty: ${file}`);
   }
-  return { ...files, database };
+  return files;
 }
 
 function stopWindowsProcessTree(pid, { spawnSyncImpl = spawnSync } = {}) {
