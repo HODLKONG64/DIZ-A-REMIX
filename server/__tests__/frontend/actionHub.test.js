@@ -74,24 +74,24 @@ describe("SWARMSY HIVE action hub", () => {
       busyAction: null,
     });
 
-    expect(actionHub.ACTION_HUB_TITLE).toBe("SWARMSY HIVE Action Hub");
+    expect(actionHub.ACTION_HUB_TITLE).toBe("Your SWARMSY home");
     expect(actionHub.ACTION_HUB_HELPER_COPY).toContain(
-      "Every action routes through your HIVE and keeps the project moving."
+      "SPARKY will guide you and remember the work."
     );
     expect(actionHub.ACTION_HUB_GROUPS.map((group) => group.title)).toEqual([
-      "Build",
-      "Continue",
-      "Launch",
-      "Verify",
+      "Create or improve an identity",
+      "Continue saved work",
+      "Plan one campaign day",
+      "Check proof before posting",
     ]);
     expect(
       actionHub.ACTION_HUB_GROUPS.flatMap((group) => group.actions)
     ).toEqual([
-      "Start Intake",
-      "Existing Project",
-      "Load Memory Lock",
-      "Campaign Calendar",
-      "Review Proof / Find Proof Gaps",
+      "New identity",
+      "Existing project",
+      "Use saved progress",
+      "Plan a campaign day",
+      "Check my proof",
     ]);
     expect(actionHub.isActionHubReady(readyStatus)).toBe(true);
     expect(state.ready).toBe(true);
@@ -99,6 +99,16 @@ describe("SWARMSY HIVE action hub", () => {
     expect(state.actions.loadMemoryLock.disabled).toBe(false);
     expect(state.actions.campaignCalendar.disabled).toBe(false);
     expect(state.actions.reviewProof.disabled).toBe(false);
+  });
+
+  it("uses the same plain labels when no starting choice is selected", () => {
+    const actionHub = loadActionHubModule();
+
+    expect(
+      actionHub.getIntakeDisabledMessage(buildReadyStatus(), null)
+    ).toBe(
+      "Choose whether SPARKY should build around you, create a hidden identity, or improve an existing project."
+    );
   });
 
   it("blocks local-user intake without a selected installed Ollama model", () => {
@@ -343,7 +353,7 @@ describe("SWARMSY HIVE action hub", () => {
     expect(source).not.toContain("/admin/");
   });
 
-  it("includes action hub copy in the onboarding component", () => {
+  it("keeps the main beginner choices plain and free of duplicate saved-work cards", () => {
     const source = fs.readFileSync(
       path.resolve(
         __dirname,
@@ -353,7 +363,15 @@ describe("SWARMSY HIVE action hub", () => {
     );
 
     expect(source).toContain("ACTION_HUB_TITLE");
-    expect(source).toContain("Choose the next command for SPARKY.");
+    expect(source).toContain("SPARKY helps build your identity.");
+    expect(source).toContain("What would you like to do?");
+    expect(source).toContain("Start with SPARKY");
+    expect(source).toContain('label: "Build around me"');
+    expect(source).toContain('label: "Build a hidden identity"');
+    expect(source).toContain('label: "Bring in an existing project"');
+    expect(source).not.toContain('label: "Load Memory Lock"');
+    expect(source).not.toContain("Choose the next command for SPARKY.");
+    expect(source).not.toContain("Choose Face Identity Mode");
     expect(source).toContain("SwarmsyLocalUserSettingsHub");
   });
 

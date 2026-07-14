@@ -9,13 +9,13 @@ import {
 } from "./memoryLock";
 import { canReviewProof, getProofTrackerBlockedMessage } from "./proofTracker";
 
-export const ACTION_HUB_TITLE = "SWARMSY HIVE Action Hub";
+export const ACTION_HUB_TITLE = "Your SWARMSY home";
 export const ACTION_HUB_HELPER_COPY =
-  "Every action routes through your HIVE and keeps the project moving.";
+  "Pick the choice that sounds right. SPARKY will guide you and remember the work.";
 export const ACTION_BUSY_MESSAGE =
   "Another SWARMSY action is already running. Wait for it to finish.";
 export const INTAKE_MODE_REQUIRED_MESSAGE =
-  "Choose Face Identity Mode, Hidden Identity Mode, or Existing Project first.";
+  "Choose whether SPARKY should build around you, create a hidden identity, or improve an existing project.";
 export const INTAKE_HIVE_MISSING_MESSAGE =
   "Create your SWARMSY HIVE before starting intake.";
 export const INTAKE_UNDERLOADED_MESSAGE =
@@ -33,28 +33,28 @@ export const MEMORY_LOCK_LOCAL_USER_MODEL_UNVERIFIED_MESSAGE =
 export const ACTION_HUB_GROUPS = [
   {
     id: "build",
-    title: "Build",
+    title: "Create or improve an identity",
     description:
-      "Begin the 76-question SWARMSY intake and choose the right project mode.",
-    actions: ["Start Intake", "Existing Project"],
+      "Choose the path that sounds most like you. No setup knowledge needed.",
+    actions: ["New identity", "Existing project"],
   },
   {
     id: "continue",
-    title: "Continue",
-    description: "Continue an existing project without restarting.",
-    actions: ["Load Memory Lock"],
+    title: "Continue saved work",
+    description: "Bring back earlier SWARMSY work without starting again.",
+    actions: ["Use saved progress"],
   },
   {
     id: "launch",
-    title: "Launch",
-    description: "Pick a date and create a campaign-day command.",
-    actions: ["Campaign Calendar"],
+    title: "Plan one campaign day",
+    description: "Pick a date and let SPARKY plan what to do that day.",
+    actions: ["Plan a campaign day"],
   },
   {
     id: "verify",
-    title: "Verify",
-    description: "Check what claims are safe before posting.",
-    actions: ["Review Proof / Find Proof Gaps"],
+    title: "Check proof before posting",
+    description: "Let SPARKY spot weak or unsupported claims.",
+    actions: ["Check my proof"],
   },
 ];
 
