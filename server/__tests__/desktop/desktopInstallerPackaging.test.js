@@ -110,12 +110,20 @@ describe("desktop Windows installer packaging foundation", () => {
     const manifestRemovalIndex = builderScript.indexOf(
       "fs.rmSync(installerManifest, { force: true });"
     );
+    const junctionIndex = builderScript.indexOf(
+      "const installerSource = createShortWindowsInstallerSource("
+    );
+    const pruneIndex = builderScript.indexOf(
+      "pruneInstallerPayload(installerSource.sourcePath)"
+    );
     const makensisIndex = builderScript.indexOf("spawnSync(makensisPath");
 
     expect(validationIndex).toBeGreaterThan(-1);
     expect(installerRemovalIndex).toBeGreaterThan(validationIndex);
     expect(manifestRemovalIndex).toBeGreaterThan(installerRemovalIndex);
-    expect(makensisIndex).toBeGreaterThan(manifestRemovalIndex);
+    expect(junctionIndex).toBeGreaterThan(manifestRemovalIndex);
+    expect(pruneIndex).toBeGreaterThan(junctionIndex);
+    expect(makensisIndex).toBeGreaterThan(pruneIndex);
   });
 
   it("configures the Modern UI finish-page launch as a define", () => {
@@ -464,7 +472,8 @@ describe("desktop Windows installer packaging foundation", () => {
     }
   });
 
-  it("keeps installer smoke validation aligned with artifact safety checks", () => {    const artifactSmoke = require(artifactSmokePath);
+  it("keeps installer smoke validation aligned with artifact safety checks", () => {
+    const artifactSmoke = require(artifactSmokePath);
 
     expect(Array.from(artifactSmoke.forbiddenPathFragments)).toEqual(
       expect.arrayContaining(["server/storage", "ollama/models", "local-user-data"])

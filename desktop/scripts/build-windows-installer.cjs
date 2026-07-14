@@ -95,7 +95,13 @@ function pruneInstallerPayload(artifactDir) {
         entry.isFile() &&
         devExtensions.some((ext) => entry.name.endsWith(ext))
       ) {
-        fs.rmSync(fullPath, { force: true });
+        try {
+          fs.rmSync(fullPath, { force: true });
+        } catch (err) {
+          throw new Error(
+            `[desktop:installer] Failed to prune ${fullPath}: ${err.message}`
+          );
+        }
         pruned++;
       }
     }
@@ -157,14 +163,13 @@ function buildInstaller({
   fs.rmSync(installerOutput, { force: true });
   fs.rmSync(installerManifest, { force: true });
 
-  pruneInstallerPayload(packageRoot);
-
   const installerSource = createShortWindowsInstallerSource({
     sourcePath: packageRoot,
     platform,
     tempRoot,
   });
   try {
+    pruneInstallerPayload(installerSource.sourcePath);
     const args = [
       "/V3",
       `/DAPP_SOURCE_DIR=${nsisDefineValue(installerSource.sourcePath)}`,
