@@ -25,6 +25,7 @@ module.exports = {
   buildSwarmsyIntakeBatchProgress,
   getCreativeIntensityInstruction,
   getIntakeStarterMessage,
+  hasSwarmsyIntakeCompletionSignal,
   hasIdentityEmpireKnowledge,
   isSwarmsyIntakeCompleteMessage,
 };`);
@@ -248,8 +249,11 @@ describe("SPARKY Wiki knowledge pack frontend flow", () => {
   });
 
   it("uses a friendly exact sentence to close intake persistence", () => {
-    const { getIntakeStarterMessage, isSwarmsyIntakeCompleteMessage } =
-      loadHandoffModule();
+    const {
+      getIntakeStarterMessage,
+      hasSwarmsyIntakeCompletionSignal,
+      isSwarmsyIntakeCompleteMessage,
+    } = loadHandoffModule();
     const face = getIntakeStarterMessage("face");
 
     expect(face).toContain(
@@ -271,6 +275,18 @@ describe("SPARKY Wiki knowledge pack frontend flow", () => {
       )
     ).toBe(false);
     expect(isSwarmsyIntakeCompleteMessage("Tell me more.")).toBe(false);
+    expect(
+      isSwarmsyIntakeCompleteMessage(`Absolutely — here's your Identity Idea.
+
+- **MESSAGE** — Notice what power ignores.
+- **DOODAD** — A one-eyed harbour rat.
+- **PLACEMENT** — A fictional permission-based sea-wall mockup.`)
+    ).toBe(true);
+    expect(
+      hasSwarmsyIntakeCompletionSignal(`Here is your Identity Idea.
+MESSAGE: Notice what power ignores.
+DOODAD: A one-eyed harbour rat.`)
+    ).toBe(true);
   });
 
   it("turns SPARKY's finished response into a structured proposal", () => {

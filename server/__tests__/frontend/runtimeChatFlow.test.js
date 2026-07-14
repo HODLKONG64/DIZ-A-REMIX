@@ -61,6 +61,7 @@ describe("SWARMSY runtime chat flow wiring", () => {
       "failedSwarmsyIntakeBatchesRef.current = new Set()"
     );
     expect(source).toContain("isSwarmsyIntakeCompleteMessage");
+    expect(source).toContain("hasSwarmsyIntakeCompletionSignal");
     expect(source).toContain("buildIdentityIdeaProposalFromSparkyMessage");
     expect(source).toContain("SwarmsyOnboarding.proposeIdentityIdea");
     expect(source).toContain("SwarmsyOnboarding.completeIntakeSession");
@@ -69,9 +70,10 @@ describe("SWARMSY runtime chat flow wiring", () => {
     ).toBeLessThan(source.indexOf("SwarmsyOnboarding.completeIntakeSession"));
     expect(source).toContain("pending?.intakeSession?.id");
     expect(source).toContain("activeSwarmsyIdentityIdeaRef");
-    expect(source).toContain(
-      "activeSwarmsyIdentityIdeaRef.current = pending?.identityIdea?.id"
-    );
+    expect(source).toContain("getActiveSwarmsyIdentityIdea");
+    expect(source).toContain("storeActiveSwarmsyIdentityIdea");
+    expect(source).toContain("clearActiveSwarmsyIdentityIdea");
+    expect(source).toContain("if (pending?.identityIdea?.id)");
     expect(source).toContain(
       'if (promptMessage.userMessage.trim() === "/reset")'
     );
