@@ -67,6 +67,50 @@ function createShortWindowsInstallerSource({
   };
 }
 
+function pruneInstallerPayload(artifactDir) {
+  const serverNodeModules = path.join(
+    artifactDir,
+    "resources",
+    "app",
+    "server",
+    "node_modules"
+  );
+  if (!fs.existsSync(serverNodeModules)) return 0;
+
+  const devExtensions = [".d.ts", ".d.ts.map"];
+  let pruned = 0;
+
+  function removeDevFiles(dir) {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        removeDevFiles(fullPath);
+      } else if (
+        entry.isFile() &&
+        devExtensions.some((ext) => entry.name.endsWith(ext))
+      ) {
+        fs.rmSync(fullPath, { force: true });
+        pruned++;
+      }
+    }
+  }
+
+  removeDevFiles(serverNodeModules);
+
+  if (pruned > 0) {
+    console.log(
+      `[desktop:installer] Pruned ${pruned} TypeScript declaration file(s) from server/node_modules`
+    );
+  }
+  return pruned;
+}
+
 function writeInstallerManifest({ makensisPath }) {
   const manifest = {
     productName: "SWARMSY Desktop",
@@ -112,6 +156,8 @@ function buildInstaller({
   validateArtifact({ packageRoot, archivePath });
   fs.rmSync(installerOutput, { force: true });
   fs.rmSync(installerManifest, { force: true });
+
+  pruneInstallerPayload(packageRoot);
 
   const installerSource = createShortWindowsInstallerSource({
     sourcePath: packageRoot,
@@ -160,6 +206,7 @@ module.exports = {
   createShortWindowsInstallerSource,
   nsisDefineValue,
   packageRoot,
+  pruneInstallerPayload,
   writeInstallerManifest,
   buildInstaller,
 };

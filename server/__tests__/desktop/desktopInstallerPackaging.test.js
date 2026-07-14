@@ -426,8 +426,45 @@ describe("desktop Windows installer packaging foundation", () => {
     }
   });
 
-  it("keeps installer smoke validation aligned with artifact safety checks", () => {
-    const artifactSmoke = require(artifactSmokePath);
+  it("prunes TypeScript declaration files from server node_modules before NSIS packaging", () => {
+    const builder = require(installerBuilderPath);
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "swarmsy-prune-"));
+
+    try {
+      const nodeModulesPath = path.join(
+        tmpRoot,
+        "resources/app/server/node_modules"
+      );
+      const deepDir = path.join(
+        nodeModulesPath,
+        "elevenlabs/api/resources/pronunciationDictionary/client/requests"
+      );
+      fs.mkdirSync(deepDir, { recursive: true });
+
+      const dtsFile = path.join(deepDir, "BodyRemoveRulesPost.d.ts");
+      const dtsMapFile = path.join(deepDir, "BodyRemoveRulesPost.d.ts.map");
+      const jsFile = path.join(nodeModulesPath, "elevenlabs/index.js");
+      const cjsFile = path.join(nodeModulesPath, "elevenlabs/client.cjs");
+
+      fs.mkdirSync(path.dirname(jsFile), { recursive: true });
+      fs.writeFileSync(dtsFile, "export type T = {};");
+      fs.writeFileSync(dtsMapFile, "{}");
+      fs.writeFileSync(jsFile, "module.exports = {};");
+      fs.writeFileSync(cjsFile, "module.exports = {};");
+
+      const pruned = builder.pruneInstallerPayload(tmpRoot);
+
+      expect(pruned).toBeGreaterThanOrEqual(2);
+      expect(fs.existsSync(dtsFile)).toBe(false);
+      expect(fs.existsSync(dtsMapFile)).toBe(false);
+      expect(fs.existsSync(jsFile)).toBe(true);
+      expect(fs.existsSync(cjsFile)).toBe(true);
+    } finally {
+      fs.rmSync(tmpRoot, { recursive: true, force: true });
+    }
+  });
+
+  it("keeps installer smoke validation aligned with artifact safety checks", () => {    const artifactSmoke = require(artifactSmokePath);
 
     expect(Array.from(artifactSmoke.forbiddenPathFragments)).toEqual(
       expect.arrayContaining(["server/storage", "ollama/models", "local-user-data"])
