@@ -140,11 +140,16 @@ async function resolveBackupFileContext({
     throw new Error("Backups directory cannot be a symlink.");
   }
 
-  const realBackupsDir = await fsApi.realpath(backupsDir);
-  assertPathWithinLocalUserRoot(realBackupsDir, layout);
+  const rootStats = await fsApi.lstat(layout.root);
+  if (rootStats.isSymbolicLink()) {
+    throw new Error("Local User data root cannot be a symlink.");
+  }
 
+  const realBackupsDir = await fsApi.realpath(backupsDir);
   const realRoot = await fsApi.realpath(layout.root).catch(() => layout.root);
-  assertPathWithinLocalUserRoot(realRoot, layout, { allowRoot: true });
+  const canonicalLayout = { ...layout, root: realRoot };
+  assertPathWithinLocalUserRoot(realRoot, canonicalLayout, { allowRoot: true });
+  assertPathWithinLocalUserRoot(realBackupsDir, canonicalLayout);
 
   const backupFileStats = await fsApi.lstat(backupFilePath).catch((error) => {
     if (error?.code === "ENOENT") return null;

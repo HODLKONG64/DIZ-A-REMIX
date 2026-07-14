@@ -17,6 +17,9 @@ const {
   getLocalUserSettings,
   resolveSettingsFileContext,
 } = require("../../../desktop/foundation/localSettingsStore.cjs");
+const {
+  getDesktopStorageContract,
+} = require("../../../desktop/foundation/storageContractBridge.cjs");
 
 function createContractOptions(homeDir) {
   return {
@@ -87,6 +90,28 @@ describe("desktop filesystem Local User backup store", () => {
     expect(result.path.startsWith(result.backupsDir)).toBe(true);
     const written = JSON.parse(await fs.readFile(result.path, "utf8"));
     expect(written).toEqual(result.backup);
+  });
+
+  it("accepts a safe backup directory when Windows canonicalizes a parent junction", async () => {
+    const contractOptions = createContractOptions(tmpRoot);
+    const { layout } = getDesktopStorageContract(contractOptions);
+    const canonicalRoot = path.join(tmpRoot, "canonical-local-user-root");
+    const fsApi = {
+      ...fs,
+      realpath: jest.fn(async (target) => {
+        if (target === layout.root) return canonicalRoot;
+        if (target === layout.paths.backups) {
+          return path.join(canonicalRoot, "backups");
+        }
+        return fs.realpath(target);
+      }),
+    };
+
+    await expect(
+      resolveBackupFileContext({ contractOptions, fsApi })
+    ).resolves.toEqual(
+      expect.objectContaining({ backupsDir: layout.paths.backups })
+    );
   });
 
   it("exports only allowlisted desktop settings and excludes secrets/runtime/server data", async () => {
