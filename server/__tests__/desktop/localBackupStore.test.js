@@ -20,9 +20,12 @@ const {
 
 function createContractOptions(homeDir) {
   return {
-    platform: "linux",
+    platform: process.platform,
     homeDir,
-    env: { XDG_CONFIG_HOME: path.posix.join(homeDir, ".xdg") },
+    env:
+      process.platform === "linux"
+        ? { XDG_CONFIG_HOME: path.join(homeDir, ".xdg") }
+        : {},
   };
 }
 
