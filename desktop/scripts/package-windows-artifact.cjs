@@ -9,6 +9,12 @@ const appName = "swarmsy-desktop-win32-x64";
 const packageRoot = path.join(artifactsRoot, appName);
 const appResourcesRoot = path.join(packageRoot, "resources", "app");
 const serverRuntimeRoot = path.join(appResourcesRoot, "server");
+const packagedRuntimeLauncherPath = path.join(
+  appResourcesRoot,
+  "desktop",
+  "foundation",
+  "runtimeLauncher.cjs"
+);
 const frontendBuildEntry = path.join(
   repoRoot,
   "frontend",
@@ -83,6 +89,56 @@ function copyDirectory(from, to, { excludeNodeModules = false } = {}) {
       !(excludeNodeModules && isUnderNodeModules(source)) &&
       !shouldExcludeRuntimeCopy(source),
   });
+}
+
+function optimizePackagedRuntimeLauncher() {
+  ensureExists(packagedRuntimeLauncherPath, "Packaged runtime launcher");
+  const source = fs.readFileSync(packagedRuntimeLauncherPath, "utf8");
+  const original = `function copyRuntimeTree(from, to) {
+  fs.mkdirSync(path.dirname(to), { recursive: true });
+  fs.cpSync(from, to, {
+    recursive: true,
+    filter: (source) => !shouldExcludeRuntimeCopy(source),
+  });
+}`;
+  const optimized = `function copyRuntimeTree(from, to) {
+  const sourceNodeModules = path.join(from, "node_modules");
+  const shouldLinkNodeModules =
+    path.basename(from).toLowerCase() === "server" &&
+    fs.existsSync(sourceNodeModules);
+
+  fs.mkdirSync(path.dirname(to), { recursive: true });
+  fs.cpSync(from, to, {
+    recursive: true,
+    filter: (source) =>
+      !(shouldLinkNodeModules && isUnderNodeModules(source)) &&
+      !shouldExcludeRuntimeCopy(source),
+  });
+
+  if (shouldLinkNodeModules) {
+    const managedNodeModules = path.join(to, "node_modules");
+    fs.rmSync(managedNodeModules, { recursive: true, force: true });
+    fs.symlinkSync(
+      sourceNodeModules,
+      managedNodeModules,
+      process.platform === "win32" ? "junction" : "dir"
+    );
+  }
+}`;
+
+  if (!source.includes(original)) {
+    throw new Error(
+      "Packaged runtime launcher no longer contains the expected runtime-copy implementation."
+    );
+  }
+
+  fs.writeFileSync(
+    packagedRuntimeLauncherPath,
+    source.replace(original, optimized)
+  );
+  console.log(
+    "[desktop:artifact] Optimized first-run runtime staging to link production node_modules"
+  );
 }
 
 function sanitizeProductionServerDependencies(nodeModulesPath) {
@@ -239,6 +295,7 @@ function packageAppResources() {
       path.join(appResourcesRoot, entry.to)
     );
   }
+  optimizePackagedRuntimeLauncher();
   copyServerRuntime();
   copyDirectory(
     path.join(repoRoot, "frontend", "dist"),
@@ -323,6 +380,7 @@ module.exports = {
   installProductionServerDependencies,
   isUnderNodeModules,
   main,
+  optimizePackagedRuntimeLauncher,
   packageAppResources,
   sanitizeProductionServerDependencies,
   serverRuntimeRoot,
