@@ -127,6 +127,15 @@ describe("desktop Windows installer packaging foundation", () => {
     expect(nsis).not.toContain("!insertmacro MUI_FINISHPAGE_RUN");
   });
 
+  it("keeps bundled server node_modules in the installer payload", () => {
+    const nsis = fs.readFileSync(nsisInstallerPath, "utf8");
+
+    expect(nsis).not.toContain('/x "node_modules"');
+    expect(nsis).toContain(
+      'File /r /x ".git" /x ".yarn" /x ".pnpm-store" /x "__tests__" /x "*.map" "${APP_SOURCE_DIR}\\*.*"'
+    );
+  });
+
   it("escapes NSIS define values without breaking Windows paths", () => {
     const builder = require(installerBuilderPath);
 
