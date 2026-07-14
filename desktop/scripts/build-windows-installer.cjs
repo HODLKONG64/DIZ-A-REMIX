@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 const fs = require("fs");
+const os = require("os");
 const path = require("path");
 const { spawnSync } = require("child_process");
 const { validateArtifact } = require("./desktop-artifact-smoke-check.cjs");
@@ -42,6 +43,30 @@ function resolveMakensis() {
   return "makensis";
 }
 
+function createShortWindowsInstallerSource({
+  sourcePath = packageRoot,
+  platform = process.platform,
+  tempRoot = os.tmpdir(),
+} = {}) {
+  if (platform !== "win32") {
+    return { sourcePath, cleanup: () => {} };
+  }
+
+  const stagingRoot = fs.mkdtempSync(path.join(tempRoot, "swi-"));
+  const junctionPath = path.join(stagingRoot, "app");
+  try {
+    fs.symlinkSync(sourcePath, junctionPath, "junction");
+  } catch (error) {
+    fs.rmSync(stagingRoot, { recursive: true, force: true });
+    throw error;
+  }
+
+  return {
+    sourcePath: junctionPath,
+    cleanup: () => fs.rmSync(stagingRoot, { recursive: true, force: true }),
+  };
+}
+
 function writeInstallerManifest({ makensisPath }) {
   const manifest = {
     productName: "SWARMSY Desktop",
@@ -78,21 +103,34 @@ function writeInstallerManifest({ makensisPath }) {
   return manifest;
 }
 
-function buildInstaller({ makensisPath = resolveMakensis() } = {}) {
+function buildInstaller({
+  makensisPath = resolveMakensis(),
+  platform = process.platform,
+  tempRoot = os.tmpdir(),
+} = {}) {
   ensureExists(installerScript, "NSIS installer script");
   validateArtifact({ packageRoot, archivePath });
   fs.rmSync(installerOutput, { force: true });
   fs.rmSync(installerManifest, { force: true });
 
-  const args = [
-    "/V3",
-    `/DAPP_SOURCE_DIR=${nsisDefineValue(packageRoot)}`,
-    `/DINSTALLER_OUTPUT=${nsisDefineValue(installerOutput)}`,
-    installerScript,
-  ];
-  const result = spawnSync(makensisPath, args, { stdio: "inherit" });
-  if (result.error || result.status !== 0) {
-    throw result.error || new Error(`makensis exited with ${result.status}`);
+  const installerSource = createShortWindowsInstallerSource({
+    sourcePath: packageRoot,
+    platform,
+    tempRoot,
+  });
+  try {
+    const args = [
+      "/V3",
+      `/DAPP_SOURCE_DIR=${nsisDefineValue(installerSource.sourcePath)}`,
+      `/DINSTALLER_OUTPUT=${nsisDefineValue(installerOutput)}`,
+      installerScript,
+    ];
+    const result = spawnSync(makensisPath, args, { stdio: "inherit" });
+    if (result.error || result.status !== 0) {
+      throw result.error || new Error(`makensis exited with ${result.status}`);
+    }
+  } finally {
+    installerSource.cleanup();
   }
 
   ensureExists(installerOutput, "SWARMSY Desktop installer");
@@ -119,6 +157,7 @@ module.exports = {
   installerManifest,
   installerOutput,
   installerScript,
+  createShortWindowsInstallerSource,
   nsisDefineValue,
   packageRoot,
   writeInstallerManifest,
