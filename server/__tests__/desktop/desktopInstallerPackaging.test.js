@@ -125,6 +125,28 @@ describe("desktop Windows installer packaging foundation", () => {
       '!define MUI_FINISHPAGE_RUN "$INSTDIR\\SWARMSY Desktop.exe"'
     );
     expect(nsis).not.toContain("!insertmacro MUI_FINISHPAGE_RUN");
+    expect(nsis).not.toContain('/x "node_modules"');
+  });
+
+  it("uses a short Windows junction without removing runtime dependencies", () => {
+    const builder = require(installerBuilderPath);
+    const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "swarmsy-short-"));
+    const sourcePath = path.join(tmpRoot, "complete-runtime-source");
+    fs.mkdirSync(sourcePath);
+
+    const staged = builder.createShortWindowsInstallerSource({
+      sourcePath,
+      platform: "win32",
+      tempRoot: tmpRoot,
+    });
+
+    expect(fs.realpathSync(staged.sourcePath)).toBe(fs.realpathSync(sourcePath));
+    expect(path.basename(staged.sourcePath)).toBe("app");
+    expect(staged.sourcePath).not.toBe(sourcePath);
+
+    staged.cleanup();
+    expect(fs.existsSync(staged.sourcePath)).toBe(false);
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
   });
 
   it("keeps bundled server node_modules in the installer payload", () => {
