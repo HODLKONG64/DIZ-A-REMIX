@@ -118,6 +118,15 @@ describe("desktop Windows installer packaging foundation", () => {
     expect(makensisIndex).toBeGreaterThan(manifestRemovalIndex);
   });
 
+  it("configures the Modern UI finish-page launch as a define", () => {
+    const nsis = fs.readFileSync(nsisInstallerPath, "utf8");
+
+    expect(nsis).toContain(
+      '!define MUI_FINISHPAGE_RUN "$INSTDIR\\SWARMSY Desktop.exe"'
+    );
+    expect(nsis).not.toContain("!insertmacro MUI_FINISHPAGE_RUN");
+  });
+
   it("escapes NSIS define values without breaking Windows paths", () => {
     const builder = require(installerBuilderPath);
 
