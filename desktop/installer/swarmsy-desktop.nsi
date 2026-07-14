@@ -18,11 +18,11 @@ SetCompressor /SOLID lzma
 !define MUI_ABORTWARNING
 !define MUI_ICON "${NSISDIR}\Contrib\Graphics\Icons\modern-install.ico"
 !define MUI_UNICON "${NSISDIR}\Contrib\Graphics\Icons\modern-uninstall.ico"
+!define MUI_FINISHPAGE_RUN "$INSTDIR\SWARMSY Desktop.exe"
 
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_DIRECTORY
 !insertmacro MUI_PAGE_INSTFILES
-!insertmacro MUI_FINISHPAGE_RUN "$INSTDIR\SWARMSY Desktop.exe"
 !insertmacro MUI_PAGE_FINISH
 
 !insertmacro MUI_UNPAGE_CONFIRM
