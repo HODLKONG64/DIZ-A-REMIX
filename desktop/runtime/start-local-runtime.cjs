@@ -8,6 +8,54 @@ function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
+function ensurePrismaStorageLink(
+  serverRoot,
+  storageRoot,
+  { platform = process.platform } = {}
+) {
+  const prismaStorageRoot = path.join(serverRoot, "storage");
+  if (path.resolve(prismaStorageRoot) === path.resolve(storageRoot)) {
+    ensureDir(storageRoot);
+    return prismaStorageRoot;
+  }
+
+  ensureDir(storageRoot);
+  if (fs.existsSync(prismaStorageRoot)) {
+    const current = fs.lstatSync(prismaStorageRoot);
+    if (current.isSymbolicLink()) {
+      if (fs.realpathSync(prismaStorageRoot) === fs.realpathSync(storageRoot)) {
+        return prismaStorageRoot;
+      }
+      fs.unlinkSync(prismaStorageRoot);
+    } else if (current.isDirectory()) {
+      // Recover data written by older desktop builds before the persistent
+      // storage link existed. Never overwrite a file already in Local User data.
+      for (const entry of fs.readdirSync(prismaStorageRoot)) {
+        const source = path.join(prismaStorageRoot, entry);
+        const destination = path.join(storageRoot, entry);
+        if (fs.existsSync(destination)) {
+          throw new Error(
+            `Cannot move legacy desktop data because ${destination} already exists.`
+          );
+        }
+        fs.renameSync(source, destination);
+      }
+      fs.rmdirSync(prismaStorageRoot);
+    } else {
+      throw new Error(
+        `Expected Prisma storage to be a directory: ${prismaStorageRoot}`
+      );
+    }
+  }
+
+  fs.symlinkSync(
+    storageRoot,
+    prismaStorageRoot,
+    platform === "win32" ? "junction" : "dir"
+  );
+  return prismaStorageRoot;
+}
+
 function ensureLocalSecret(file) {
   if (fs.existsSync(file)) return fs.readFileSync(file, "utf8").trim();
   const secret = crypto.randomBytes(32).toString("hex");
@@ -84,6 +132,7 @@ function initializeLocalRuntime(serverRoot, { env = process.env } = {}) {
   ensureDir(path.join(storageRoot, "documents"));
   ensureDir(path.join(storageRoot, "vector-cache"));
   ensureDir(path.join(storageRoot, "assets"));
+  ensurePrismaStorageLink(serverRoot, storageRoot);
 
   env.NODE_ENV = "production";
   env.SERVER_PORT = env.SERVER_PORT || "3000";
@@ -132,6 +181,7 @@ if (require.main === module) main();
 module.exports = {
   ensureDir,
   ensureLocalSecret,
+  ensurePrismaStorageLink,
   initializeLocalRuntime,
   resolvePrismaBin,
   resolveRuntimeDataRoot,

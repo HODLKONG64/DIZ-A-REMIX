@@ -16,7 +16,12 @@ function makeExecutable(targetPath, contents = "#!/bin/sh\nexit 0\n") {
 describe("packaged desktop local runtime entrypoint", () => {
   it("resolves persistent runtime data outside the managed app copy", () => {
     const { resolveRuntimeDataRoot } = require(runtimePath);
-    const serverRoot = path.join("/tmp", "managed-local-runtime", "app", "server");
+    const serverRoot = path.join(
+      "/tmp",
+      "managed-local-runtime",
+      "app",
+      "server"
+    );
 
     expect(
       resolveRuntimeDataRoot(serverRoot, {
@@ -62,7 +67,12 @@ describe("packaged desktop local runtime entrypoint", () => {
     const { run } = require(runtimePath);
     const spawnSyncImpl = jest.fn(() => ({ status: 0 }));
 
-    const prismaPs1 = path.win32.join("C:\\app", "node_modules", ".bin", "prisma.ps1");
+    const prismaPs1 = path.win32.join(
+      "C:\\app",
+      "node_modules",
+      ".bin",
+      "prisma.ps1"
+    );
     run(prismaPs1, ["migrate", "deploy"], {
       platform: "win32",
       spawnSyncImpl,
@@ -88,7 +98,12 @@ describe("packaged desktop local runtime entrypoint", () => {
     const { run } = require(runtimePath);
     const spawnSyncImpl = jest.fn(() => ({ status: 0 }));
 
-    const prismaCmd = path.win32.join("C:\\app", "node_modules", ".bin", "prisma.cmd");
+    const prismaCmd = path.win32.join(
+      "C:\\app",
+      "node_modules",
+      ".bin",
+      "prisma.cmd"
+    );
     run(prismaCmd, ["db", "seed"], {
       platform: "win32",
       spawnSyncImpl,
@@ -103,7 +118,9 @@ describe("packaged desktop local runtime entrypoint", () => {
 
   it("initializes local storage and preserves secrets outside app code", () => {
     const { initializeLocalRuntime } = require(runtimePath);
-    const serverRoot = fs.mkdtempSync(path.join(os.tmpdir(), "swarmsy-server-"));
+    const serverRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-server-")
+    );
     const userData = fs.mkdtempSync(path.join(os.tmpdir(), "swarmsy-user-"));
     makeExecutable(path.join(serverRoot, "node_modules", ".bin", "prisma"));
 
@@ -121,7 +138,12 @@ describe("packaged desktop local runtime entrypoint", () => {
     expect(fs.existsSync(path.join(runtimeRoot, "documents"))).toBe(true);
     expect(fs.existsSync(path.join(runtimeRoot, "vector-cache"))).toBe(true);
     expect(fs.existsSync(path.join(runtimeRoot, "assets"))).toBe(true);
-    expect(fs.existsSync(path.join(serverRoot, "storage"))).toBe(false);
+    expect(
+      fs.lstatSync(path.join(serverRoot, "storage")).isSymbolicLink()
+    ).toBe(true);
+    expect(fs.realpathSync(path.join(serverRoot, "storage"))).toBe(
+      fs.realpathSync(runtimeRoot)
+    );
     expect(env.DATABASE_URL.includes(serverRoot.replace(/\\/g, "/"))).toBe(
       false
     );
@@ -130,9 +152,32 @@ describe("packaged desktop local runtime entrypoint", () => {
     expect(fs.readFileSync(jwtPath, "utf8")).toBe(firstJwt);
   });
 
+  it("moves legacy packaged database files into persistent Local User storage", () => {
+    const { ensurePrismaStorageLink } = require(runtimePath);
+    const serverRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-server-")
+    );
+    const storageRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-runtime-storage-")
+    );
+    const oldStorageRoot = path.join(serverRoot, "storage");
+    fs.mkdirSync(oldStorageRoot);
+    fs.writeFileSync(path.join(oldStorageRoot, "anythingllm.db"), "legacy-db");
+
+    ensurePrismaStorageLink(serverRoot, storageRoot, { platform: "linux" });
+
+    expect(
+      fs.readFileSync(path.join(storageRoot, "anythingllm.db"), "utf8")
+    ).toBe("legacy-db");
+    expect(fs.lstatSync(oldStorageRoot).isSymbolicLink()).toBe(true);
+    expect(fs.realpathSync(oldStorageRoot)).toBe(fs.realpathSync(storageRoot));
+  });
+
   it("throws a clear error when no Prisma shim is bundled", () => {
     const { initializeLocalRuntime } = require(runtimePath);
-    const serverRoot = fs.mkdtempSync(path.join(os.tmpdir(), "swarmsy-server-"));
+    const serverRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-server-")
+    );
 
     expect(() =>
       initializeLocalRuntime(serverRoot, {
