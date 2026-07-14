@@ -126,10 +126,17 @@ function findLoadedDesktopPage(targets, expectedUrl) {
 
 function firstRunPaths(userDataRoot) {
   const runtimeRoot = path.join(userDataRoot, "local-user-data", "runtime");
+  const managedAppServerRoot = path.join(
+    userDataRoot,
+    "managed-local-runtime",
+    "app",
+    "server"
+  );
   return {
     databaseCandidates: [
       path.join(runtimeRoot, "anythingllm.db"),
       path.join(runtimeRoot, "storage", "anythingllm.db"),
+      path.join(managedAppServerRoot, "storage", "anythingllm.db"),
     ],
     jwtSecret: path.join(runtimeRoot, "local-runtime.jwt"),
     signatureSecret: path.join(runtimeRoot, "local-runtime.sig"),

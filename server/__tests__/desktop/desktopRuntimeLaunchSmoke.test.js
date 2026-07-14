@@ -55,7 +55,7 @@ describe("packaged desktop runtime launch smoke", () => {
       path.join(os.tmpdir(), "swarmsy-launch-smoke-test-")
     );
     const files = firstRunPaths(userDataRoot);
-    const database = files.databaseCandidates[0];
+    const database = files.databaseCandidates[files.databaseCandidates.length - 1];
     fs.mkdirSync(path.dirname(database), { recursive: true });
     fs.writeFileSync(database, "created");
 
