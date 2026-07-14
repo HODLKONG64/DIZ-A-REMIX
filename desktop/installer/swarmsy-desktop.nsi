@@ -33,7 +33,7 @@ SetCompressor /SOLID lzma
 
 Section "SWARMSY Desktop" SEC_INSTALL
   SetOutPath "$INSTDIR"
-  File /r /x "node_modules" /x ".git" /x "*.map" "${APP_SOURCE_DIR}\*.*"
+  File /r /x ".git" /x ".yarn" /x ".pnpm-store" /x "__tests__" /x "*.map" "${APP_SOURCE_DIR}\*.*"
 
   WriteUninstaller "$INSTDIR\Uninstall SWARMSY Desktop.exe"
 
