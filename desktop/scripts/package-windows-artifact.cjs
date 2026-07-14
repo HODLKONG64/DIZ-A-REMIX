@@ -85,6 +85,57 @@ function copyDirectory(from, to, { excludeNodeModules = false } = {}) {
   });
 }
 
+function sanitizeProductionServerDependencies(nodeModulesPath) {
+  let removed = 0;
+
+  function removeEntry(targetPath) {
+    try {
+      fs.rmSync(targetPath, { recursive: true, force: true });
+    } catch (error) {
+      throw new Error(
+        `[desktop:artifact] Failed to remove non-runtime dependency content ${targetPath}: ${error.message}`
+      );
+    }
+    removed++;
+  }
+
+  function sanitizeDirectory(directory) {
+    let entries;
+    try {
+      entries = fs.readdirSync(directory, { withFileTypes: true });
+    } catch (error) {
+      throw new Error(
+        `[desktop:artifact] Failed to inspect production dependencies at ${directory}: ${error.message}`
+      );
+    }
+
+    for (const entry of entries) {
+      const fullPath = path.join(directory, entry.name);
+      const basename = entry.name.toLowerCase();
+      const isUnsafeMetadata =
+        basename.startsWith(".env") || basename.endsWith(".local");
+      const isDeclaration =
+        basename.endsWith(".d.ts") || basename.endsWith(".d.ts.map");
+      const isTestDirectory = entry.isDirectory() && basename === "__tests__";
+
+      if (isUnsafeMetadata || isDeclaration || isTestDirectory) {
+        removeEntry(fullPath);
+      } else if (entry.isDirectory()) {
+        sanitizeDirectory(fullPath);
+      }
+    }
+  }
+
+  ensureExists(nodeModulesPath, "Production server node_modules");
+  sanitizeDirectory(nodeModulesPath);
+  if (removed > 0) {
+    console.log(
+      `[desktop:artifact] Removed ${removed} non-runtime dependency file(s) or directory(s)`
+    );
+  }
+  return removed;
+}
+
 function installProductionServerDependencies({
   runtimeServerPath = serverRuntimeRoot,
   platform = process.platform,
@@ -116,14 +167,11 @@ function installProductionServerDependencies({
     );
   }
 
-  ensureExists(
-    path.join(runtimeServerPath, "node_modules"),
-    "Production server node_modules"
-  );
+  const nodeModulesPath = path.join(runtimeServerPath, "node_modules");
+  ensureExists(nodeModulesPath, "Production server node_modules");
   ensureExists(
     path.join(
-      runtimeServerPath,
-      "node_modules",
+      nodeModulesPath,
       "@prisma",
       "client",
       "package.json"
@@ -131,9 +179,10 @@ function installProductionServerDependencies({
     "Prisma client runtime"
   );
   ensureExists(
-    path.join(runtimeServerPath, "node_modules", "prisma", "package.json"),
+    path.join(nodeModulesPath, "prisma", "package.json"),
     "Prisma CLI runtime"
   );
+  sanitizeProductionServerDependencies(nodeModulesPath);
 }
 
 function copyServerRuntime() {
@@ -275,6 +324,7 @@ module.exports = {
   isUnderNodeModules,
   main,
   packageAppResources,
+  sanitizeProductionServerDependencies,
   serverRuntimeRoot,
   shouldExcludeRuntimeCopy,
   toPortableLower,
