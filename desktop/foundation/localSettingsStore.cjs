@@ -5,7 +5,8 @@ const {
   validateLocalUserStoragePath,
 } = require("../../server/utils/swarmsy/localUserStorageContract");
 
-const DESKTOP_LOCAL_USER_SETTINGS_SCHEMA = "swarmsy_desktop_local_user_settings";
+const DESKTOP_LOCAL_USER_SETTINGS_SCHEMA =
+  "swarmsy_desktop_local_user_settings";
 const DESKTOP_LOCAL_USER_SETTINGS_VERSION = 1;
 const LOCAL_SETTINGS_FILENAME = "local-user-settings.json";
 
@@ -110,7 +111,10 @@ function sanitizeSettingsStateInput(input = {}) {
 function validateSettingsDocument(document) {
   const errors = [];
   if (!isPlainObject(document)) {
-    return { valid: false, errors: ["settings document must be a plain object."] };
+    return {
+      valid: false,
+      errors: ["settings document must be a plain object."],
+    };
   }
 
   for (const key of Object.keys(document)) {
@@ -152,7 +156,10 @@ function validateSettingsDocument(document) {
 
 function resolveSettingsPayload(payload = {}) {
   if (!isPlainObject(payload)) {
-    return { valid: false, errors: ["settings payload must be a plain object."] };
+    return {
+      valid: false,
+      errors: ["settings payload must be a plain object."],
+    };
   }
   if (isPlainObject(payload.state)) {
     const extraKeys = Object.keys(payload).filter((k) => k !== "state");
@@ -169,10 +176,19 @@ function resolveSettingsPayload(payload = {}) {
   return sanitizeSettingsStateInput(payload);
 }
 
-function assertPathWithinLocalUserRoot(targetPath, layout, { allowRoot = false } = {}) {
-  const validation = validateLocalUserStoragePath(targetPath, { layout, allowRoot });
+function assertPathWithinLocalUserRoot(
+  targetPath,
+  layout,
+  { allowRoot = false } = {}
+) {
+  const validation = validateLocalUserStoragePath(targetPath, {
+    layout,
+    allowRoot,
+  });
   if (!validation.valid) {
-    throw new Error(validation.reason || "Path is outside SWARMSY Local User root.");
+    throw new Error(
+      validation.reason || "Path is outside SWARMSY Local User root."
+    );
   }
 }
 
@@ -184,7 +200,10 @@ async function resolveSettingsFileContext({
   const contract = getDesktopStorageContract(contractOptions);
   const layout = contract.layout;
   const settingsDir = layout?.paths?.settings;
-  const settingsFilePath = pathApi.resolve(settingsDir, LOCAL_SETTINGS_FILENAME);
+  const settingsFilePath = pathApi.resolve(
+    settingsDir,
+    LOCAL_SETTINGS_FILENAME
+  );
 
   assertPathWithinLocalUserRoot(layout.root, layout, { allowRoot: true });
   assertPathWithinLocalUserRoot(settingsDir, layout);
@@ -197,16 +216,23 @@ async function resolveSettingsFileContext({
     throw new Error("Settings directory cannot be a symlink.");
   }
 
+  const rootStats = await fsApi.lstat(layout.root);
+  if (rootStats.isSymbolicLink()) {
+    throw new Error("Local User data root cannot be a symlink.");
+  }
+
   const realSettingsDir = await fsApi.realpath(settingsDir);
-  assertPathWithinLocalUserRoot(realSettingsDir, layout);
-
   const realRoot = await fsApi.realpath(layout.root).catch(() => layout.root);
-  assertPathWithinLocalUserRoot(realRoot, layout, { allowRoot: true });
+  const canonicalLayout = { ...layout, root: realRoot };
+  assertPathWithinLocalUserRoot(realRoot, canonicalLayout, { allowRoot: true });
+  assertPathWithinLocalUserRoot(realSettingsDir, canonicalLayout);
 
-  const settingsFileStats = await fsApi.lstat(settingsFilePath).catch((error) => {
-    if (error?.code === "ENOENT") return null;
-    throw error;
-  });
+  const settingsFileStats = await fsApi
+    .lstat(settingsFilePath)
+    .catch((error) => {
+      if (error?.code === "ENOENT") return null;
+      throw error;
+    });
   if (settingsFileStats?.isSymbolicLink()) {
     throw new Error("Settings file cannot be a symlink.");
   }
@@ -289,7 +315,9 @@ async function getLocalUserSettings(options = {}) {
     return {
       ok: false,
       reason: "settings_read_failed",
-      message: String(error?.message || error || "Failed to read local settings."),
+      message: String(
+        error?.message || error || "Failed to read local settings."
+      ),
     };
   }
 }
@@ -371,7 +399,9 @@ async function setLocalUserSettings(payload = {}, options = {}) {
     return {
       ok: false,
       reason: "settings_write_failed",
-      message: String(error?.message || error || "Failed to write local settings."),
+      message: String(
+        error?.message || error || "Failed to write local settings."
+      ),
     };
   }
 }
@@ -398,7 +428,9 @@ async function clearLocalUserSettings(options = {}) {
     return {
       ok: false,
       reason: "settings_clear_failed",
-      message: String(error?.message || error || "Failed to clear local settings."),
+      message: String(
+        error?.message || error || "Failed to clear local settings."
+      ),
     };
   }
 }

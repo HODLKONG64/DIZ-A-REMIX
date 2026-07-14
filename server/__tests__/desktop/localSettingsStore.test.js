@@ -9,6 +9,9 @@ const {
   getLocalUserSettings,
   setLocalUserSettings,
 } = require("../../../desktop/foundation/localSettingsStore.cjs");
+const {
+  getDesktopStorageContract,
+} = require("../../../desktop/foundation/storageContractBridge.cjs");
 
 function createContractOptions(homeDir) {
   return {
@@ -24,7 +27,9 @@ describe("desktop local settings store", () => {
   let tmpRoot;
 
   beforeEach(async () => {
-    tmpRoot = await fs.mkdtemp(path.join(os.tmpdir(), "swarmsy-desktop-settings-"));
+    tmpRoot = await fs.mkdtemp(
+      path.join(os.tmpdir(), "swarmsy-desktop-settings-")
+    );
   });
 
   afterEach(async () => {
@@ -45,7 +50,31 @@ describe("desktop local settings store", () => {
       { contractOptions: createContractOptions(tmpRoot) }
     );
     expect(writeResult.ok).toBe(true);
-    expect(writeResult.path.startsWith(context.layout.paths.settings)).toBe(true);
+    expect(writeResult.path.startsWith(context.layout.paths.settings)).toBe(
+      true
+    );
+  });
+
+  it("accepts a safe directory when Windows canonicalizes a parent junction", async () => {
+    const contractOptions = createContractOptions(tmpRoot);
+    const { layout } = getDesktopStorageContract(contractOptions);
+    const canonicalRoot = path.join(tmpRoot, "canonical-local-user-root");
+    const fsApi = {
+      ...fs,
+      realpath: jest.fn(async (target) => {
+        if (target === layout.root) return canonicalRoot;
+        if (target === layout.paths.settings) {
+          return path.join(canonicalRoot, "settings");
+        }
+        return fs.realpath(target);
+      }),
+    };
+
+    await expect(
+      resolveSettingsFileContext({ contractOptions, fsApi })
+    ).resolves.toEqual(
+      expect.objectContaining({ settingsDir: layout.paths.settings })
+    );
   });
 
   it("returns safe empty/default state when settings file is missing", async () => {
@@ -157,7 +186,10 @@ describe("desktop local settings store", () => {
     });
     const escapedDir = path.join(tmpRoot, "outside-root");
     await fs.mkdir(escapedDir, { recursive: true });
-    await fs.rm(context.layout.paths.settings, { recursive: true, force: true });
+    await fs.rm(context.layout.paths.settings, {
+      recursive: true,
+      force: true,
+    });
     await fs.symlink(escapedDir, context.layout.paths.settings);
 
     const result = await setLocalUserSettings(
