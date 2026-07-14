@@ -41,8 +41,17 @@ async function isLegacyOnboarded() {
   // Vector DB is set, so we can assume onboarding is complete since this is default null in SystemSettings.js (default is lancedb in frontend)
   if (!!process.env.VECTOR_DB) return true;
 
-  // Check if the AUTH_TOKEN/JWT_SECRET is set, so we can assume onboarding is complete since this is default null in SystemSettings.js
-  if (!!process.env.AUTH_TOKEN || !!process.env.JWT_SECRET) return true;
+  // An explicit auth token still means this instance was configured already.
+  if (!!process.env.AUTH_TOKEN) return true;
+
+  // The managed desktop runtime must generate a JWT secret before the server can
+  // boot. That generated infrastructure secret is not evidence that a person has
+  // completed onboarding. Keep the legacy JWT check for every other deployment.
+  if (
+    process.env.SWARMSY_DESKTOP_LOCAL_RUNTIME !== "true" &&
+    !!process.env.JWT_SECRET
+  )
+    return true;
 
   // Check multi-user mode is enabled, if it is, then they are already using the app.
   if ((await SystemSettings.isMultiUserMode()) === true) return true;
@@ -50,3 +59,4 @@ async function isLegacyOnboarded() {
 }
 
 module.exports = markOnboarded;
+module.exports.isLegacyOnboarded = isLegacyOnboarded;
