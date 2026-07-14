@@ -16,7 +16,11 @@ const packageRoot = path.join(
   "swarmsy-desktop-win32-x64"
 );
 const desktopExecutable = path.join(packageRoot, "SWARMSY Desktop.exe");
-const DEFAULT_TIMEOUT_MS = 180_000;
+// A fresh packaged launch copies the production server tree (including native
+// dependencies) into managed Local User storage before migrations can run.
+// Windows CI antivirus scanning can make that one-time copy take nearly three
+// minutes, so keep the outer smoke deadline above the measured cold-start path.
+const DEFAULT_TIMEOUT_MS = 300_000;
 const DEFAULT_RETRY_INTERVAL_MS = 1_000;
 
 function fail(message) {

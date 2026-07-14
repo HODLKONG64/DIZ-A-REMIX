@@ -3,6 +3,7 @@ const os = require("os");
 const path = require("path");
 const { EventEmitter } = require("events");
 const {
+  DEFAULT_TIMEOUT_MS,
   cleanupFirstRunData,
   findLoadedDesktopPage,
   firstRunPaths,
@@ -12,6 +13,10 @@ const {
 } = require("../../../desktop/scripts/desktop-runtime-launch-smoke.cjs");
 
 describe("packaged desktop runtime launch smoke", () => {
+  it("allows enough time for a cold packaged Windows runtime copy", () => {
+    expect(DEFAULT_TIMEOUT_MS).toBeGreaterThanOrEqual(300_000);
+  });
+
   it("matches only the Electron page loaded from the fresh local runtime", () => {
     const targets = [
       { type: "service_worker", url: "http://127.0.0.1:3210/sw.js" },
