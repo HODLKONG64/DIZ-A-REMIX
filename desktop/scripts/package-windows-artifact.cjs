@@ -103,6 +103,7 @@ function installProductionServerDependencies({
   const result = spawnSyncImpl(yarnCommand, args, {
     cwd: runtimeServerPath,
     stdio: "inherit",
+    shell: platform === "win32",
     env: { ...process.env, NODE_ENV: "production" },
   });
 
@@ -120,7 +121,13 @@ function installProductionServerDependencies({
     "Production server node_modules"
   );
   ensureExists(
-    path.join(runtimeServerPath, "node_modules", "@prisma", "client", "package.json"),
+    path.join(
+      runtimeServerPath,
+      "node_modules",
+      "@prisma",
+      "client",
+      "package.json"
+    ),
     "Prisma client runtime"
   );
   ensureExists(
