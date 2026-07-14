@@ -60,8 +60,11 @@ jobs:
           $tag = "${{ steps.release_tag.outputs.tag }}"
           $checkoutRef = $tag
           if ("${{ github.event_name }}" -eq "workflow_dispatch") {
-            git ls-remote --exit-code --tags "https://github.com/${{ github.repository }}.git" "refs/tags/$tag" *> $null
+            $matchingTag = git ls-remote --tags "https://github.com/${{ github.repository }}.git" "refs/tags/$tag"
             if ($LASTEXITCODE -ne 0) {
+              throw "Failed to query the repository for release tag $tag."
+            }
+            if ([string]::IsNullOrWhiteSpace(($matchingTag | Out-String))) {
               $checkoutRef = "${{ github.sha }}"
             }
           }

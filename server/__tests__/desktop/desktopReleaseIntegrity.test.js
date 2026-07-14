@@ -309,7 +309,11 @@ describe("desktop release integrity manifest", () => {
       'if ("${{ github.event_name }}" -eq "workflow_dispatch") {'
     );
     expect(releaseWorkflow).toContain(
-      'git ls-remote --exit-code --tags "https://github.com/${{ github.repository }}.git" "refs/tags/$tag"'
+      '$matchingTag = git ls-remote --tags "https://github.com/${{ github.repository }}.git" "refs/tags/$tag"'
+    );
+    expect(releaseWorkflow).not.toContain("git ls-remote --exit-code");
+    expect(releaseWorkflow).toContain(
+      "[string]::IsNullOrWhiteSpace(($matchingTag | Out-String))"
     );
     expect(releaseWorkflow).toContain('$checkoutRef = "${{ github.sha }}"');
     expect(releaseWorkflow).toContain("ref: ${{ steps.checkout_ref.outputs.ref }}");
@@ -340,9 +344,12 @@ describe("desktop release integrity manifest", () => {
     const resolverBlock = releaseWorkflow.slice(resolveCheckoutIndex, checkoutIndex);
 
     expect(resolverBlock).toContain("$checkoutRef = $tag");
-    expect(resolverBlock).toContain("git ls-remote --exit-code --tags");
+    expect(resolverBlock).toContain("$matchingTag = git ls-remote --tags");
+    expect(resolverBlock).toContain(
+      "[string]::IsNullOrWhiteSpace(($matchingTag | Out-String))"
+    );
     expect(resolverBlock.indexOf('$checkoutRef = "${{ github.sha }}"')).toBeGreaterThan(
-      resolverBlock.indexOf("git ls-remote --exit-code --tags")
+      resolverBlock.indexOf("$matchingTag = git ls-remote --tags")
     );
     expect(buildIndex).toBeGreaterThan(checkoutIndex);
   });
