@@ -177,6 +177,8 @@ describe("desktop runtime launcher foundation", () => {
   it("rejects unsafe managed runtime delete paths", () => {
     const { assertSafeManagedRuntimePath } = require(launcherPath);
     const fsRoot = path.parse(process.cwd()).root;
+    const managedRoot = path.resolve("/tmp/swarmsy-safe");
+    const managedAppRoot = path.join(managedRoot, "app");
 
     expect(() => assertSafeManagedRuntimePath("", path.join("", "app"))).toThrow(
       /Refusing to clear managed runtime root/
@@ -185,16 +187,16 @@ describe("desktop runtime launcher foundation", () => {
       assertSafeManagedRuntimePath(fsRoot, path.join(fsRoot, "app"))
     ).toThrow(/Refusing to clear managed runtime root/);
     expect(() =>
-      assertSafeManagedRuntimePath("/tmp/swarmsy-safe", "/tmp/swarmsy-safe-code")
+      assertSafeManagedRuntimePath(
+        managedRoot,
+        path.resolve("/tmp/swarmsy-safe-code")
+      )
     ).toThrow(/Refusing to clear unexpected managed app root/);
     expect(
-      assertSafeManagedRuntimePath(
-        "/tmp/swarmsy-safe",
-        "/tmp/swarmsy-safe/app"
-      )
+      assertSafeManagedRuntimePath(managedRoot, managedAppRoot)
     ).toEqual({
-      managedRoot: "/tmp/swarmsy-safe",
-      managedAppRoot: "/tmp/swarmsy-safe/app",
+      managedRoot,
+      managedAppRoot,
     });
   });
 
