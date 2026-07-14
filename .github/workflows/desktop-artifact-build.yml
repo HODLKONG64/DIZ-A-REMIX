@@ -151,3 +151,6 @@ jobs:
 
       - name: Smoke validation
         run: npm run desktop:artifact:smoke
+
+      - name: Launch packaged desktop and verify fresh first run
+        run: npm run desktop:runtime:smoke:win
