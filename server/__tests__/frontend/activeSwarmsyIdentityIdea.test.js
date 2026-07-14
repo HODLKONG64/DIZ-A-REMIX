@@ -77,4 +77,44 @@ describe("active SWARMSY Identity Idea continuity", () => {
     clearActiveSwarmsyIdentityIdea(scope, storage);
     expect(getActiveSwarmsyIdentityIdea(scope, storage)).toBeNull();
   });
+
+  it("keeps chat working when browser storage rejects writes", () => {
+    const { storeActiveSwarmsyIdentityIdea } = loadHelpers();
+    const storage = {
+      getItem: () => null,
+      setItem: () => {
+        throw new Error("Storage disabled");
+      },
+    };
+
+    expect(
+      storeActiveSwarmsyIdentityIdea(
+        { workspaceSlug: "swarmsy-hive", threadSlug: null },
+        { id: 42 },
+        storage
+      )
+    ).toBe(false);
+  });
+
+  it("keeps reset working when browser storage rejects removals", () => {
+    const { clearActiveSwarmsyIdentityIdea } = loadHelpers();
+    const storage = {
+      getItem: () =>
+        JSON.stringify({
+          workspaceSlug: "swarmsy-hive",
+          threadSlug: null,
+          idea: { id: 42 },
+        }),
+      removeItem: () => {
+        throw new Error("Storage disabled");
+      },
+    };
+
+    expect(
+      clearActiveSwarmsyIdentityIdea(
+        { workspaceSlug: "swarmsy-hive", threadSlug: null },
+        storage
+      )
+    ).toBe(false);
+  });
 });

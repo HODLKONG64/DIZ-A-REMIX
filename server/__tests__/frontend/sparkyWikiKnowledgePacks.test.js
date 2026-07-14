@@ -270,6 +270,12 @@ describe("SPARKY Wiki knowledge pack frontend flow", () => {
       )
     ).toBe(false);
     expect(
+      isSwarmsyIntakeCompleteMessage(`I will later say "Your answers are saved. Here is your Identity Idea."
+MESSAGE: An example message.
+DOODAD: An example symbol.
+PLACEMENT: An example setting.`)
+    ).toBe(false);
+    expect(
       isSwarmsyIntakeCompleteMessage(
         "Your answers are saved. Here is your Identity Idea."
       )

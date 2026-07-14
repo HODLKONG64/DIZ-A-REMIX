@@ -74,6 +74,7 @@ describe("SWARMSY runtime chat flow wiring", () => {
     expect(source).toContain("storeActiveSwarmsyIdentityIdea");
     expect(source).toContain("clearActiveSwarmsyIdentityIdea");
     expect(source).toContain("if (pending?.identityIdea?.id)");
+    expect(source).toContain("} else {");
     expect(source).toContain(
       'if (promptMessage.userMessage.trim() === "/reset")'
     );

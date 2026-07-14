@@ -564,7 +564,7 @@ export default function ChatContainer({
           { workspaceSlug: workspace?.slug, threadSlug },
           pending.identityIdea
         );
-      } else if (pending?.intakeSession?.id) {
+      } else {
         activeSwarmsyIdentityIdeaRef.current = null;
         clearActiveSwarmsyIdentityIdea({
           workspaceSlug: workspace?.slug,

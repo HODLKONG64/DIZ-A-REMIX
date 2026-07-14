@@ -36,11 +36,15 @@ export function storeActiveSwarmsyIdentityIdea(
 ) {
   const target = normalizedScope(scope);
   if (!target.workspaceSlug || !idea?.id) return false;
-  storage?.setItem(
-    ACTIVE_SWARMSY_IDENTITY_IDEA,
-    JSON.stringify({ ...target, idea })
-  );
-  return true;
+  try {
+    storage?.setItem(
+      ACTIVE_SWARMSY_IDENTITY_IDEA,
+      JSON.stringify({ ...target, idea })
+    );
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function clearActiveSwarmsyIdentityIdea(
@@ -53,8 +57,13 @@ export function clearActiveSwarmsyIdentityIdea(
     payload?.workspaceSlug === target.workspaceSlug &&
     payload?.threadSlug === target.threadSlug
   ) {
-    storage?.removeItem(ACTIVE_SWARMSY_IDENTITY_IDEA);
+    try {
+      storage?.removeItem(ACTIVE_SWARMSY_IDENTITY_IDEA);
+    } catch {
+      return false;
+    }
   }
+  return true;
 }
 
 export { ACTIVE_SWARMSY_IDENTITY_IDEA };
