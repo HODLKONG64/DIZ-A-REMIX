@@ -25,7 +25,9 @@ function downloadMarkdown(review) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `swarmsy-proof-review-v${Number(review?.version || 0) || 1}.md`;
+  link.download = `swarmsy-proof-review-v${
+    Number(review?.version || 0) || 1
+  }.md`;
   link.click();
   URL.revokeObjectURL(url);
   return true;
@@ -100,7 +102,8 @@ export default function ProofReviewHistoryPanel({
   }, [workspaceSlug]);
 
   const selectedReview = useMemo(
-    () => reviews.find((review) => review.id === selectedId) || reviews[0] || null,
+    () =>
+      reviews.find((review) => review.id === selectedId) || reviews[0] || null,
     [reviews, selectedId]
   );
 
@@ -140,7 +143,8 @@ export default function ProofReviewHistoryPanel({
             Proof Review history
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-text-secondary">
-            Reopen earlier evidence checks, compare versions, or export the selected review.
+            Reopen earlier evidence checks, review saved versions, or export the
+            selected review.
           </p>
         </div>
         <button
@@ -207,7 +211,9 @@ export default function ProofReviewHistoryPanel({
                     {proofReviewLabel(selectedReview)}
                   </h3>
                   <p className="mt-1 text-xs text-theme-text-secondary">
-                    {selectedReview.isActive ? "Active review" : "Earlier version"}
+                    {selectedReview.isActive
+                      ? "Active review"
+                      : "Earlier version"}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
