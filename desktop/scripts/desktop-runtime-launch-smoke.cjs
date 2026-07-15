@@ -180,6 +180,8 @@ function cleanupFirstRunData(userDataRoot, { rmSyncImpl = fs.rmSync } = {}) {
 async function runDesktopRuntimeLaunchSmoke({
   platform = process.platform,
   spawnImpl = spawn,
+  smokeTimeoutMs = Number(process.env.SWARMSY_RUNTIME_SMOKE_TIMEOUT_MS) || DEFAULT_TIMEOUT_MS,
+  smokeRetryMs = Number(process.env.SWARMSY_RUNTIME_SMOKE_RETRY_MS) || DEFAULT_RETRY_INTERVAL_MS,
 } = {}) {
   if (platform !== "win32") {
     fail("The packaged desktop runtime launch smoke check requires Windows.");
@@ -215,8 +217,21 @@ async function runDesktopRuntimeLaunchSmoke({
     }
   );
 
-  child.stdout?.on("data", (chunk) => process.stdout.write(chunk));
-  child.stderr?.on("data", (chunk) => process.stderr.write(chunk));
+  const childLogLines = [];
+  function collectLogChunk(chunk) {
+    const lines = chunk.toString().split(/\r?\n/).filter(Boolean);
+    childLogLines.push(...lines);
+    if (childLogLines.length > 200) childLogLines.splice(0, childLogLines.length - 200);
+  }
+
+  child.stdout?.on("data", (chunk) => {
+    process.stdout.write(chunk);
+    collectLogChunk(chunk);
+  });
+  child.stderr?.on("data", (chunk) => {
+    process.stderr.write(chunk);
+    collectLogChunk(chunk);
+  });
 
   let smokeCompleted = false;
   try {
@@ -232,8 +247,15 @@ async function runDesktopRuntimeLaunchSmoke({
           ? response
           : null;
       },
-      { label: "the packaged local runtime", child }
-    );
+      { label: "the packaged local runtime", child, timeoutMs: smokeTimeoutMs, retryIntervalMs: smokeRetryMs }
+    ).catch((error) => {
+      if (childLogLines.length > 0) {
+        console.error("[desktop:runtime:smoke] --- last runtime log lines ---");
+        for (const line of childLogLines.slice(-50)) console.error(line);
+        console.error("[desktop:runtime:smoke] --- end of runtime log lines ---");
+      }
+      throw error;
+    });
     if (!/id=["']root["']/.test(runtimeResponse.body)) {
       fail("Packaged local runtime did not serve the SWARMSY frontend shell.");
     }
@@ -250,7 +272,7 @@ async function runDesktopRuntimeLaunchSmoke({
           expectedPageUrl
         );
       },
-      { label: "Electron to load the SWARMSY page", child }
+      { label: "Electron to load the SWARMSY page", child, timeoutMs: smokeTimeoutMs, retryIntervalMs: smokeRetryMs }
     );
 
     const files = validateFirstRunFiles(userDataRoot);
