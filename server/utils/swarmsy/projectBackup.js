@@ -108,7 +108,9 @@ function buildSwarmsyProjectBackup({
   const slug = String(workspace.slug || "").trim();
   const name = String(workspace.name || "").trim();
   if (!slug || !name) {
-    throw new Error("Workspace slug and name are required for project backup export.");
+    throw new Error(
+      "Workspace slug and name are required for project backup export."
+    );
   }
   if (!isIsoDate(exportedAt)) {
     throw new Error("exportedAt must be a valid ISO date string.");
@@ -192,12 +194,14 @@ function validateSwarmsyProjectBackup(data) {
   }
 
   if (
-    JSON.stringify(data.coverage?.included) !== JSON.stringify(INCLUDED_SECTIONS)
+    JSON.stringify(data.coverage?.included) !==
+    JSON.stringify(INCLUDED_SECTIONS)
   ) {
     errors.push("coverage.included does not match version 1 coverage.");
   }
   if (
-    JSON.stringify(data.coverage?.excluded) !== JSON.stringify(EXCLUDED_SECTIONS)
+    JSON.stringify(data.coverage?.excluded) !==
+    JSON.stringify(EXCLUDED_SECTIONS)
   ) {
     errors.push("coverage.excluded does not match version 1 coverage.");
   }
