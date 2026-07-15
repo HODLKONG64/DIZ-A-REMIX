@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowClockwise, ArrowRight, SpinnerGap } from "@phosphor-icons/react";
+import {
+  ArrowClockwise,
+  ArrowRight,
+  SpinnerGap,
+} from "@phosphor-icons/react";
 import SwarmsyOnboarding from "@/models/swarmsyOnboarding";
 import showToast from "@/utils/toast";
 import { listProofReviews } from "./proofReviewHistory";
@@ -21,7 +25,9 @@ export default function ProjectDashboard({
 }) {
   const [loading, setLoading] = useState(Boolean(workspaceSlug));
   const [error, setError] = useState("");
-  const [snapshot, setSnapshot] = useState(() => buildProjectDashboardSnapshot());
+  const [snapshot, setSnapshot] = useState(() =>
+    buildProjectDashboardSnapshot()
+  );
 
   async function loadDashboard() {
     if (!workspaceSlug) return;
