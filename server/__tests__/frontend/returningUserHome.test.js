@@ -75,9 +75,9 @@ describe("SWARMSY returning-user home", () => {
     expect(source).toContain("buildMemoryLockStarterMessage");
     expect(source).toContain("onContinueMemoryLock={continueMemoryLock}");
     expect(source).toContain("onContinueIdea?.(message)");
-    expect(dashboard).toContain("Continue your questions");
-    expect(dashboard).toContain("Continue with SPARKY");
-    expect(dashboard).toContain("Review your new idea");
+    expect(dashboard).toContain("Your project dashboard");
+    expect(dashboard).toContain("Recommended next step");
+    expect(dashboard).toContain("{nextAction.label}");
     expect(dashboard).toContain("SwarmsyOnboarding.activeIntakeSession");
     expect(dashboard).toContain("SwarmsyOnboarding.identityIdeas");
     expect(dashboard).not.toMatch(/database|Prisma|API key|vector database/i);
