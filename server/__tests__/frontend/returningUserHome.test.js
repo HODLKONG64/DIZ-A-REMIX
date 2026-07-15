@@ -26,6 +26,10 @@ describe("SWARMSY returning-user home", () => {
     __dirname,
     "../../../frontend/src/components/SwarmsyFirstRunOnboarding/ReturningUserHome.jsx"
   );
+  const dashboardPath = path.resolve(
+    __dirname,
+    "../../../frontend/src/components/SwarmsyFirstRunOnboarding/ProjectDashboard.jsx"
+  );
   const onboardingPath = path.resolve(
     __dirname,
     "../../../frontend/src/components/SwarmsyFirstRunOnboarding/index.jsx"
@@ -62,23 +66,24 @@ describe("SWARMSY returning-user home", () => {
     expect(getReturningUserStep()).toBeNull();
   });
 
-  it("uses only plain returning-user actions and safe SPARKY handoffs", () => {
+  it("renders the project dashboard and preserves safe SPARKY handoffs", () => {
     const source = fs.readFileSync(componentPath, "utf8");
-    expect(source).toContain("Continue your questions");
-    expect(source).toContain("Continue with SPARKY");
-    expect(source).toContain("Review my idea");
-    expect(source).toContain("SPARKY is finding where you left off");
-    expect(source).toContain("SwarmsyOnboarding.activeIntakeSession");
-    expect(source).toContain("SwarmsyOnboarding.identityIdeas");
-    expect(source).toContain(".catch(() => {");
-    expect(source).toContain(".finally(() => {");
-    expect(source).toContain("if (!cancelled) setLoading(false)");
-    expect(source).toContain("buildIdentityIdeaSparkyMessage(step.idea)");
-    expect(source).toContain("identityIdea:");
-    expect(source).not.toMatch(/database|Prisma|API key|vector database/i);
+    const dashboard = fs.readFileSync(dashboardPath, "utf8");
+
+    expect(source).toContain("ProjectDashboard");
+    expect(source).toContain("ProofReviewHistoryPanel");
+    expect(source).toContain("buildMemoryLockStarterMessage");
+    expect(source).toContain("onContinueMemoryLock={continueMemoryLock}");
+    expect(source).toContain("onContinueIdea?.(message)");
+    expect(dashboard).toContain("Your project dashboard");
+    expect(dashboard).toContain("Recommended next step");
+    expect(dashboard).toContain("{nextAction.label}");
+    expect(dashboard).toContain("SwarmsyOnboarding.activeIntakeSession");
+    expect(dashboard).toContain("SwarmsyOnboarding.identityIdeas");
+    expect(dashboard).not.toMatch(/database|Prisma|API key|vector database/i);
   });
 
-  it("wires the returning card above the existing Action Hub", () => {
+  it("wires the returning dashboard above the existing Action Hub", () => {
     const source = fs.readFileSync(onboardingPath, "utf8");
     const returningCard = source.indexOf("<ReturningUserHome");
     const actionHub = source.indexOf('id="swarmsy-action-hub"');
