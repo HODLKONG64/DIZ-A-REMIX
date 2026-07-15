@@ -11,7 +11,7 @@ import {
   buildProjectDashboardSnapshot,
   getProjectDashboardNextAction,
   projectDashboardStatusCards,
-} from "./projectDashboard";
+} from "./projectDashboardState";
 
 const LOAD_ERROR = "SPARKY could not load your full project status.";
 
