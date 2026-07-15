@@ -10,7 +10,7 @@ function read(relativePath) {
 
 function loadDashboardHelpers() {
   const source = read(
-    "components/SwarmsyFirstRunOnboarding/projectDashboard.js"
+    "components/SwarmsyFirstRunOnboarding/projectDashboardState.js"
   )
     .replace(/import[\s\S]*?from ".*?";\r?\n/g, "")
     .replace(/export function /g, "function ");
@@ -125,6 +125,7 @@ describe("SWARMSY returning-user project dashboard", () => {
     expect(panel).toContain("SwarmsyOnboarding.identityIdeas");
     expect(panel).toContain("SwarmsyOnboarding.memoryLocks");
     expect(panel).toContain("listProofReviews");
+    expect(panel).toContain('from "./projectDashboardState"');
     expect(panel).not.toContain("/admin/");
   });
 
