@@ -28,7 +28,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - name: Determine whether full Windows packaging is required
         id: scope
         env:
@@ -41,19 +40,13 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 10
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "npm"
+          cache: npm
           cache-dependency-path: package-lock.json
-
-      - name: Install root dependencies
-        run: npm ci
-
+      - run: npm ci
       - name: Validate desktop shell and packaging scripts
         run: |
           npm run desktop:smoke
@@ -66,80 +59,55 @@ jobs:
     if: needs.artifact-scope.outputs.full_build == 'true'
     runs-on: windows-latest
     timeout-minutes: 45
-
     env:
       ELECTRON_VERSION: 33.4.11
       PUPPETEER_SKIP_DOWNLOAD: "true"
       SHARP_IGNORE_GLOBAL_LIBVIPS: "true"
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
-          cache: "npm"
+          cache: npm
           cache-dependency-path: package-lock.json
-
       - name: Install root dependencies
-        shell: pwsh
-        run: |
-          npm ci
-          git diff -- package-lock.json
-          git status --short
-          git diff --name-only
-
+        run: npm ci
       - name: Install frontend build dependencies
         working-directory: frontend
         run: yarn install --frozen-lockfile
-
       - name: Install production server dependencies
         working-directory: server
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: yarn install --frozen-lockfile --production=true
-
+      - name: Generate Prisma client (server)
+        working-directory: server
+        run: yarn prisma generate
       - name: Validate yarn lockfiles
         shell: pwsh
         run: |
-          $required = @(
-            "frontend/yarn.lock",
-            "server/yarn.lock",
-            "collector/yarn.lock"
-          )
+          $required = @("frontend/yarn.lock", "server/yarn.lock", "collector/yarn.lock")
           foreach ($lockfile in $required) {
-            if (!(Test-Path $lockfile)) {
-              throw "Missing required lockfile: $lockfile"
-            }
+            if (!(Test-Path $lockfile)) { throw "Missing required lockfile: $lockfile" }
           }
-          git diff --quiet -- frontend/yarn.lock server/yarn.lock collector/yarn.lock
-
       - name: Build frontend
         working-directory: frontend
         run: yarn build
-
       - name: Build desktop shell
         run: npm run desktop:smoke
-
       - name: Download Electron runtime
         shell: pwsh
         run: |
           $zipPath = Join-Path $env:RUNNER_TEMP "electron-v$env:ELECTRON_VERSION-win32-x64.zip"
           $extractPath = Join-Path $env:RUNNER_TEMP "electron-win32-x64"
-          $downloadUrl = "https://github.com/electron/electron/releases/download/v$env:ELECTRON_VERSION/electron-v$env:ELECTRON_VERSION-win32-x64.zip"
-          Invoke-WebRequest -Uri $downloadUrl -OutFile $zipPath
+          Invoke-WebRequest -Uri "https://github.com/electron/electron/releases/download/v$env:ELECTRON_VERSION/electron-v$env:ELECTRON_VERSION-win32-x64.zip" -OutFile $zipPath
           if (Test-Path $extractPath) { Remove-Item -Recurse -Force $extractPath }
           Expand-Archive -Path $zipPath -DestinationPath $extractPath
           "ELECTRON_DIST_PATH=$extractPath" | Out-File -FilePath $env:GITHUB_ENV -Append
-
       - name: Package desktop app with fast archive path
         run: npm run desktop:artifact:package:win
-
       - name: Assess signing readiness
         run: npm run desktop:signing:check
-
       - name: Upload Windows desktop artifact
         uses: actions/upload-artifact@v4
         with:
@@ -148,9 +116,19 @@ jobs:
           compression-level: 0
           if-no-files-found: error
           retention-days: 14
-
       - name: Smoke validation
         run: npm run desktop:artifact:smoke
-
       - name: Launch packaged desktop and verify fresh first run
-        run: npm run desktop:runtime:smoke:win
+        shell: pwsh
+        run: |
+          $logPath = "desktop/artifacts/desktop-runtime-smoke.log"
+          npm run desktop:runtime:smoke:win 2>&1 | Tee-Object -FilePath $logPath
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload desktop runtime smoke diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-runtime-smoke-diagnostics
+          path: desktop/artifacts/desktop-runtime-smoke.log
+          if-no-files-found: error
+          retention-days: 14

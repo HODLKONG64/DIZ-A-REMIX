@@ -8,6 +8,13 @@ const artifactsRoot = path.join(repoRoot, "desktop", "artifacts");
 const appName = "swarmsy-desktop-win32-x64";
 const packageRoot = path.join(artifactsRoot, appName);
 const appResourcesRoot = path.join(packageRoot, "resources", "app");
+const serverRuntimeRoot = path.join(appResourcesRoot, "server");
+const packagedRuntimeLauncherPath = path.join(
+  appResourcesRoot,
+  "desktop",
+  "foundation",
+  "runtimeLauncher.cjs"
+);
 const frontendBuildEntry = path.join(
   repoRoot,
   "frontend",
@@ -23,7 +30,6 @@ const copyEntries = [
   { from: "desktop/foundation", to: "desktop/foundation" },
   { from: "desktop/runtime", to: "desktop/runtime" },
   { from: "frontend/dist", to: "frontend/dist" },
-  { from: "server", to: "server" },
 ];
 
 function ensureExists(targetPath, label = targetPath) {
@@ -74,13 +80,214 @@ function shouldExcludeRuntimeCopy(source) {
   ].some((fragment) => portablePathIncludes(portable, fragment));
 }
 
-function copyDirectory(from, to) {
+function copyDirectory(from, to, { excludeNodeModules = false } = {}) {
   ensureExists(from);
+  fs.mkdirSync(path.dirname(to), { recursive: true });
+  fs.cpSync(from, to, {
+    recursive: true,
+    filter: (source) =>
+      !(excludeNodeModules && isUnderNodeModules(source)) &&
+      !shouldExcludeRuntimeCopy(source),
+  });
+}
+
+function optimizePackagedRuntimeLauncher() {
+  ensureExists(packagedRuntimeLauncherPath, "Packaged runtime launcher");
+  const source = fs.readFileSync(packagedRuntimeLauncherPath, "utf8");
+  const original = `function copyRuntimeTree(from, to) {
   fs.mkdirSync(path.dirname(to), { recursive: true });
   fs.cpSync(from, to, {
     recursive: true,
     filter: (source) => !shouldExcludeRuntimeCopy(source),
   });
+}`;
+  const optimized = `function copyRuntimeTree(from, to) {
+  const sourceNodeModules = path.join(from, "node_modules");
+  const shouldLinkNodeModules =
+    path.basename(from).toLowerCase() === "server" &&
+    fs.existsSync(sourceNodeModules);
+
+  fs.mkdirSync(path.dirname(to), { recursive: true });
+  fs.cpSync(from, to, {
+    recursive: true,
+    filter: (source) =>
+      !(shouldLinkNodeModules && isUnderNodeModules(source)) &&
+      !shouldExcludeRuntimeCopy(source),
+  });
+
+  if (shouldLinkNodeModules) {
+    const managedNodeModules = path.join(to, "node_modules");
+    fs.rmSync(managedNodeModules, { recursive: true, force: true });
+    fs.symlinkSync(
+      sourceNodeModules,
+      managedNodeModules,
+      process.platform === "win32" ? "junction" : "dir"
+    );
+  }
+}`;
+
+  if (!source.includes(original)) {
+    throw new Error(
+      "Packaged runtime launcher no longer contains the expected runtime-copy implementation."
+    );
+  }
+
+  fs.writeFileSync(
+    packagedRuntimeLauncherPath,
+    source.replace(original, optimized)
+  );
+  console.log(
+    "[desktop:artifact] Optimized first-run runtime staging to link production node_modules"
+  );
+}
+
+function sanitizeProductionServerDependencies(nodeModulesPath) {
+  let removed = 0;
+
+  function removeEntry(targetPath) {
+    try {
+      fs.rmSync(targetPath, { recursive: true, force: true });
+    } catch (error) {
+      throw new Error(
+        `[desktop:artifact] Failed to remove non-runtime dependency content ${targetPath}: ${error.message}`
+      );
+    }
+    removed++;
+  }
+
+  function sanitizeDirectory(directory) {
+    let entries;
+    try {
+      entries = fs.readdirSync(directory, { withFileTypes: true });
+    } catch (error) {
+      throw new Error(
+        `[desktop:artifact] Failed to inspect production dependencies at ${directory}: ${error.message}`
+      );
+    }
+
+    for (const entry of entries) {
+      const fullPath = path.join(directory, entry.name);
+      const basename = entry.name.toLowerCase();
+      const isUnsafeMetadata =
+        basename.startsWith(".env") || basename.endsWith(".local");
+      const isDeclaration =
+        basename.endsWith(".d.ts") || basename.endsWith(".d.ts.map");
+      const isTestDirectory = entry.isDirectory() && basename === "__tests__";
+
+      if (isUnsafeMetadata || isDeclaration || isTestDirectory) {
+        removeEntry(fullPath);
+      } else if (entry.isDirectory()) {
+        sanitizeDirectory(fullPath);
+      }
+    }
+  }
+
+  ensureExists(nodeModulesPath, "Production server node_modules");
+  sanitizeDirectory(nodeModulesPath);
+  if (removed > 0) {
+    console.log(
+      `[desktop:artifact] Removed ${removed} non-runtime dependency file(s) or directory(s)`
+    );
+  }
+  return removed;
+}
+
+function generateProductionPrismaClient({
+  runtimeServerPath,
+  nodeModulesPath,
+  platform = process.platform,
+  yarnCommand = platform === "win32" ? "yarn.cmd" : "yarn",
+  spawnSyncImpl = spawnSync,
+} = {}) {
+  const result = spawnSyncImpl(yarnCommand, ["prisma", "generate"], {
+    cwd: runtimeServerPath,
+    stdio: "inherit",
+    shell: platform === "win32",
+    env: { ...process.env, NODE_ENV: "production" },
+  });
+
+  if (result.error || result.status !== 0) {
+    throw (
+      result.error ||
+      new Error(
+        `${yarnCommand} prisma generate exited with ${result.status} while generating the packaged Prisma client.`
+      )
+    );
+  }
+
+  const generatedClientPath = path.join(
+    nodeModulesPath,
+    ".prisma",
+    "client",
+    "index.js"
+  );
+  ensureExists(generatedClientPath, "Generated Prisma client runtime");
+  const generatedClient = fs.readFileSync(generatedClientPath, "utf8");
+  if (generatedClient.includes("@prisma/client did not initialize yet")) {
+    throw new Error(
+      `Prisma client generation left the placeholder runtime in place: ${generatedClientPath}`
+    );
+  }
+  console.log("[desktop:artifact] Generated packaged Prisma client runtime");
+  return generatedClientPath;
+}
+
+function installProductionServerDependencies({
+  runtimeServerPath = serverRuntimeRoot,
+  platform = process.platform,
+  spawnSyncImpl = spawnSync,
+} = {}) {
+  ensureExists(path.join(runtimeServerPath, "package.json"), "Server package.json");
+  ensureExists(path.join(runtimeServerPath, "yarn.lock"), "Server yarn.lock");
+
+  const yarnCommand = platform === "win32" ? "yarn.cmd" : "yarn";
+  const args = [
+    "install",
+    "--production=true",
+    "--frozen-lockfile",
+    "--non-interactive",
+  ];
+  const result = spawnSyncImpl(yarnCommand, args, {
+    cwd: runtimeServerPath,
+    stdio: "inherit",
+    shell: platform === "win32",
+    env: { ...process.env, NODE_ENV: "production" },
+  });
+
+  if (result.error || result.status !== 0) {
+    throw (
+      result.error ||
+      new Error(
+        `${yarnCommand} exited with ${result.status} while installing the production server runtime.`
+      )
+    );
+  }
+
+  const nodeModulesPath = path.join(runtimeServerPath, "node_modules");
+  ensureExists(nodeModulesPath, "Production server node_modules");
+  ensureExists(
+    path.join(nodeModulesPath, "@prisma", "client", "package.json"),
+    "Prisma client runtime"
+  );
+  ensureExists(
+    path.join(nodeModulesPath, "prisma", "package.json"),
+    "Prisma CLI runtime"
+  );
+  generateProductionPrismaClient({
+    runtimeServerPath,
+    nodeModulesPath,
+    platform,
+    yarnCommand,
+    spawnSyncImpl,
+  });
+  sanitizeProductionServerDependencies(nodeModulesPath);
+}
+
+function copyServerRuntime() {
+  copyDirectory(path.join(repoRoot, "server"), serverRuntimeRoot, {
+    excludeNodeModules: true,
+  });
+  installProductionServerDependencies({ runtimeServerPath: serverRuntimeRoot });
 }
 
 function writeDesktopPackageJson() {
@@ -130,9 +337,11 @@ function packageAppResources() {
       path.join(appResourcesRoot, entry.to)
     );
   }
+  optimizePackagedRuntimeLauncher();
+  copyServerRuntime();
   copyDirectory(
     path.join(repoRoot, "frontend", "dist"),
-    path.join(appResourcesRoot, "server", "public")
+    path.join(serverRuntimeRoot, "public")
   );
   writeDesktopPackageJson();
 }
@@ -204,12 +413,20 @@ if (require.main === module) {
 }
 
 module.exports = {
+  appResourcesRoot,
   buildArchiveCommand,
   copyDirectory,
   copyEntries,
+  copyServerRuntime,
   createZipArchive,
+  generateProductionPrismaClient,
+  installProductionServerDependencies,
   isUnderNodeModules,
   main,
+  optimizePackagedRuntimeLauncher,
+  packageAppResources,
+  sanitizeProductionServerDependencies,
+  serverRuntimeRoot,
   shouldExcludeRuntimeCopy,
   toPortableLower,
 };

@@ -21,6 +21,7 @@ const installerScript = path.join(
   "installer",
   "swarmsy-desktop.nsi"
 );
+const MAX_NSIS_INPUT_PATH = 259;
 
 function ensureExists(targetPath, label = targetPath) {
   if (!fs.existsSync(targetPath)) {
@@ -43,28 +44,132 @@ function resolveMakensis() {
   return "makensis";
 }
 
+function windowsStagingRoots(sourcePath, tempRoot) {
+  if (tempRoot) return [tempRoot];
+  return [...new Set([path.parse(sourcePath).root, os.homedir(), os.tmpdir()])]
+    .filter(Boolean)
+    .sort((left, right) => left.length - right.length);
+}
+
 function createShortWindowsInstallerSource({
   sourcePath = packageRoot,
   platform = process.platform,
-  tempRoot = os.tmpdir(),
+  tempRoot,
 } = {}) {
   if (platform !== "win32") {
     return { sourcePath, cleanup: () => {} };
   }
 
-  const stagingRoot = fs.mkdtempSync(path.join(tempRoot, "swi-"));
-  const junctionPath = path.join(stagingRoot, "app");
-  try {
-    fs.symlinkSync(sourcePath, junctionPath, "junction");
-  } catch (error) {
-    fs.rmSync(stagingRoot, { recursive: true, force: true });
-    throw error;
+  const failures = [];
+  for (const stagingBase of windowsStagingRoots(sourcePath, tempRoot)) {
+    let stagingRoot;
+    try {
+      stagingRoot = fs.mkdtempSync(path.join(stagingBase, "swi-"));
+      const junctionPath = path.join(stagingRoot, "app");
+      fs.symlinkSync(sourcePath, junctionPath, "junction");
+      return {
+        sourcePath: junctionPath,
+        cleanup: () => fs.rmSync(stagingRoot, { recursive: true, force: true }),
+      };
+    } catch (error) {
+      if (stagingRoot) {
+        fs.rmSync(stagingRoot, { recursive: true, force: true });
+      }
+      failures.push(`${stagingBase}: ${error.message}`);
+    }
   }
 
-  return {
-    sourcePath: junctionPath,
-    cleanup: () => fs.rmSync(stagingRoot, { recursive: true, force: true }),
-  };
+  throw new Error(
+    `[desktop:installer] Could not create a short Windows junction. ${failures.join(
+      " | "
+    )}`
+  );
+}
+
+function pruneInstallerPayload(artifactDir) {
+  const serverNodeModules = path.join(
+    artifactDir,
+    "resources",
+    "app",
+    "server",
+    "node_modules"
+  );
+  if (!fs.existsSync(serverNodeModules)) return 0;
+
+  const devExtensions = [".d.ts", ".d.ts.map"];
+  let pruned = 0;
+
+  function removeDevFiles(dir) {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (error) {
+      throw new Error(
+        `[desktop:installer] Failed to inspect ${dir}: ${error.message}`
+      );
+    }
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        removeDevFiles(fullPath);
+      } else if (
+        entry.isFile() &&
+        devExtensions.some((ext) => entry.name.endsWith(ext))
+      ) {
+        try {
+          fs.rmSync(fullPath, { force: true });
+        } catch (err) {
+          throw new Error(
+            `[desktop:installer] Failed to prune ${fullPath}: ${err.message}`
+          );
+        }
+        pruned++;
+      }
+    }
+  }
+
+  removeDevFiles(serverNodeModules);
+
+  if (pruned > 0) {
+    console.log(
+      `[desktop:installer] Pruned ${pruned} TypeScript declaration file(s) from server/node_modules`
+    );
+  }
+  return pruned;
+}
+
+function assertInstallerInputPathsFit(
+  artifactDir,
+  maxLength = MAX_NSIS_INPUT_PATH
+) {
+  let longest = { path: artifactDir, length: artifactDir.length };
+
+  function inspect(dir) {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (error) {
+      throw new Error(
+        `[desktop:installer] Failed to inspect NSIS input ${dir}: ${error.message}`
+      );
+    }
+
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (fullPath.length > longest.length) {
+        longest = { path: fullPath, length: fullPath.length };
+      }
+      if (entry.isDirectory()) inspect(fullPath);
+    }
+  }
+
+  inspect(artifactDir);
+  if (longest.length > maxLength) {
+    throw new Error(
+      `[desktop:installer] NSIS input path is ${longest.length} characters (safe maximum ${maxLength}): ${longest.path}`
+    );
+  }
+  return longest;
 }
 
 function writeInstallerManifest({ makensisPath }) {
@@ -93,6 +198,8 @@ function writeInstallerManifest({ makensisPath }) {
       "Ollama runtime",
       "AI models",
       "user data",
+      "server development dependencies",
+      "TypeScript declaration files",
       ".env files",
       "secrets",
       "credentials",
@@ -106,7 +213,7 @@ function writeInstallerManifest({ makensisPath }) {
 function buildInstaller({
   makensisPath = resolveMakensis(),
   platform = process.platform,
-  tempRoot = os.tmpdir(),
+  tempRoot,
 } = {}) {
   ensureExists(installerScript, "NSIS installer script");
   validateArtifact({ packageRoot, archivePath });
@@ -119,6 +226,11 @@ function buildInstaller({
     tempRoot,
   });
   try {
+    pruneInstallerPayload(installerSource.sourcePath);
+    const longestInput = assertInstallerInputPathsFit(installerSource.sourcePath);
+    console.log(
+      `[desktop:installer] Longest NSIS input path is ${longestInput.length} characters`
+    );
     const args = [
       "/V3",
       `/DAPP_SOURCE_DIR=${nsisDefineValue(installerSource.sourcePath)}`,
@@ -152,14 +264,18 @@ function main() {
 if (require.main === module) main();
 
 module.exports = {
+  MAX_NSIS_INPUT_PATH,
   appName,
   artifactsRoot,
   installerManifest,
   installerOutput,
   installerScript,
+  assertInstallerInputPathsFit,
   createShortWindowsInstallerSource,
   nsisDefineValue,
   packageRoot,
+  pruneInstallerPayload,
+  windowsStagingRoots,
   writeInstallerManifest,
   buildInstaller,
 };
