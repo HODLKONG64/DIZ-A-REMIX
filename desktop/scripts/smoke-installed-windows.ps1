@@ -69,6 +69,8 @@ try {
 
   Push-Location $repoRoot
   try {
+    $env:SWARMSY_RUNTIME_SMOKE_TIMEOUT_MS = "360000"
+    $env:SWARMSY_RUNTIME_SMOKE_RETRY_MS   = "2000"
     npm run desktop:runtime:smoke:win
     if ($LASTEXITCODE -ne 0) {
       throw "Installed SWARMSY runtime smoke failed with exit code $LASTEXITCODE."
