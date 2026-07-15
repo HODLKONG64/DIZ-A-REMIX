@@ -15,6 +15,30 @@ import {
 
 const LOAD_ERROR = "SPARKY could not load your full project status.";
 
+async function fetchProjectDashboardSnapshot(workspaceSlug) {
+  const [intakeResult, ideasResult, locksResult, reviewsResult] =
+    await Promise.all([
+      SwarmsyOnboarding.activeIntakeSession(workspaceSlug),
+      SwarmsyOnboarding.identityIdeas(workspaceSlug),
+      SwarmsyOnboarding.memoryLocks(workspaceSlug),
+      listProofReviews(workspaceSlug),
+    ]);
+
+  return {
+    snapshot: buildProjectDashboardSnapshot({
+      session: intakeResult?.success ? intakeResult.session : null,
+      ideas: ideasResult?.success ? ideasResult.ideas : [],
+      locks: locksResult?.success ? locksResult.locks : [],
+      reviews: reviewsResult?.success ? reviewsResult.reviews : [],
+    }),
+    complete:
+      intakeResult?.success === true &&
+      ideasResult?.success === true &&
+      locksResult?.success === true &&
+      reviewsResult?.success === true,
+  };
+}
+
 export default function ProjectDashboard({
   workspaceSlug,
   busy = false,
@@ -35,31 +59,9 @@ export default function ProjectDashboard({
     setError("");
 
     try {
-      const [intakeResult, ideasResult, locksResult, reviewsResult] =
-        await Promise.all([
-          SwarmsyOnboarding.activeIntakeSession(workspaceSlug),
-          SwarmsyOnboarding.identityIdeas(workspaceSlug),
-          SwarmsyOnboarding.memoryLocks(workspaceSlug),
-          listProofReviews(workspaceSlug),
-        ]);
-
-      setSnapshot(
-        buildProjectDashboardSnapshot({
-          session: intakeResult?.success ? intakeResult.session : null,
-          ideas: ideasResult?.success ? ideasResult.ideas : [],
-          locks: locksResult?.success ? locksResult.locks : [],
-          reviews: reviewsResult?.success ? reviewsResult.reviews : [],
-        })
-      );
-
-      if (
-        !intakeResult?.success ||
-        !ideasResult?.success ||
-        !locksResult?.success ||
-        !reviewsResult?.success
-      ) {
-        setError(LOAD_ERROR);
-      }
+      const result = await fetchProjectDashboardSnapshot(workspaceSlug);
+      setSnapshot(result.snapshot);
+      if (!result.complete) setError(LOAD_ERROR);
     } catch {
       setError(LOAD_ERROR);
     } finally {
@@ -69,6 +71,7 @@ export default function ProjectDashboard({
 
   useEffect(() => {
     let cancelled = false;
+
     if (!workspaceSlug) {
       setLoading(false);
       return () => {
@@ -77,30 +80,12 @@ export default function ProjectDashboard({
     }
 
     setLoading(true);
-    Promise.all([
-      SwarmsyOnboarding.activeIntakeSession(workspaceSlug),
-      SwarmsyOnboarding.identityIdeas(workspaceSlug),
-      SwarmsyOnboarding.memoryLocks(workspaceSlug),
-      listProofReviews(workspaceSlug),
-    ])
-      .then(([intakeResult, ideasResult, locksResult, reviewsResult]) => {
+    setError("");
+    fetchProjectDashboardSnapshot(workspaceSlug)
+      .then((result) => {
         if (cancelled) return;
-        setSnapshot(
-          buildProjectDashboardSnapshot({
-            session: intakeResult?.success ? intakeResult.session : null,
-            ideas: ideasResult?.success ? ideasResult.ideas : [],
-            locks: locksResult?.success ? locksResult.locks : [],
-            reviews: reviewsResult?.success ? reviewsResult.reviews : [],
-          })
-        );
-        if (
-          !intakeResult?.success ||
-          !ideasResult?.success ||
-          !locksResult?.success ||
-          !reviewsResult?.success
-        ) {
-          setError(LOAD_ERROR);
-        }
+        setSnapshot(result.snapshot);
+        if (!result.complete) setError(LOAD_ERROR);
       })
       .catch(() => {
         if (!cancelled) setError(LOAD_ERROR);
