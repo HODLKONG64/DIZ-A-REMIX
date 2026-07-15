@@ -21,6 +21,7 @@ const installerScript = path.join(
   "installer",
   "swarmsy-desktop.nsi"
 );
+const runtimeDependencyArchiveName = "server-node-modules.tar.gz";
 const MAX_NSIS_INPUT_PATH = 259;
 
 function ensureExists(targetPath, label = targetPath) {
@@ -138,6 +139,100 @@ function pruneInstallerPayload(artifactDir) {
   return pruned;
 }
 
+function runtimeDependencyPaths(artifactDir = packageRoot) {
+  const serverRoot = path.join(
+    artifactDir,
+    "resources",
+    "app",
+    "server"
+  );
+  return {
+    serverRoot,
+    nodeModulesPath: path.join(serverRoot, "node_modules"),
+    archivePath: path.join(
+      artifactDir,
+      "resources",
+      "app",
+      "desktop",
+      "runtime",
+      runtimeDependencyArchiveName
+    ),
+  };
+}
+
+function createRuntimeDependencyArchive({
+  artifactDir = packageRoot,
+  platform = process.platform,
+  spawnSyncImpl = spawnSync,
+} = {}) {
+  const paths = runtimeDependencyPaths(artifactDir);
+  ensureExists(paths.nodeModulesPath, "Production server node_modules");
+  fs.mkdirSync(path.dirname(paths.archivePath), { recursive: true });
+  fs.rmSync(paths.archivePath, { force: true });
+
+  const command = platform === "win32" ? "tar.exe" : "tar";
+  const args = [
+    "-czf",
+    paths.archivePath,
+    "-C",
+    paths.serverRoot,
+    "node_modules",
+  ];
+  const result = spawnSyncImpl(command, args, {
+    stdio: "inherit",
+    shell: false,
+    windowsHide: true,
+  });
+  if (result.error || result.status !== 0) {
+    throw (
+      result.error ||
+      new Error(
+        `${command} exited with ${result.status} while archiving the production server runtime dependencies.`
+      )
+    );
+  }
+
+  ensureExists(paths.archivePath, "Server runtime dependency archive");
+  if (fs.statSync(paths.archivePath).size <= 0) {
+    throw new Error(
+      `Server runtime dependency archive is empty: ${paths.archivePath}`
+    );
+  }
+  console.log(
+    `[desktop:installer] Created archived server runtime dependencies at ${paths.archivePath}`
+  );
+  return paths.archivePath;
+}
+
+function detachRuntimeDependenciesForNsis({
+  artifactDir = packageRoot,
+  stagingRoot = artifactsRoot,
+} = {}) {
+  const { nodeModulesPath } = runtimeDependencyPaths(artifactDir);
+  ensureExists(nodeModulesPath, "Production server node_modules");
+  const temporaryRoot = fs.mkdtempSync(
+    path.join(stagingRoot, "installer-runtime-deps-")
+  );
+  const detachedPath = path.join(temporaryRoot, "node_modules");
+  fs.renameSync(nodeModulesPath, detachedPath);
+  let restored = false;
+
+  return {
+    detachedPath,
+    restore() {
+      if (restored) return;
+      if (fs.existsSync(nodeModulesPath)) {
+        throw new Error(
+          `Cannot restore installer runtime dependencies because ${nodeModulesPath} already exists.`
+        );
+      }
+      fs.renameSync(detachedPath, nodeModulesPath);
+      fs.rmSync(temporaryRoot, { recursive: true, force: true });
+      restored = true;
+    },
+  };
+}
+
 function assertInstallerInputPathsFit(
   artifactDir,
   maxLength = MAX_NSIS_INPUT_PATH
@@ -181,6 +276,7 @@ function writeInstallerManifest({ makensisPath }) {
     installScope: "per-user",
     defaultInstallDir: "%LOCALAPPDATA%\\Programs\\SWARMSY Desktop",
     desktopExecutable: "SWARMSY Desktop.exe",
+    runtimeDependencyPackaging: "single compressed archive extracted on first launch",
     packages: [
       "desktop executable",
       "desktop/electron",
@@ -198,6 +294,7 @@ function writeInstallerManifest({ makensisPath }) {
       "Ollama runtime",
       "AI models",
       "user data",
+      "raw recursive server/node_modules installer payload",
       "server development dependencies",
       "TypeScript declaration files",
       ".env files",
@@ -214,6 +311,7 @@ function buildInstaller({
   makensisPath = resolveMakensis(),
   platform = process.platform,
   tempRoot,
+  spawnSyncImpl = spawnSync,
 } = {}) {
   ensureExists(installerScript, "NSIS installer script");
   validateArtifact({ packageRoot, archivePath });
@@ -225,8 +323,17 @@ function buildInstaller({
     platform,
     tempRoot,
   });
+  let detachedDependencies = null;
   try {
     pruneInstallerPayload(installerSource.sourcePath);
+    createRuntimeDependencyArchive({
+      artifactDir: installerSource.sourcePath,
+      platform,
+      spawnSyncImpl,
+    });
+    detachedDependencies = detachRuntimeDependenciesForNsis({
+      artifactDir: packageRoot,
+    });
     const longestInput = assertInstallerInputPathsFit(installerSource.sourcePath);
     console.log(
       `[desktop:installer] Longest NSIS input path is ${longestInput.length} characters`
@@ -237,11 +344,12 @@ function buildInstaller({
       `/DINSTALLER_OUTPUT=${nsisDefineValue(installerOutput)}`,
       installerScript,
     ];
-    const result = spawnSync(makensisPath, args, { stdio: "inherit" });
+    const result = spawnSyncImpl(makensisPath, args, { stdio: "inherit" });
     if (result.error || result.status !== 0) {
       throw result.error || new Error(`makensis exited with ${result.status}`);
     }
   } finally {
+    detachedDependencies?.restore();
     installerSource.cleanup();
   }
 
@@ -270,11 +378,15 @@ module.exports = {
   installerManifest,
   installerOutput,
   installerScript,
+  runtimeDependencyArchiveName,
   assertInstallerInputPathsFit,
+  createRuntimeDependencyArchive,
   createShortWindowsInstallerSource,
+  detachRuntimeDependenciesForNsis,
   nsisDefineValue,
   packageRoot,
   pruneInstallerPayload,
+  runtimeDependencyPaths,
   windowsStagingRoots,
   writeInstallerManifest,
   buildInstaller,

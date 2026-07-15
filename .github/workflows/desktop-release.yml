@@ -211,8 +211,15 @@ jobs:
           choco install nsis -y --no-progress
           "C:\Program Files (x86)\NSIS" | Out-File -FilePath $env:GITHUB_PATH -Append
 
+      - name: Run installed runtime dependency archive tests
+        run: npx --yes jest@29.7.0 server/__tests__/desktop/installedRuntimeDependencyArchive.test.js --runInBand
+
       - name: Build Windows installer
         run: npm run desktop:installer:package:win
+
+      - name: Install and launch Windows installer
+        shell: pwsh
+        run: ./desktop/scripts/smoke-installed-windows.ps1
 
       - name: Generate SHA256 checksums and release integrity manifest
         run: npm run desktop:release:manifest

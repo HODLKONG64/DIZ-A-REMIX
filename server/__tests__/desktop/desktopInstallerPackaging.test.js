@@ -116,7 +116,7 @@ describe("desktop Windows installer packaging foundation", () => {
     const pruneIndex = builderScript.indexOf(
       "pruneInstallerPayload(installerSource.sourcePath)"
     );
-    const makensisIndex = builderScript.indexOf("spawnSync(makensisPath");
+    const makensisIndex = builderScript.indexOf("spawnSyncImpl(makensisPath");
 
     expect(validationIndex).toBeGreaterThan(-1);
     expect(installerRemovalIndex).toBeGreaterThan(validationIndex);
