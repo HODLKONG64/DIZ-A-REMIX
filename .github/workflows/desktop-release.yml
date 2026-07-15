@@ -214,6 +214,10 @@ jobs:
       - name: Build Windows installer
         run: npm run desktop:installer:package:win
 
+      - name: Install and launch Windows installer
+        shell: pwsh
+        run: ./desktop/scripts/smoke-installed-windows.ps1
+
       - name: Generate SHA256 checksums and release integrity manifest
         run: npm run desktop:release:manifest
 
