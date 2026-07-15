@@ -1,188 +1,304 @@
 # SWARMSY MVP Known Gaps
 
-Audit date: 2026-07-12
-Branch: master after merged PRs #84 through #87
+Audit date: 2026-07-15
+Branch basis: `master` after merged PRs through #129
 
----
+## Purpose
 
-## Overview
+This document lists genuine remaining gaps in the current SWARMSY product.
 
-This document lists known gaps in the current SWARMSY MVP layer.
+It must not describe already-shipped foundations as missing. When this document conflicts with the top-level `README.md`, current runtime code, migrations or tests, those newer authorities win and this audit must be corrected.
 
-All gaps listed here are things that do not exist in the current codebase or are intentionally limited to a minimal first slice. No feature is invented or speculated beyond what the code, merged PR trail, and existing spec docs describe.
+## Current shipped foundations
 
-Gaps that are already documented in spec docs have a cross-reference. Gaps that are not yet spec'd are noted as planned or not started.
+The following are implemented and must not be listed as unbuilt:
 
----
+- beginner-first SPARKY home and one-click setup/recovery;
+- Face, Hidden Identity and Existing Project entry routes;
+- batch-first 76-question intake;
+- durable user-and-workspace-scoped intake sessions;
+- automatic answer-batch saving and resume;
+- WTF / SAFE creative-intensity selection;
+- MESSAGE, DOODAD and PLACEMENT proposal contract;
+- structured Identity Idea capture;
+- Keep, Delete and Try Another decisions;
+- explicit save recognition during SPARKY brainstorming;
+- returning-user continuation for unfinished intake and active ideas;
+- durable Memory Lock core storage, API access and minimal viewer/import;
+- durable Proof Review core storage and authenticated API access;
+- local Ollama detection, model selection and routing;
+- explicit configured-provider routing;
+- desktop wrapper, artifact, installer, integrity and installed-runtime smoke workflows.
 
-## Gap 1 — No Proof Tracker database or viewer
+## Gap 1 — Proof Review history and claim ledger
 
-**What exists today:** The Proof Tracker handoff allows users to paste proof notes and send them to SPARKY for review. SPARKY's proof-review response is stored in normal workspace chat history.
+**What exists:** Durable user-and-workspace-scoped Proof Review records and authenticated API access.
 
-**What does not exist:** A dedicated Proof Tracker database table, a proof-gap history viewer, a proof-claim ledger, or any way to retrieve prior proof-review sessions without scrolling chat history.
+**What remains:**
 
-| Property | Detail |
-|---|---|
-| Impact | Proof review is one-shot per session; no cross-session proof tracking |
-| Priority | High — Memory Lock continuity is now durable, making proof persistence the next direct returning-user gap |
-| Recommended future PR | Implement Proof Tracker storage and viewer surface (referenced in `SWARMSY_PROOF_TRACKER_HANDOFF.md`) |
-| Blocks MVP? | No — handoff path works |
-
----
-
-## Gap 2 — Memory Lock advanced controls are not built
-
-**What exists today:** Memory Lock continuity now has a dedicated storage layer, authenticated list/retrieve/import API, frontend API helpers, and a minimal saved-lock viewer/import surface in the SWARMSY HIVE Action Hub. Stored locks are scoped by both user and workspace, and saved-lock chat handoff preserves the Local User/Ollama runtime contract.
-
-**What does not exist:** Advanced lock management controls such as archive, delete, export/download, upload/import from file, compare versions, mark an older lock as active, or explicitly delegate lock visibility to another user.
-
-| Property | Detail |
-|---|---|
-| Impact | Returning users can save, list, select, and continue from stored locks, but cannot yet manage the full lifecycle of older locks |
-| Priority | Medium — the core continuity gap is solved; lifecycle controls are a follow-up |
-| Recommended future PR | Add advanced Memory Lock controls after Proof Tracker persistence is scoped |
-| Blocks MVP? | No — storage, retrieval, import, viewer, and handoff paths work |
-
----
-
-## Gap 3 — No dashboard
-
-**What exists today:** The SWARMSY onboarding surface renders on home and shows a HIVE snapshot card and an Action Hub.
-
-**What does not exist:** A dedicated SWARMSY dashboard showing project state, last session summary, active memory lock, proof status, campaign history, or quick-action shortcuts for returning users. The dashboard spec exists in `docs/swarmsy/app-mode/SWARMSY_DASHBOARD_INFORMATION_ARCHITECTURE.md`.
+- full history surface;
+- claim/evidence status view;
+- reopen-in-SPARKY flow;
+- comparison between reviews;
+- archive/delete controls;
+- Markdown or JSON export;
+- clear statuses such as evidence needed, partially supported, verified, outdated and rejected.
 
 | Property | Detail |
 |---|---|
-| Impact | Returning users see the full onboarding surface every time, not a project status view |
-| Priority | Medium — usable without it; reduces friction for returning users |
-| Recommended future PR | Implement SWARMSY dashboard surface after core continuity primitives exist |
-| Blocks MVP? | No |
+| Impact | Users can store reviews but cannot manage or compare the full proof history easily. |
+| Priority | High |
+| Blocks finished beta? | Yes |
 
----
+## Gap 2 — Full returning-user project dashboard
 
-## Gap 4 — No campaign storage or calendar persistence
+**What exists:** Returning-user continuation card, HIVE snapshot and Action Hub.
 
-**What exists today:** The Campaign Calendar date picker seeds a campaign-day SPARKY starter and navigates to HIVE chat. Campaign output is stored in normal workspace chat history.
+**What remains:** A dedicated project-status dashboard showing:
 
-**What does not exist:** A campaign storage layer, a persistent calendar view showing which dates have existing campaign output, or any ability to retrieve a previous campaign-day pack without scrolling chat history.
-
-| Property | Detail |
-|---|---|
-| Impact | Each campaign day is a fresh handoff; no cross-session campaign tracking |
-| Priority | Medium — campaign handoff works for Day 1 planning; persistence is a Phase 2 improvement |
-| Recommended future PR | Add campaign output storage and a calendar view showing completed campaign days |
-| Blocks MVP? | No |
-
----
-
-## Gap 5 — No local AI setup helper
-
-**What exists today:** Doctrine ingestion requires the AnythingLLM collector to be online. If the collector is offline, the UI shows a `COLLECTOR_OFFLINE` error and the user must fix their setup manually.
-
-**What does not exist:** A guided local AI / collector setup helper, a model provider troubleshooting surface, or an in-app setup wizard for getting the AI stack running. The SPARKY Operator Playbooks doc includes `SPARKY_MODEL_PROVIDER_TROUBLESHOOTING.md`, but it is a doc for SPARKY to follow in chat — not a UI helper.
+- active identity or project;
+- last session summary;
+- approved Identity Idea;
+- active Memory Lock;
+- latest Proof Review;
+- unfinished intake;
+- campaign state;
+- generated assets;
+- missing proof and recommended next action.
 
 | Property | Detail |
 |---|---|
-| Impact | First-run users whose collector is offline are blocked and have no in-app recovery path |
-| Priority | Medium — affects first-run success rate |
-| Recommended future PR | Add a collector status indicator and setup prompt on the onboarding surface |
-| Blocks MVP? | Partially — `COLLECTOR_OFFLINE` is surfaced correctly, but no recovery UI exists |
+| Impact | Returning users can continue work but do not yet receive a complete project operating view. |
+| Priority | High |
+| Blocks finished beta? | Yes |
 
----
+## Gap 3 — Full project backup, restore and migration
 
-## Gap 6 — No automated 76-question intake beyond chat handoff
+**What exists:** Filesystem-backed settings backup/import with path, schema and secret protections.
 
-**What exists today:** The Start Intake handoff sends SPARKY a mode-specific starter message referencing `01_SWARMSY_USER_INTAKE_76_QUESTIONS.md`. SPARKY then drives the intake through normal chat dialogue.
+**What remains:** One versioned full-project export/import format covering:
 
-**What does not exist:** A structured step-by-step intake form, an intake progress tracker, an automatic intake state saver, or any way to resume a partially completed intake without restarting from the last memory lock.
+- workspace and HIVE state;
+- chats;
+- Identity Ideas;
+- intake sessions;
+- Memory Locks;
+- Proof Reviews;
+- documents;
+- campaign records;
+- generated prompts and assets;
+- project metadata and user-grown packs.
 
-| Property | Detail |
-|---|---|
-| Impact | 76-question intake is fully manual; SPARKY must hold state across the session |
-| Priority | Low-medium — the current flow is functional; automation is a Phase 2 improvement |
-| Recommended future PR | Add an intake form UI or intake session tracker after intake flow is validated through manual use |
-| Blocks MVP? | No |
-
----
-
-## Gap 7 — No optional advanced doctrine ingestion UI
-
-**What exists today:** The required doctrine docs are ingested via `POST /api/swarmsy/onboarding/ingest-required-docs`. Optional doctrine groups (`spark-library` and `sparky-operator`) are registered in the manifest with `required: false` and do not block first-run readiness.
-
-**What does not exist:** A user-facing UI or route to optionally load the Spark Library or SPARKY Operator Playbooks after completing core setup.
-
-The current required-docs ingestion route only ingests required doctrine groups. Optional groups are visible in the manifest/status layer but are not ingested by the current required-docs ingestion route.
-
-A future PR should add an optional advanced-doctrine ingestion/selection flow if users need Spark Library or SPARKY Operator docs loaded automatically.
+The flow also needs dry-run validation, conflict handling, migration between export versions, secret exclusion and uninstall/reinstall recovery tests.
 
 | Property | Detail |
 |---|---|
-| Impact | Power users cannot self-serve optional doctrine expansion today |
-| Priority | Low — optional docs are not needed for MVP; blocking readiness check ignores them |
-| Recommended future PR | Add optional advanced doctrine ingestion/selection flow |
-| Blocks MVP? | No |
+| Impact | Local ownership is incomplete if the user cannot reliably move or recover the complete project. |
+| Priority | High |
+| Blocks finished beta? | Yes |
 
----
+## Gap 4 — Advanced Memory Lock lifecycle controls
 
-## Gap 8 — No old SWARMSY salvage or migration path
+**What exists:** Durable storage, list/retrieve/import APIs, frontend helpers and minimal saved-lock continuation.
 
-**What exists today:** The Existing Project intake mode seeds a SPARKY starter that asks the user to describe their existing project notes, links, proof, assets, and lore before rebuilding.
+**What remains:**
 
-**What does not exist:** An automated migration or import tool for legacy SWARMSY sessions, old workspace snapshots, or prior project exports. There is no import wizard, file upload pipeline, or batch ingestion path for pre-existing project state.
-
-| Property | Detail |
-|---|---|
-| Impact | Users with prior SWARMSY-style work must manually transcribe their project state |
-| Priority | Low — affects power users and legacy users only |
-| Recommended future PR | Add a structured project import flow after core continuity primitives are validated |
-| Blocks MVP? | No |
-
----
-
-## Gap 9 — No Space Agent integration
-
-**What exists today:** The SWARMSY HIVE workspace uses the SPARKY system prompt, which is a single-agent workspace setup. The living icon engine, operating layer, and disruption engine docs are ingested into the HIVE workspace.
-
-**What does not exist:** Space Agent integration. SPARKY does not have access to external tool calls, web search, file writing, or multi-agent orchestration in the current MVP. The `SWARMSY_FUTURE_RUNTIME_INTEGRATION_PLAN.md` and `SWARMSY_TOOL_CONTRACTS.md` spec these possibilities but they are not implemented.
+- archive;
+- delete;
+- export/download;
+- import from file;
+- compare versions;
+- restore older version;
+- mark active;
+- change notes;
+- optional deliberate sharing/delegation if later approved.
 
 | Property | Detail |
 |---|---|
-| Impact | SPARKY operates as a chat agent only; no agentic loops, no tool use, no external integrations |
-| Priority | Low for MVP; high for Phase 2 power features |
-| Recommended future PR | Add Space Agent / tool use after core workflow is validated |
-| Blocks MVP? | No |
-
----
-
-## Gap 10 — Admin SWARMSY routes have no unit tests
-
-**What exists today:** Three admin routes exist for SWARMSY:
-- `POST /api/admin/swarmsy/workspace-preset/hive`
-- `GET /api/admin/swarmsy/required-docs/status`
-- `POST /api/admin/swarmsy/workspace-preset/hive/ingest-required-docs`
-
-**What does not exist:** Unit or integration tests for these admin routes. The user-safe routes and utilities have test coverage; the admin routes do not.
-
-| Property | Detail |
-|---|---|
-| Impact | Regression risk if Workspace or admin middleware changes |
+| Impact | Core continuity works, but long-lived projects cannot fully manage their decision history. |
 | Priority | Medium |
-| Recommended future PR | Add admin route test coverage |
-| Blocks MVP? | No — admin routes are not used in the user-facing flow |
+| Blocks finished beta? | No, but strongly recommended |
 
----
+## Gap 5 — Persistent campaign storage and calendar history
 
-## Summary Table
+**What exists:** Campaign-day selection and SPARKY handoff.
 
-| Gap | Blocks MVP? | Priority |
+**What remains:**
+
+- campaign records;
+- persistent calendar;
+- goals and audience;
+- channel plan;
+- approved copy and assets;
+- publication status;
+- proof requirements;
+- outcome review;
+- reopen or duplicate campaign in SPARKY;
+- exportable campaign pack.
+
+| Property | Detail |
+|---|---|
+| Impact | Campaign work remains buried in ordinary chat history. |
+| Priority | Medium |
+| Blocks finished beta? | No |
+
+## Gap 6 — Generated asset library
+
+**What exists:** Identity image prompts and local ComfyUI generation MVP.
+
+**What remains:** A local project-linked asset surface containing:
+
+- preview;
+- original prompt;
+- provider/model metadata where available;
+- linked Identity Idea and workspace;
+- creation date;
+- tags;
+- favourite/archive/delete;
+- use-as-reference handoff;
+- export and backup integration.
+
+| Property | Detail |
+|---|---|
+| Impact | Generated visual work is difficult to organise and reuse over time. |
+| Priority | Medium |
+| Blocks finished beta? | No |
+
+## Gap 7 — Local AI health centre and recovery
+
+**What exists:** One-click SPARKY setup, readiness checks and plain recovery language.
+
+**What remains:** A consolidated health centre for:
+
+- runtime;
+- collector;
+- Ollama;
+- selected model;
+- ComfyUI;
+- database;
+- filesystem permissions;
+- disk space;
+- local ports;
+- configured API providers;
+- Wiki ingestion state.
+
+It should provide one safe repair action and a copyable support report with secrets removed.
+
+| Property | Detail |
+|---|---|
+| Impact | Some local dependency failures still require support outside the guided product. |
+| Priority | Medium |
+| Blocks finished beta? | Partially |
+
+## Gap 8 — Windows release acceptance, signing and updates
+
+**What exists:** Electron wrapper, packaged runtime, dependency archive/extraction, NSIS installer, integrity workflow, release workflow and installed-launch smoke.
+
+**What remains:**
+
+- repeatable acceptance on multiple clean Windows machines;
+- first install, restart, upgrade, uninstall and reinstall coverage;
+- user-data survival acceptance;
+- stable downloadable beta release;
+- code-signed executable and installer;
+- secure automatic updates;
+- release channels, rollback and support policy;
+- user-facing download page.
+
+| Property | Detail |
+|---|---|
+| Impact | The application is still an unsigned beta and release confidence depends heavily on CI. |
+| Priority | High |
+| Blocks finished beta? | Clean-machine acceptance: Yes. Signing/updates: production readiness. |
+
+## Gap 9 — Admin and security regression coverage
+
+**What exists:** User-safe route and journey tests plus desktop safety coverage.
+
+**What remains:** Dedicated tests for:
+
+- admin HIVE preset creation;
+- required-doc status and ingestion;
+- unauthorised admin access;
+- cross-user/workspace access attempts;
+- malicious packs and file names;
+- oversized uploads;
+- forged workspace IDs;
+- provider secret leakage;
+- Memory Lock overwrite attempts;
+- Proof Review cross-user access;
+- backup secret exclusion.
+
+| Property | Detail |
+|---|---|
+| Impact | Security-sensitive boundaries have uneven direct regression coverage. |
+| Priority | Medium-high |
+| Blocks finished beta? | Recommended before broad distribution |
+
+## Gap 10 — Legal, privacy and support product layer
+
+**What remains for broad hosted or production use:**
+
+- Privacy Notice;
+- Terms of Use;
+- local versus API data-flow explanation;
+- uploaded-document handling;
+- retention and deletion rules;
+- copyright/takedown process;
+- acceptable use;
+- user-created pack responsibility;
+- support and release policy;
+- safeguarding boundaries if minors can use hosted services.
+
+| Property | Detail |
+|---|---|
+| Impact | Technical capability can outpace the public trust and governance layer. |
+| Priority | High for production/hosted use |
+| Blocks finished beta? | Local closed beta: No. Broad public/hosted release: Yes. |
+
+## Future power features — not core beta blockers
+
+The following are valuable later expansions and must not be represented as current runtime:
+
+- optional advanced doctrine-selection UI;
+- legacy project import wizard;
+- Space Agent integration;
+- live web research tools;
+- email drafting and approved sending;
+- calendar and scheduled workflows;
+- file-writing tools;
+- multi-agent orchestration;
+- optional encrypted cloud sync;
+- collaborative shared workspaces.
+
+## Priority order
+
+1. Proof Review history and claim ledger.
+2. Returning-user dashboard.
+3. Full project backup/restore.
+4. Repeatable Windows release acceptance.
+5. Memory Lock lifecycle controls.
+6. Campaign persistence.
+7. Local health centre.
+8. Generated asset library.
+9. Security/admin tests.
+10. Legal/privacy/support layer.
+11. Signing and automatic updates for production readiness.
+12. Future external tools and multi-agent systems.
+
+## Summary table
+
+| Gap | Priority | Blocks finished beta? |
 |---|---|---|
-| No Proof Tracker database/viewer | No | High |
-| Memory Lock advanced controls are not built | No | Medium |
-| No dashboard | No | Medium |
-| No campaign storage/calendar persistence | No | Medium |
-| No local AI setup helper / collector recovery UI | Partially | Medium |
-| No automated 76-question intake beyond chat handoff | No | Low-medium |
-| No optional advanced doctrine ingestion UI | No | Low |
-| No old SWARMSY salvage/migration path | No | Low |
-| No Space Agent integration | No | Low |
-| Admin SWARMSY routes have no unit tests | No | Medium |
+| Proof Review history | High | Yes |
+| Returning-user dashboard | High | Yes |
+| Full project backup/restore | High | Yes |
+| Windows clean-machine acceptance | High | Yes |
+| Memory Lock lifecycle | Medium | No |
+| Campaign persistence | Medium | No |
+| Local health centre | Medium | Partially |
+| Generated asset library | Medium | No |
+| Security/admin coverage | Medium-high | Recommended |
+| Legal/privacy/support | High for public release | Broad release only |
+| Signing and auto-update | High for production | Production readiness |
+| External tools / Space Agent | Future | No |

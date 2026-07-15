@@ -18,7 +18,8 @@
     "node": ">=18"
   },
   "scripts": {
-    "test": "jest",
+    "test": "node scripts/swarmsy-documentation-truth.test.mjs && jest",
+    "test:docs:truth": "node scripts/swarmsy-documentation-truth.test.mjs",
     "lint": "cd server && yarn lint && cd ../frontend && yarn lint && cd ../collector && yarn lint",
     "lint:ci": "cd server && yarn lint:check && cd ../frontend && yarn lint:check && cd ../collector && yarn lint:check",
     "desktop:dev": "node desktop/scripts/run-desktop-dev.cjs",
