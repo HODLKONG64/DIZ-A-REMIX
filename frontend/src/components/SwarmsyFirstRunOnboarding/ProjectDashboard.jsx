@@ -1,9 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import {
-  ArrowClockwise,
-  ArrowRight,
-  SpinnerGap,
-} from "@phosphor-icons/react";
+import { ArrowClockwise, ArrowRight, SpinnerGap } from "@phosphor-icons/react";
 import SwarmsyOnboarding from "@/models/swarmsyOnboarding";
 import showToast from "@/utils/toast";
 import { listProofReviews } from "./proofReviewHistory";
