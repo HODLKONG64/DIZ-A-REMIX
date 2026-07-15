@@ -1,0 +1,63 @@
+name: PR 132 frontend diagnostics
+
+on:
+  push:
+    branches:
+      - feat/returning-user-dashboard
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+
+      - name: Capture frontend diagnostics
+        id: diagnostics
+        working-directory: frontend
+        shell: bash
+        run: |
+          set +e
+          yarn lint:check > ../lint-output.txt 2>&1
+          lint_status=$?
+          yarn build > ../build-output.txt 2>&1
+          build_status=$?
+          echo "lint_status=$lint_status" >> "$GITHUB_OUTPUT"
+          echo "build_status=$build_status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Post diagnostics to PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          {
+            echo '## Temporary frontend diagnostics'
+            echo
+            echo "Lint exit: ${{ steps.diagnostics.outputs.lint_status }}"
+            echo "Build exit: ${{ steps.diagnostics.outputs.build_status }}"
+            echo
+            echo '### Lint tail'
+            echo '```text'
+            tail -n 80 lint-output.txt
+            echo '```'
+            echo
+            echo '### Build tail'
+            echo '```text'
+            tail -n 80 build-output.txt
+            echo '```'
+          } > diagnostic-comment.md
+          gh pr comment 132 --body-file diagnostic-comment.md
