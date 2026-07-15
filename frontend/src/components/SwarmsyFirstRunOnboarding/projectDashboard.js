@@ -84,8 +84,7 @@ export function getProjectDashboardNextAction(snapshot = {}) {
     return {
       kind: "continue-proof",
       label: "Continue your proof review",
-      description:
-        "Re-check claims, missing evidence and the next proof action.",
+      description: "Re-check claims, missing evidence and the next proof action.",
       value: snapshot.activeReview,
       message: buildProofReviewReopenMessage(snapshot.activeReview),
     };
