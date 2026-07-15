@@ -1,4 +1,9 @@
 const mockRoleMiddleware = jest.fn();
+const mockPrisma = {
+  $queryRawUnsafe: jest.fn(),
+};
+
+jest.mock("../../utils/prisma", () => mockPrisma);
 
 jest.mock("../../utils/http", () => ({
   userFromSession: jest.fn(),
@@ -13,19 +18,58 @@ jest.mock("../../models/workspace", () => ({
 }));
 
 jest.mock("../../models/swarmsyMemoryLock", () => ({
-  SwarmsyMemoryLock: { forUserWorkspace: jest.fn() },
+  SwarmsyMemoryLock: {
+    publicLock: jest.fn((row) => ({
+      id: row.id,
+      workspaceId: row.workspace_id,
+      userId: row.user_id,
+      content: row.content,
+      version: row.version,
+      isActive: Boolean(row.is_active),
+    })),
+  },
 }));
 
 jest.mock("../../models/swarmsyProofReview", () => ({
-  SwarmsyProofReview: { forUserWorkspace: jest.fn() },
+  SwarmsyProofReview: {
+    publicReview: jest.fn((row) => ({
+      id: row.id,
+      workspaceId: row.workspace_id,
+      userId: row.user_id,
+      content: row.content,
+      version: row.version,
+      isActive: Boolean(row.is_active),
+    })),
+  },
 }));
 
 jest.mock("../../models/swarmsyIdentityIdea", () => ({
-  SwarmsyIdentityIdea: { forUserWorkspace: jest.fn() },
+  SwarmsyIdentityIdea: {
+    publicIdea: jest.fn((row) => ({
+      id: row.id,
+      workspaceId: row.workspace_id,
+      userId: row.user_id,
+      title: row.title,
+      content: row.content,
+      status: row.status,
+    })),
+  },
 }));
 
 jest.mock("../../models/swarmsyIntakeSession", () => ({
-  SwarmsyIntakeSession: { activeForUserWorkspace: jest.fn() },
+  SwarmsyIntakeSession: {
+    publicSession: jest.fn((row) =>
+      row
+        ? {
+            id: row.id,
+            workspaceId: row.workspace_id,
+            userId: row.user_id,
+            mode: row.mode,
+            answers: JSON.parse(row.answers || "{}"),
+          }
+        : null
+    ),
+  },
 }));
 
 jest.mock("../../utils/middleware/validatedRequest", () => ({
@@ -43,10 +87,6 @@ jest.mock("../../utils/middleware/multiUserProtected", () => ({
 
 const { userFromSession } = require("../../utils/http");
 const { Workspace } = require("../../models/workspace");
-const { SwarmsyMemoryLock } = require("../../models/swarmsyMemoryLock");
-const { SwarmsyProofReview } = require("../../models/swarmsyProofReview");
-const { SwarmsyIdentityIdea } = require("../../models/swarmsyIdentityIdea");
-const { SwarmsyIntakeSession } = require("../../models/swarmsyIntakeSession");
 const { validatedRequest } = require("../../utils/middleware/validatedRequest");
 const {
   ROLES,
@@ -63,6 +103,50 @@ function responseMock() {
     status: jest.fn().mockReturnThis(),
     json: jest.fn(),
   };
+}
+
+function projectRows() {
+  return [
+    [
+      {
+        id: 1,
+        workspace_id: 9,
+        user_id: 12,
+        mode: "hidden",
+        answers: '{"goal":"privacy"}',
+      },
+    ],
+    [
+      {
+        id: 2,
+        workspace_id: 9,
+        user_id: 12,
+        title: "Identity",
+        content: "Idea",
+        status: "saved",
+      },
+    ],
+    [
+      {
+        id: 3,
+        workspace_id: 9,
+        user_id: 12,
+        content: "Lock",
+        version: 1,
+        is_active: true,
+      },
+    ],
+    [
+      {
+        id: 4,
+        workspace_id: 9,
+        user_id: 12,
+        content: "Proof",
+        version: 1,
+        is_active: true,
+      },
+    ],
+  ];
 }
 
 describe("SWARMSY project backup endpoints", () => {
@@ -96,22 +180,9 @@ describe("SWARMSY project backup endpoints", () => {
       slug: "swarmsy-hive",
       name: "SWARMSY HIVE",
     });
-    SwarmsyIntakeSession.activeForUserWorkspace.mockResolvedValue({
-      id: 1,
-      workspaceId: 9,
-      userId: 12,
-      mode: "hidden",
-      answers: { goal: "privacy" },
-    });
-    SwarmsyIdentityIdea.forUserWorkspace.mockResolvedValue([
-      { id: 2, workspaceId: 9, userId: 12, title: "Identity" },
-    ]);
-    SwarmsyMemoryLock.forUserWorkspace.mockResolvedValue([
-      { id: 3, workspaceId: 9, userId: 12, content: "Lock" },
-    ]);
-    SwarmsyProofReview.forUserWorkspace.mockResolvedValue([
-      { id: 4, workspaceId: 9, userId: 12, content: "Proof" },
-    ]);
+    for (const rows of projectRows()) {
+      mockPrisma.$queryRawUnsafe.mockResolvedValueOnce(rows);
+    }
     const response = responseMock();
 
     await swarmsyProjectBackupExport(
@@ -123,12 +194,15 @@ describe("SWARMSY project backup endpoints", () => {
       { id: 12, role: "default" },
       { slug: "swarmsy-hive" }
     );
-    expect(SwarmsyIdentityIdea.forUserWorkspace).toHaveBeenCalledWith({
-      userId: 12,
-      workspaceId: 9,
-    });
+    expect(mockPrisma.$queryRawUnsafe).toHaveBeenCalledTimes(4);
+    expect(mockPrisma.$queryRawUnsafe).toHaveBeenCalledWith(
+      expect.stringContaining("AND user_id = ?"),
+      9,
+      12
+    );
     expect(response.status).toHaveBeenCalledWith(200);
-    expect(response.json).toHaveBeenCalledWith(
+    const payload = response.json.mock.calls[0][0];
+    expect(payload).toEqual(
       expect.objectContaining({
         success: true,
         restoreAvailable: false,
@@ -138,11 +212,41 @@ describe("SWARMSY project backup endpoints", () => {
         }),
       })
     );
-    const payload = response.json.mock.calls[0][0];
     expect(payload.backup.data.identityIdeas[0]).not.toHaveProperty("userId");
     expect(payload.backup.data.identityIdeas[0]).not.toHaveProperty(
       "workspaceId"
     );
+  });
+
+  it("fails the whole export when any covered section cannot be read", async () => {
+    userFromSession.mockResolvedValue({ id: 12, role: "default" });
+    Workspace.getWithUser.mockResolvedValue({
+      id: 9,
+      slug: "swarmsy-hive",
+      name: "SWARMSY HIVE",
+    });
+    mockPrisma.$queryRawUnsafe
+      .mockResolvedValueOnce([])
+      .mockRejectedValueOnce(new Error("identity table unavailable"))
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([]);
+    const response = responseMock();
+    const consoleErrorSpy = jest
+      .spyOn(console, "error")
+      .mockImplementation(() => {});
+
+    await swarmsyProjectBackupExport(
+      { params: { slug: "swarmsy-hive" } },
+      response
+    );
+
+    expect(response.status).toHaveBeenCalledWith(500);
+    expect(response.json).toHaveBeenCalledWith({
+      success: false,
+      message:
+        "Project export failed because one or more project sections could not be read. No backup file was created.",
+    });
+    consoleErrorSpy.mockRestore();
   });
 
   it("does not export an inaccessible workspace", async () => {
@@ -156,7 +260,7 @@ describe("SWARMSY project backup endpoints", () => {
     );
 
     expect(response.status).toHaveBeenCalledWith(404);
-    expect(SwarmsyMemoryLock.forUserWorkspace).not.toHaveBeenCalled();
+    expect(mockPrisma.$queryRawUnsafe).not.toHaveBeenCalled();
   });
 
   it("validates without applying restore writes", async () => {
