@@ -1,5 +1,6 @@
 import ProjectDashboard from "./ProjectDashboard";
 import ProofReviewHistoryPanel from "./ProofReviewHistoryPanel";
+import { buildMemoryLockStarterMessage } from "./memoryLock";
 
 export default function ReturningUserHome({
   workspaceSlug,
@@ -10,6 +11,15 @@ export default function ReturningUserHome({
 }) {
   if (!workspaceSlug) return null;
 
+  function continueMemoryLock(lock) {
+    const message = buildMemoryLockStarterMessage(lock?.content, { lock });
+    if (!message) {
+      onShowChoices?.();
+      return;
+    }
+    onContinueIdea?.(message);
+  }
+
   return (
     <div className="space-y-4">
       <ProjectDashboard
@@ -17,7 +27,7 @@ export default function ReturningUserHome({
         busy={busy}
         onContinueIntake={onContinueIntake}
         onContinueIdea={onContinueIdea}
-        onContinueMemoryLock={onShowChoices}
+        onContinueMemoryLock={continueMemoryLock}
         onShowChoices={onShowChoices}
       />
 
