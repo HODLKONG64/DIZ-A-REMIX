@@ -61,6 +61,8 @@ jobs:
       - name: Install server dependencies
         if: steps.cache-server.outputs.cache-hit != 'true'
         run: cd server && yarn install --frozen-lockfile
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install collector dependencies
         if: steps.cache-collector.outputs.cache-hit != 'true'

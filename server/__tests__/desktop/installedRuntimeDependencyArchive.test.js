@@ -39,7 +39,7 @@ describe("installed desktop runtime dependency archive", () => {
     try {
       const archivePath = builder.createRuntimeDependencyArchive({
         artifactDir,
-        platform: "linux",
+        platform: "win32",
         spawnSyncImpl,
       });
       expect(archivePath).toBe(
@@ -47,7 +47,7 @@ describe("installed desktop runtime dependency archive", () => {
       );
       expect(fs.statSync(archivePath).size).toBeGreaterThan(0);
       expect(spawnSyncImpl).toHaveBeenCalledWith(
-        "tar",
+        "tar.exe",
         ["-czf", archivePath, "-C", path.dirname(nodeModulesPath), "node_modules"],
         expect.objectContaining({ shell: false })
       );
@@ -106,13 +106,13 @@ describe("installed desktop runtime dependency archive", () => {
     try {
       const linkedPath = runtime.ensureServerRuntimeDependencies(serverRoot, {
         env: { SWARMSY_DESKTOP_RUNTIME_DEPENDENCIES_DIR: cacheRoot },
-        platform: "linux",
+        platform: "win32",
         spawnSyncImpl,
       });
 
       expect(linkedPath).toBe(path.join(serverRoot, "node_modules"));
       expect(fs.lstatSync(linkedPath).isSymbolicLink()).toBe(true);
-      expect(runtime.resolvePrismaBin(serverRoot, { platform: "linux" })).toBe(
+      expect(runtime.resolvePrismaBin(serverRoot, { platform: "win32" })).toBe(
         path.join(serverRoot, "node_modules/.bin/prisma")
       );
       expect(
@@ -122,7 +122,7 @@ describe("installed desktop runtime dependency archive", () => {
 
       runtime.ensureServerRuntimeDependencies(serverRoot, {
         env: { SWARMSY_DESKTOP_RUNTIME_DEPENDENCIES_DIR: cacheRoot },
-        platform: "linux",
+        platform: "win32",
         spawnSyncImpl,
       });
       expect(spawnSyncImpl).toHaveBeenCalledTimes(1);
