@@ -33,7 +33,11 @@ SetCompressor /SOLID lzma
 
 Section "SWARMSY Desktop" SEC_INSTALL
   SetOutPath "$INSTDIR"
-  File /r /x ".git" /x ".yarn" /x ".pnpm-store" /x "__tests__" /x "*.map" "${APP_SOURCE_DIR}\*.*"
+
+  ; Runtime payloads must be staged before NSIS packaging.
+  ; Do not recursively package workspace dependency trees.
+  ; Raw node_modules creates Windows MAX_PATH failures inside NSIS.
+  File /r /x ".git" /x ".yarn" /x ".pnpm-store" /x "__tests__" /x "*.map" /x "node_modules" "${APP_SOURCE_DIR}\*.*"
 
   WriteUninstaller "$INSTDIR\Uninstall SWARMSY Desktop.exe"
 
@@ -58,9 +62,6 @@ Section "Uninstall"
   RMDir "$SMPROGRAMS\SWARMSY Desktop"
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SWARMSY Desktop"
 
-  ; The installer only writes application files under $INSTDIR. Local User
-  ; files are created outside the install directory and are not removed by
-  ; this uninstaller.
   RMDir /r "$INSTDIR"
   Goto uninstall_done
 
