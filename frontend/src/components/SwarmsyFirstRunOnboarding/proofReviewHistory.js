@@ -2,7 +2,7 @@ import { API_BASE } from "@/utils/constants";
 import { baseHeaders } from "@/utils/request";
 
 export const PROOF_REVIEW_HISTORY_EMPTY =
-  "No saved Proof Reviews yet. Use Check my proof to create the first one.";
+  "No stored Proof Reviews are available yet. This history only shows reviews that have already been saved to your workspace.";
 export const PROOF_REVIEW_HISTORY_LOAD_ERROR =
   "SPARKY could not load your Proof Review history.";
 
@@ -67,7 +67,7 @@ export function proofReviewLabel(review = null) {
 }
 
 export function proofReviewDate(review = null) {
-  const raw = review?.updatedAt || review?.createdAt;
+  const raw = review?.createdAt;
   if (!raw) return "Date unavailable";
   const date = new Date(raw);
   if (Number.isNaN(date.getTime())) return "Date unavailable";
