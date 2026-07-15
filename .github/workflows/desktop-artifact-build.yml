@@ -153,4 +153,18 @@ jobs:
         run: npm run desktop:artifact:smoke
 
       - name: Launch packaged desktop and verify fresh first run
-        run: npm run desktop:runtime:smoke:win
+        shell: pwsh
+        run: |
+          $logPath = "desktop/artifacts/desktop-runtime-smoke.log"
+          npm run desktop:runtime:smoke:win 2>&1 | Tee-Object -FilePath $logPath
+          $exitCode = $LASTEXITCODE
+          if ($exitCode -ne 0) { exit $exitCode }
+
+      - name: Upload desktop runtime smoke diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-runtime-smoke-diagnostics
+          path: desktop/artifacts/desktop-runtime-smoke.log
+          if-no-files-found: error
+          retention-days: 14
