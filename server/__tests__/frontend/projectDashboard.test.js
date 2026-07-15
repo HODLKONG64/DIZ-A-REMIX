@@ -64,12 +64,9 @@ describe("SWARMSY returning-user project dashboard", () => {
     expect(snapshot.activeLock.id).toBe(5);
     expect(snapshot.activeReview.id).toBe(9);
     expect(snapshot.counts).toEqual({ ideas: 2, locks: 2, reviews: 2 });
-    expect(projectDashboardStatusCards(snapshot).map((card) => card.label)).toEqual([
-      "Identity",
-      "Questions",
-      "Memory Locks",
-      "Proof Reviews",
-    ]);
+    expect(
+      projectDashboardStatusCards(snapshot).map((card) => card.label)
+    ).toEqual(["Identity", "Questions", "Memory Locks", "Proof Reviews"]);
   });
 
   it("prioritises unfinished intake before all other saved work", () => {
@@ -105,6 +102,20 @@ describe("SWARMSY returning-user project dashboard", () => {
     });
   });
 
+  it("prepares the active Memory Lock when it is the next saved action", () => {
+    const { buildProjectDashboardSnapshot, getProjectDashboardNextAction } =
+      loadDashboardHelpers();
+    const snapshot = buildProjectDashboardSnapshot({
+      locks: [{ id: 22, isActive: true, content: "approved project truth" }],
+    });
+
+    expect(getProjectDashboardNextAction(snapshot)).toMatchObject({
+      kind: "continue-lock",
+      value: { id: 22 },
+      message: "lock:approved project truth",
+    });
+  });
+
   it("uses only existing authenticated SWARMSY APIs", () => {
     const panel = read(
       "components/SwarmsyFirstRunOnboarding/ProjectDashboard.jsx"
@@ -126,6 +137,9 @@ describe("SWARMSY returning-user project dashboard", () => {
     expect(returningHome).toContain("ProofReviewHistoryPanel");
     expect(returningHome).toContain("onContinueIntake={onContinueIntake}");
     expect(returningHome).toContain("onContinueIdea={onContinueIdea}");
+    expect(returningHome).toContain(
+      "onContinueMemoryLock={continueMemoryLock}"
+    );
     expect(returningHome).toContain("onShowChoices={onShowChoices}");
   });
 });
