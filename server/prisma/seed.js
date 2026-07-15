@@ -7,17 +7,12 @@ async function main() {
     { label: "logo_filename", value: "anything-llm.png" },
   ];
 
-  for (let setting of settings) {
-    const existing = await prisma.system_settings.findUnique({
+  for (const setting of settings) {
+    await prisma.system_settings.upsert({
       where: { label: setting.label },
+      update: { value: setting.value },
+      create: setting,
     });
-
-    // Only create the setting if it doesn't already exist
-    if (!existing) {
-      await prisma.system_settings.create({
-        data: setting,
-      });
-    }
   }
 }
 
