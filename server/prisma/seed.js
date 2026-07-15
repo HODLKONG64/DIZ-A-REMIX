@@ -29,7 +29,10 @@ async function main() {
 
 main()
   .catch((e) => {
-    console.warn("[desktop:runtime] Prisma seed failed, continuing startup:", e);
+    console.warn(
+      "[desktop:runtime] Prisma seed failed, continuing startup:",
+      e
+    );
   })
   .finally(async () => {
     await prisma.$disconnect();
