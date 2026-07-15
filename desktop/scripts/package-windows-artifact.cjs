@@ -192,6 +192,46 @@ function sanitizeProductionServerDependencies(nodeModulesPath) {
   return removed;
 }
 
+function generateProductionPrismaClient({
+  runtimeServerPath,
+  nodeModulesPath,
+  platform = process.platform,
+  yarnCommand = platform === "win32" ? "yarn.cmd" : "yarn",
+  spawnSyncImpl = spawnSync,
+} = {}) {
+  const result = spawnSyncImpl(yarnCommand, ["prisma", "generate"], {
+    cwd: runtimeServerPath,
+    stdio: "inherit",
+    shell: platform === "win32",
+    env: { ...process.env, NODE_ENV: "production" },
+  });
+
+  if (result.error || result.status !== 0) {
+    throw (
+      result.error ||
+      new Error(
+        `${yarnCommand} prisma generate exited with ${result.status} while generating the packaged Prisma client.`
+      )
+    );
+  }
+
+  const generatedClientPath = path.join(
+    nodeModulesPath,
+    ".prisma",
+    "client",
+    "index.js"
+  );
+  ensureExists(generatedClientPath, "Generated Prisma client runtime");
+  const generatedClient = fs.readFileSync(generatedClientPath, "utf8");
+  if (generatedClient.includes("@prisma/client did not initialize yet")) {
+    throw new Error(
+      `Prisma client generation left the placeholder runtime in place: ${generatedClientPath}`
+    );
+  }
+  console.log("[desktop:artifact] Generated packaged Prisma client runtime");
+  return generatedClientPath;
+}
+
 function installProductionServerDependencies({
   runtimeServerPath = serverRuntimeRoot,
   platform = process.platform,
@@ -226,18 +266,20 @@ function installProductionServerDependencies({
   const nodeModulesPath = path.join(runtimeServerPath, "node_modules");
   ensureExists(nodeModulesPath, "Production server node_modules");
   ensureExists(
-    path.join(
-      nodeModulesPath,
-      "@prisma",
-      "client",
-      "package.json"
-    ),
+    path.join(nodeModulesPath, "@prisma", "client", "package.json"),
     "Prisma client runtime"
   );
   ensureExists(
     path.join(nodeModulesPath, "prisma", "package.json"),
     "Prisma CLI runtime"
   );
+  generateProductionPrismaClient({
+    runtimeServerPath,
+    nodeModulesPath,
+    platform,
+    yarnCommand,
+    spawnSyncImpl,
+  });
   sanitizeProductionServerDependencies(nodeModulesPath);
 }
 
@@ -377,6 +419,7 @@ module.exports = {
   copyEntries,
   copyServerRuntime,
   createZipArchive,
+  generateProductionPrismaClient,
   installProductionServerDependencies,
   isUnderNodeModules,
   main,
