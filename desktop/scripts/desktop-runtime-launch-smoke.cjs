@@ -9,12 +9,9 @@ const path = require("path");
 const { spawn, spawnSync } = require("child_process");
 
 const repoRoot = path.resolve(__dirname, "../..");
-const packageRoot = path.join(
-  repoRoot,
-  "desktop",
-  "artifacts",
-  "swarmsy-desktop-win32-x64"
-);
+const packageRoot = process.env.SWARMSY_DESKTOP_ROOT_OVERRIDE
+  ? path.resolve(process.env.SWARMSY_DESKTOP_ROOT_OVERRIDE)
+  : path.join(repoRoot, "desktop", "artifacts", "swarmsy-desktop-win32-x64");
 const desktopExecutable = path.join(packageRoot, "SWARMSY Desktop.exe");
 // A fresh packaged launch copies the production server tree (including native
 // dependencies) into managed Local User storage before migrations can run.
