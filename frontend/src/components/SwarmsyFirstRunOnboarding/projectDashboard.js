@@ -1,6 +1,9 @@
 import { buildIdentityIdeaSparkyMessage } from "./identityIdea";
 import { buildMemoryLockStarterMessage } from "./memoryLock";
-import { buildProofReviewReopenMessage, normalizeProofReviews } from "./proofReviewHistory";
+import {
+  buildProofReviewReopenMessage,
+  normalizeProofReviews,
+} from "./proofReviewHistory";
 
 function safeList(value) {
   return Array.isArray(value) ? value : [];
@@ -21,7 +24,8 @@ export function buildProjectDashboardSnapshot({
   const safeIdeas = newestById(ideas);
   const safeLocks = newestById(locks);
   const safeReviews = normalizeProofReviews(reviews);
-  const activeLock = safeLocks.find((lock) => lock?.isActive) || safeLocks[0] || null;
+  const activeLock =
+    safeLocks.find((lock) => lock?.isActive) || safeLocks[0] || null;
   const activeReview =
     safeReviews.find((review) => review?.isActive) || safeReviews[0] || null;
   const currentIdea =
@@ -128,13 +132,17 @@ export function projectDashboardStatusCards(snapshot = {}) {
       id: "memory",
       label: "Memory Locks",
       value: String(snapshot?.counts?.locks || 0),
-      detail: snapshot?.activeLock ? "Active project truth available." : "No active lock yet.",
+      detail: snapshot?.activeLock
+        ? "Active project truth available."
+        : "No active lock yet.",
     },
     {
       id: "proof",
       label: "Proof Reviews",
       value: String(snapshot?.counts?.reviews || 0),
-      detail: snapshot?.activeReview ? "Active evidence review available." : "No saved review yet.",
+      detail: snapshot?.activeReview
+        ? "Active evidence review available."
+        : "No saved review yet.",
     },
   ];
 }
