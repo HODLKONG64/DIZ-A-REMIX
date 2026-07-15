@@ -1,118 +1,193 @@
 # SWARMSY Local User Roadmap
 
-Last updated: 2026-07-11
+Last updated: 2026-07-15
 
 ## Purpose
 
-Track what is actually shipped, partially shipped, and not built for the downloadable SWARMSY Local User product while preserving Hosted/Admin Mode.
+Track what is actually shipped, partially shipped, not built, or deliberately future work for the downloadable SWARMSY Local User product while preserving Hosted/Admin Mode.
+
+This roadmap is subordinate to the top-level `README.md`, current runtime code, migrations and tests. It must be updated whenever merged runtime work changes a status below.
 
 ## Status language
 
 - **Shipped** — implemented in runtime and covered by repository tests or build checks.
-- **Partial / beta** — implemented foundation that still needs external setup, persistence, signing, acceptance, or product hardening.
-- **Not built** — documentation or intended direction without an end-to-end runtime system.
+- **Partial / beta** — a working foundation exists but still needs product hardening, external setup, signing, wider acceptance or lifecycle controls.
+- **Not built** — no complete end-to-end runtime system exists.
+- **Future power feature** — useful expansion that is not required for the guided identity-creation beta.
 
 ## Current truth
 
 | Area | Status | Current reality |
 |---|---|---|
-| Hosted/Admin separation | Shipped | Hosted/Admin behavior is preserved separately from trusted desktop Local User flows. |
+| Hosted/Admin separation | Shipped | Hosted/Admin behaviour remains separate from trusted desktop Local User flows. |
+| Beginner SPARKY home | Shipped | Three plain starting choices, one-click setup/recovery and returning-user continuation are implemented. |
+| Identity intake persistence | Shipped | Full or partial answer batches are stored by user and workspace and restored when the user returns. |
+| Identity Idea capture | Shipped | Finished SPARKY proposals are captured as structured Identity Ideas with Keep, Delete, Try Another and explicit save behaviour. |
+| Memory Lock core storage | Shipped | User-and-workspace-scoped storage, API access, frontend helpers and a minimal viewer/import flow are implemented. |
+| Memory Lock lifecycle controls | Partial / beta | Archive, delete, export, compare, restore and advanced version controls remain. |
+| Proof Review core storage | Shipped | Durable user-and-workspace-scoped Proof Review storage and authenticated API access are implemented. |
+| Proof Review history surface | Partial / beta | A complete history, comparison and claim-ledger interface remains. |
+| Returning-user dashboard | Partial / beta | A continuation card and HIVE snapshot exist; a complete project-status dashboard remains. |
+| Campaign planning handoff | Shipped | Campaign-day prompts can be handed to SPARKY. |
+| Campaign storage and calendar history | Not built | Campaign output still needs dedicated persistence and a retrievable calendar view. |
 | Local Ollama detection | Shipped | The app checks Ollama readiness and lists installed models. |
-| Local model selection | Shipped | Users explicitly select an installed Ollama model; selections are persisted through Local User settings. |
-| Local chat routing | Shipped | Verified Local User model selection is passed into chat execution without silently switching to paid providers. |
-| Local ComfyUI readiness | Shipped | The app reports ComfyUI URL, mode, configuration source, reachability, and setup guidance. |
-| Local ComfyUI generation | Partial / beta | A local/private ComfyUI workflow can be submitted and polled, but ComfyUI, models, and workflow JSON are user-supplied. |
-| Per-message `Use API` | Shipped | Online provider routing occurs only when explicitly enabled for that message and a supported provider key is configured. |
-| Desktop wrapper and runtime | Partial / beta | Electron wrapper, trusted bridge, runtime healthcheck/launcher, and bundled runtime packaging exist; Windows acceptance remains manual. |
-| Local settings and backup | Partial / beta | Settings and allowlisted Local User backup/import are filesystem-backed; full HIVE/project/chat/asset backup is not implemented. |
-| Desktop diagnostics | Shipped | Safe runtime, Ollama, model, bridge, settings, and backup failure reasons are surfaced. |
-| Windows artifact and installer | Partial / beta | Build, installer, integrity, and GitHub Release workflows exist; builds are unsigned and have no auto-update. |
-| Optional cloud sync | Not built | Local-first remains the default; no end-to-end opt-in sync system exists. |
+| Local model selection and routing | Shipped | Users select an installed model and Local User chat routes through it without silently switching providers. |
+| Local ComfyUI readiness | Shipped | The app reports configuration and reachability. |
+| Local ComfyUI generation | Partial / beta | Submission and polling work, but ComfyUI, models and workflow JSON are user supplied. |
+| Generated asset library | Not built | Generated prompts and images need a persistent project-linked asset surface. |
+| Per-message `Use API` | Shipped | API routing occurs only with explicit user intent and a configured provider. |
+| Local settings backup | Shipped | Allowlisted settings export/import is filesystem-backed with path and secret protections. |
+| Full project backup and restore | Not built | HIVE state, chats, ideas, locks, proof, campaigns, documents and assets need one versioned export/import format. |
+| Desktop wrapper and runtime | Partial / beta | Electron wrapper, trusted bridge, runtime launcher, packaged runtime and installed-launch smoke exist. |
+| Windows artifact and installer | Partial / beta | Build, installer, dependency archive, integrity, installed-runtime smoke and release workflows exist; signing, auto-update and broader clean-machine acceptance remain. |
+| Desktop diagnostics | Shipped | Safe runtime, model, bridge, settings and backup failure reasons are surfaced. |
+| Optional cloud sync | Not built | Local-first remains the default; no complete opt-in encrypted project sync exists. |
+| External tools / Space Agent | Future power feature | Live web, email, file writing, scheduling and multi-agent tools must not be claimed until deliberately implemented. |
 
 ## Phase 1 — Product split and consent guardrails
 
 **Status: Shipped**
 
-- Hosted/Admin Mode is preserved for website, administration, testing, and hosted use.
+- Hosted/Admin Mode is preserved.
 - Local User Mode is the privacy-first downloadable path.
-- No silent Ollama installation, model pull, image-engine installation, paid API call, or cloud sync.
+- No silent Ollama installation, model pull, image-engine installation, paid API call or cloud sync.
+- Provider selection changes SPARKY's supporting engine; it does not replace SPARKY.
 
-## Phase 2 — Local AI and image generation
+## Phase 2 — Beginner identity journey
 
-**Status: Partial / beta**
+**Status: Shipped**
 
-Shipped:
+- One-click SPARKY setup and plain-language recovery.
+- Face, hidden identity and existing-project entry routes.
+- Batch-first 76-question intake with durable resume state.
+- WTF / SAFE creative-intensity choice.
+- MESSAGE, DOODAD and PLACEMENT proposal contract.
+- Structured Identity Idea capture.
+- Keep, Delete and Try Another decisions.
+- SPARKY brainstorming and explicit save recognition.
+- Returning-user continuation.
+- Deterministic complete beginner-journey regression coverage.
 
-- Ollama readiness and installed-model discovery.
-- Explicit local model selection and runtime routing.
-- ComfyUI readiness/status guidance.
-- Local/private ComfyUI generation MVP.
-- Per-message `Use API` control and configured-provider routing.
-
-Remaining:
-
-- User-friendly ComfyUI workflow/model selection.
-- Generated-asset library with local metadata and project attachment.
-- Broader manual Windows/GPU compatibility testing.
-
-## Phase 3 — Local data ownership
+## Phase 3 — Persistent creator operating systems
 
 **Status: Partial / beta**
 
-Shipped:
+### Shipped
+
+- Memory Lock core storage, retrieval and minimal viewer/import.
+- Proof Review core storage and authenticated API access.
+- Durable intake sessions and Identity Ideas.
+- Campaign-day SPARKY handoff.
+
+### Remaining
+
+- Full Proof Review history and comparison surface.
+- Advanced Memory Lock lifecycle controls.
+- Dedicated returning-user project dashboard.
+- Persistent campaign records and calendar history.
+- Generated asset library.
+
+## Phase 4 — Local data ownership
+
+**Status: Partial / beta**
+
+### Shipped
 
 - Deterministic Local User data-directory contract.
 - Filesystem-backed desktop settings.
 - Allowlisted settings backup/export/import.
-- Symlink, path-containment, schema, and secret-exclusion protections.
+- Symlink, path-containment, schema and secret-exclusion protections.
 
-Remaining:
+### Remaining
 
-- Full local persistence for HIVE state, chats, generated assets, lore, project records, campaign records, proof records, and Memory Locks.
-- Full-project backup/restore and migration versioning.
+- Versioned full-project export and restore.
+- Migration support for older project exports.
+- Recovery of chats, Identity Ideas, Memory Locks, Proof Reviews, campaigns, documents and generated assets.
+- Clean uninstall/reinstall acceptance proving user project data survives.
 
-## Phase 4 — Downloadable Windows product
+## Phase 5 — Local AI and image generation
 
 **Status: Partial / beta**
 
-Shipped:
+### Shipped
+
+- Ollama readiness and installed-model discovery.
+- Explicit local model selection and routing.
+- ComfyUI readiness guidance.
+- Local/private ComfyUI generation MVP.
+- Explicit per-message API routing.
+
+### Remaining
+
+- Friendlier ComfyUI workflow/model selection.
+- Persistent generated-asset library with project attachment.
+- Broader Windows and GPU compatibility testing.
+- A fuller health centre for collector, model, image engine, database, disk and port failures.
+
+## Phase 6 — Downloadable Windows product
+
+**Status: Partial / beta**
+
+### Shipped
 
 - Electron desktop wrapper and trusted preload bridge.
-- Runtime readiness, launcher, diagnostics, artifact packaging, installer packaging, checksums, and release workflow.
+- Runtime health checks and launcher.
+- Production runtime staging.
+- Dependency archive and short-path extraction strategy.
+- Artifact and NSIS installer packaging.
+- Integrity checks and release workflow.
+- Portable and installed-runtime smoke coverage.
 
-Remaining:
+### Remaining
 
+- Repeatable clean-machine acceptance beyond CI.
 - Signed Windows builds.
-- Auto-update.
-- Verified public release acceptance across clean Windows machines.
+- Secure automatic updates and release channels.
+- User-facing download page.
+- Version, support and rollback policy.
 - Installer/uninstaller acceptance proving Local User data survives uninstall.
-- User-facing download page and version/support policy.
 
-## Phase 5 — Persistent SWARMSY operating systems
-
-**Status: Not built**
-
-- Dedicated Memory Lock storage, viewer, comparison, and version history.
-- Proof Tracker database and proof-gap history.
-- Persistent Campaign Calendar and campaign-day records.
-- Returning-user project dashboard.
-- Structured intake progress and resume state.
-- Autonomous scheduling, recurring jobs, and durable agent execution.
-
-## Phase 6 — Optional sync and provider expansion
+## Phase 7 — Optional sync and provider expansion
 
 **Status: Partial / beta**
 
-- Configured online provider routing exists behind explicit `Use API` intent.
-- Provider keys remain removable and excluded from normal Local User backups.
+- Configured online provider routing exists behind explicit per-message intent.
+- Provider keys remain removable and excluded from normal backups.
 - Optional encrypted cloud/project sync is not built.
+- External action tools and multi-agent execution are future power features, not beta blockers.
 
 ## Acceptance guardrails
 
 - Hosted/Admin Mode must not regress.
 - Local User Mode must remain usable without paid API keys.
-- No API usage without explicit per-message intent.
-- No silent model, runtime, image-engine, or cloud installation.
-- No claim that settings-only backup is a full project backup.
-- No claim that unsigned beta artifacts are production-ready signed releases.
-- No claim that Memory Lock, Proof Tracker, Campaign Calendar, dashboard, or autonomous scheduling are persistent systems until runtime proves it.
+- No API usage without explicit intent.
+- No silent model, runtime, image-engine or cloud installation.
+- No claim that settings backup is a full project backup.
+- No claim that unsigned beta artifacts are production-ready releases.
+- No claim that Proof Review history, campaign persistence, full dashboard, full backup, auto-update or external action tools are complete until runtime proves it.
+- Memory Lock core storage, intake persistence, Identity Ideas and Proof Review core storage must not be described as unbuilt.
+
+## Definition of finished beta
+
+SWARMSY may be called a finished beta when:
+
+- a normal user can install and start it without developer tools;
+- SPARKY setup and recovery are understandable;
+- identity intake, proposal, approval and continuation work end to end;
+- Memory Locks and Proof Review are visible and usable across sessions;
+- a returning user has a clear project dashboard;
+- full project backup and restore work;
+- the installer passes repeatable clean-machine acceptance;
+- failures produce safe, useful diagnostics;
+- all public status claims match runtime truth.
+
+## Definition of production-ready
+
+Production readiness additionally requires:
+
+- signed binaries and installer;
+- secure automatic updates;
+- versioned backup migrations;
+- published privacy, terms and support policies;
+- safe observability and security regression coverage;
+- repeatable clean-machine installation, upgrade and recovery acceptance.
