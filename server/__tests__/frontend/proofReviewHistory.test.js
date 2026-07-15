@@ -21,6 +21,7 @@ function loadHistoryHelpers() {
 module.exports = {
   normalizeProofReviews,
   proofReviewLabel,
+  proofReviewDate,
   buildProofReviewReopenMessage,
   buildProofReviewMarkdown
 };`);
@@ -48,6 +49,17 @@ describe("SWARMSY Proof Review history", () => {
 
     expect(reviews.map((review) => review.id)).toEqual([3, 2, 1]);
     expect(reviews[0].isActive).toBe(true);
+  });
+
+  it("uses the original saved date instead of the later deactivation time", () => {
+    const { proofReviewDate } = loadHistoryHelpers();
+    const saved = proofReviewDate({
+      createdAt: "2026-07-15T12:00:00.000Z",
+      updatedAt: "2026-07-16T18:30:00.000Z",
+    });
+
+    expect(saved).toContain("2026");
+    expect(saved).not.toContain("Jul 16");
   });
 
   it("builds a proof-safe SPARKY continuation message", () => {
@@ -92,6 +104,15 @@ describe("SWARMSY Proof Review history", () => {
     );
     expect(source).toContain("baseHeaders()");
     expect(source).not.toContain("/admin/");
+  });
+
+  it("does not promise that the chat-only proof flow saves a review", () => {
+    const source = read(
+      "components/SwarmsyFirstRunOnboarding/proofReviewHistory.js"
+    );
+
+    expect(source).toContain("already been saved to your workspace");
+    expect(source).not.toContain("Use Check my proof to create the first one");
   });
 
   it("renders history, export, active state and SPARKY continuation", () => {
