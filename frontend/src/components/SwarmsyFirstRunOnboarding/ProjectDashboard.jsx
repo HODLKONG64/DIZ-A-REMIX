@@ -49,7 +49,9 @@ export default function ProjectDashboard({
 }) {
   const [loading, setLoading] = useState(Boolean(workspaceSlug));
   const [error, setError] = useState("");
-  const [snapshot, setSnapshot] = useState(() => buildProjectDashboardSnapshot());
+  const [snapshot, setSnapshot] = useState(() =>
+    buildProjectDashboardSnapshot()
+  );
 
   async function loadDashboard() {
     if (!workspaceSlug) return;
