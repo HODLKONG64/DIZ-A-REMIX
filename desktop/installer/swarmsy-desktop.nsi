@@ -33,7 +33,18 @@ SetCompressor /SOLID lzma
 
 Section "SWARMSY Desktop" SEC_INSTALL
   SetOutPath "$INSTDIR"
-  File /r /x ".git" /x ".yarn" /x ".pnpm-store" /x "__tests__" /x "*.map" "${APP_SOURCE_DIR}\*.*"
+
+  ; Package the staged runtime artifact only.
+  ; Do not recursively package workspace dependency trees.
+  ; Raw node_modules creates Windows MAX_PATH failures inside NSIS.
+  File /r /x ".git" /x ".yarn" /x ".pnpm-store" /x "__tests__" /x "*.map" /x "node_modules" "${APP_SOURCE_DIR}\*.*"
+
+  ; Restore only production runtime dependencies required by the bundled server.
+  ; Keep Prisma runtime files while avoiding the full dependency tree.
+  SetOutPath "$INSTDIR\resources\app\server\node_modules"
+  File /r "${APP_SOURCE_DIR}\resources\app\server\node_modules\.bin\*.*"
+  File /r "${APP_SOURCE_DIR}\resources\app\server\node_modules\@prisma\client\*.*"
+  File /r "${APP_SOURCE_DIR}\resources\app\server\node_modules\.prisma\*.*"
 
   WriteUninstaller "$INSTDIR\Uninstall SWARMSY Desktop.exe"
 
@@ -58,9 +69,6 @@ Section "Uninstall"
   RMDir "$SMPROGRAMS\SWARMSY Desktop"
   DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\SWARMSY Desktop"
 
-  ; The installer only writes application files under $INSTDIR. Local User
-  ; files are created outside the install directory and are not removed by
-  ; this uninstaller.
   RMDir /r "$INSTDIR"
   Goto uninstall_done
 
