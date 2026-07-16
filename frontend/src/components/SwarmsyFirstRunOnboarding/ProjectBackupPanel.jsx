@@ -15,6 +15,8 @@ import {
   validateProjectBackup,
 } from "./projectBackup";
 
+const MAX_PROJECT_BACKUP_FILE_BYTES = 10 * 1024 * 1024;
+
 export default function ProjectBackupPanel({ workspaceSlug, busy = false }) {
   const fileInputRef = useRef(null);
   const [action, setAction] = useState("");
@@ -42,6 +44,16 @@ export default function ProjectBackupPanel({ workspaceSlug, busy = false }) {
     const file = event.target.files?.[0] || null;
     event.target.value = "";
     if (!file || action) return;
+
+    if (file.size > MAX_PROJECT_BACKUP_FILE_BYTES) {
+      setValidation({
+        success: false,
+        valid: false,
+        errors: ["This backup file is larger than the 10 MB validation limit."],
+        restoreAvailable: false,
+      });
+      return;
+    }
 
     setAction("validate");
     setValidation(null);
