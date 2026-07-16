@@ -37,7 +37,7 @@ This roadmap is subordinate to the top-level `README.md`, current runtime code, 
 | Generated asset library | Not built | Generated prompts and images need a persistent project-linked asset surface. |
 | Per-message `Use API` | Shipped | API routing occurs only with explicit user intent and a configured provider. |
 | Local settings backup | Shipped | Allowlisted settings export/import is filesystem-backed with path and credential protections. |
-| Project backup and restore | Partial / beta | A versioned read-only export and dry-run validator cover active intake, Identity Ideas, Memory Locks and Proof Reviews. Restore, chats, documents, campaigns, assets and migrations remain. |
+| Project backup and restore | Partial / beta | Trusted desktop Local User controls can download the versioned read-only project export and dry-run validate a selected backup file. Active intake, Identity Ideas, Memory Locks and Proof Reviews are covered; restore, chats, documents, campaigns, assets and migrations remain. |
 | Desktop wrapper and runtime | Partial / beta | Electron wrapper, trusted bridge, runtime launcher, packaged runtime and installed-launch smoke exist. |
 | Windows artifact and installer | Partial / beta | Build, installer, dependency archive, integrity, installed-runtime smoke and release workflows exist; signing, auto-update and broader clean-machine acceptance remain. |
 | Desktop diagnostics | Shipped | Safe runtime, model, bridge, settings and backup failure reasons are surfaced. |
@@ -101,6 +101,8 @@ This roadmap is subordinate to the top-level `README.md`, current runtime code, 
 - Symlink, path-containment, schema and credential-exclusion protections.
 - Versioned read-only SWARMSY project export for active intake, Identity Ideas, Memory Locks and Proof Reviews.
 - Dry-run project backup validation that never applies restore writes.
+- Trusted desktop Local User controls for downloading an export and checking a selected backup file.
+- Client-side rejection of backup files larger than 10 MB before reading or validation upload.
 
 ### Remaining
 
@@ -167,6 +169,7 @@ This roadmap is subordinate to the top-level `README.md`, current runtime code, 
 - No API usage without explicit intent.
 - No silent model, runtime, image-engine or cloud installation.
 - No claim that settings backup or the read-only project export is a complete restore system.
+- Project-backup controls must remain restricted to the trusted desktop Local User surface unless a separate Hosted/Admin product decision is approved.
 - No claim that unsigned beta artifacts are production-ready releases.
 - No claim that campaign persistence, complete project restore, auto-update or external action tools are complete until runtime proves it.
 - Memory Lock core storage, intake persistence, Identity Ideas, Proof Review core storage, Proof Review history and the core returning-user dashboard must not be described as unbuilt.
