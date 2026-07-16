@@ -31,6 +31,15 @@ describe("SWARMSY project backup user surface", () => {
     expect(helper).toContain("URL.revokeObjectURL");
   });
 
+  it("labels intake record counts accurately", () => {
+    const helper = read(
+      "components/SwarmsyFirstRunOnboarding/projectBackup.js"
+    );
+
+    expect(helper).toContain('["Intake Sessions", counts.intakeSessions || 0]');
+    expect(helper).not.toContain('["Questions", counts.intakeSessions || 0]');
+  });
+
   it("keeps restore disabled and validates without changing workspace data", () => {
     const helper = read(
       "components/SwarmsyFirstRunOnboarding/projectBackup.js"
