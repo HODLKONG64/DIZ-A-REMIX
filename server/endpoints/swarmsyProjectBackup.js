@@ -7,9 +7,13 @@ const {
 const {
   readProjectBackupSections,
 } = require("../utils/swarmsy/projectBackupReader");
+const {
+  buildProjectBackupRestorePlan,
+} = require("../utils/swarmsy/projectBackupRestorePlan");
 const { validatedRequest } = require("../utils/middleware/validatedRequest");
 const {
   flexUserRoleValid,
+  isSingleUserMode,
   ROLES,
 } = require("../utils/middleware/multiUserProtected");
 
@@ -104,6 +108,54 @@ async function swarmsyProjectBackupValidate(request, response) {
   }
 }
 
+async function swarmsyProjectBackupRestorePlan(request, response) {
+  try {
+    const context = await resolveBackupContext(request, response);
+    if (!context) return;
+
+    const backup = reqBody(request)?.backup;
+    const validation = validateSwarmsyProjectBackup(backup);
+    if (!validation.valid) {
+      return response.status(400).json({
+        success: false,
+        ...validation,
+        restoreApplied: false,
+        restoreAvailable: false,
+      });
+    }
+
+    const destination = await readProjectBackupSections({
+      userId: context.userId,
+      workspaceId: context.workspace.id,
+    });
+    const plan = buildProjectBackupRestorePlan({ backup, destination });
+
+    return response.status(200).json({
+      success: true,
+      valid: true,
+      destination: {
+        id: context.workspace.id,
+        slug: context.workspace.slug,
+        name: context.workspace.name,
+      },
+      ...plan,
+      message: plan.blocked
+        ? "Restore planning found conflicts that must be resolved before any data can be applied."
+        : "Restore plan is ready for review. No workspace data was changed.",
+    });
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({
+      success: false,
+      valid: false,
+      restoreApplied: false,
+      restoreAvailable: false,
+      message:
+        "Restore planning failed because the destination workspace could not be read safely.",
+    });
+  }
+}
+
 function registerSwarmsyProjectBackupEndpoints(app) {
   if (!app) return;
   app.get(
@@ -116,10 +168,16 @@ function registerSwarmsyProjectBackupEndpoints(app) {
     [validatedRequest, flexUserRoleValid([ROLES.all])],
     swarmsyProjectBackupValidate
   );
+  app.post(
+    "/swarmsy/workspaces/:slug/project-backup/restore-plan",
+    [validatedRequest, isSingleUserMode],
+    swarmsyProjectBackupRestorePlan
+  );
 }
 
 module.exports = {
   registerSwarmsyProjectBackupEndpoints,
   swarmsyProjectBackupExport,
+  swarmsyProjectBackupRestorePlan,
   swarmsyProjectBackupValidate,
 };
