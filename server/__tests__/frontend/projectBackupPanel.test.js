@@ -1,0 +1,63 @@
+const fs = require("fs");
+const path = require("path");
+
+const frontendRoot = path.resolve(__dirname, "../../../frontend/src");
+
+function read(relativePath) {
+  return fs.readFileSync(path.join(frontendRoot, relativePath), "utf8");
+}
+
+describe("SWARMSY project backup user surface", () => {
+  it("uses authenticated project export and validation endpoints", () => {
+    const helper = read(
+      "components/SwarmsyFirstRunOnboarding/projectBackup.js"
+    );
+
+    expect(helper).toContain("baseHeaders()");
+    expect(helper).toContain("/project-backup/export");
+    expect(helper).toContain("/swarmsy/project-backup/validate");
+    expect(helper).toContain('method: "POST"');
+    expect(helper).toContain("JSON.stringify({ backup })");
+  });
+
+  it("downloads a portable JSON file with a stable project filename", () => {
+    const helper = read(
+      "components/SwarmsyFirstRunOnboarding/projectBackup.js"
+    );
+
+    expect(helper).toContain("application/json;charset=utf-8");
+    expect(helper).toContain(".swarmsy-backup.json");
+    expect(helper).toContain("URL.createObjectURL");
+    expect(helper).toContain("URL.revokeObjectURL");
+  });
+
+  it("keeps restore disabled and validates without changing workspace data", () => {
+    const helper = read(
+      "components/SwarmsyFirstRunOnboarding/projectBackup.js"
+    );
+    const panel = read(
+      "components/SwarmsyFirstRunOnboarding/ProjectBackupPanel.jsx"
+    );
+
+    expect(helper).toContain("Restore is not enabled yet");
+    expect(panel).toContain("Check a backup file");
+    expect(panel).toContain("No workspace data was changed.");
+    expect(panel).not.toMatch(/restoreProject|applyRestore|importProjectBackup/);
+  });
+
+  it("shows the backup surface between the dashboard and proof history", () => {
+    const returningHome = read(
+      "components/SwarmsyFirstRunOnboarding/ReturningUserHome.jsx"
+    );
+    const dashboard = returningHome.indexOf("<ProjectDashboard");
+    const backup = returningHome.indexOf("<ProjectBackupPanel");
+    const proof = returningHome.indexOf("<ProofReviewHistoryPanel");
+
+    expect(dashboard).toBeGreaterThan(-1);
+    expect(backup).toBeGreaterThan(dashboard);
+    expect(proof).toBeGreaterThan(backup);
+    expect(returningHome).toContain(
+      "<ProjectBackupPanel workspaceSlug={workspaceSlug} busy={busy} />"
+    );
+  });
+});
