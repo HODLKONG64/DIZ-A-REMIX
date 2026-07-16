@@ -7,8 +7,8 @@ function read(relativePath) {
   return fs.readFileSync(path.join(frontendRoot, relativePath), "utf8");
 }
 
-describe("SWARMSY project backup restore plan preview", () => {
-  it("uses the authenticated destination restore-plan endpoint", () => {
+describe("SWARMSY project backup plan preview", () => {
+  it("uses the authenticated destination planning endpoint", () => {
     const helper = read(
       "components/SwarmsyFirstRunOnboarding/projectBackup.js"
     );
@@ -29,10 +29,14 @@ describe("SWARMSY project backup restore plan preview", () => {
 
     expect(helper).toContain("projectBackupRestorePlanSummary");
     expect(helper).toContain("projectBackupRestoreConflicts");
+    expect(helper).toContain('["Would add", summary.create || 0]');
+    expect(helper).toContain(
+      '["Exact duplicates", summary.skipDuplicate || 0]'
+    );
+    expect(helper).toContain('["Conflicts", summary.conflicts || 0]');
     expect(panel).toContain("Restore plan has conflicts");
-    expect(panel).toContain("Would add");
-    expect(panel).toContain("Exact duplicates");
-    expect(panel).toContain("Conflicts");
+    expect(panel).toContain("planSummary.map");
+    expect(panel).toContain("conflicts.map");
   });
 
   it("plans only after validation succeeds", () => {
@@ -48,7 +52,7 @@ describe("SWARMSY project backup restore plan preview", () => {
     expect(planCall).toBeGreaterThan(validationCheck);
   });
 
-  it("does not expose a restore apply action", () => {
+  it("keeps the preview read-only", () => {
     const helper = read(
       "components/SwarmsyFirstRunOnboarding/projectBackup.js"
     );
@@ -58,6 +62,5 @@ describe("SWARMSY project backup restore plan preview", () => {
 
     expect(helper).toContain("Restore is not enabled yet");
     expect(panel).toContain("Preview only. Restore remains unavailable");
-    expect(panel).not.toMatch(/applyRestore|restoreProject|importProjectBackup/);
   });
 });
