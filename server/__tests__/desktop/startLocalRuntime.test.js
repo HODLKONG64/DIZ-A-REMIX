@@ -14,6 +14,18 @@ function makeExecutable(targetPath, contents = "#!/bin/sh\nexit 0\n") {
 }
 
 describe("packaged desktop local runtime entrypoint", () => {
+  it("resolves the persistent runtime startup log under LocalAppData", () => {
+    const { resolveRuntimeStartupLogPath } = require(runtimePath);
+
+    expect(
+      resolveRuntimeStartupLogPath({
+        env: { LOCALAPPDATA: "C:\\Users\\GOD\\AppData\\Local" },
+      })
+    ).toBe(
+      path.join("C:\\Users\\GOD\\AppData\\Local", "SWY", "runtime-startup.log")
+    );
+  });
+
   it("resolves persistent runtime data outside the managed app copy", () => {
     const { resolveRuntimeDataRoot } = require(runtimePath);
     const serverRoot = path.join(
@@ -150,6 +162,88 @@ describe("packaged desktop local runtime entrypoint", () => {
 
     initializeLocalRuntime(serverRoot, { env });
     expect(fs.readFileSync(jwtPath, "utf8")).toBe(firstJwt);
+  });
+
+  it("writes startup diagnostics when Prisma migration fails", () => {
+    const {
+      initializeLocalRuntime,
+      resolveRuntimeStartupLogPath,
+    } = require(runtimePath);
+    const serverRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-server-")
+    );
+    const localAppData = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-appdata-")
+    );
+    const prismaBin = path.join(serverRoot, "node_modules", ".bin", "prisma");
+    makeExecutable(prismaBin);
+
+    const env = { LOCALAPPDATA: localAppData };
+    const spawnSyncImpl = jest.fn((command, args, options) => {
+      expect(options.stdio[1]).toBe(options.stdio[2]);
+      expect(options.stdio).not.toContain("pipe");
+      fs.writeSync(options.stdio[1], "migration stdout\n");
+      fs.writeSync(options.stdio[2], "migration stderr\n");
+      return { status: 1 };
+    });
+
+    expect(() =>
+      initializeLocalRuntime(serverRoot, {
+        env,
+        spawnSyncImpl,
+      })
+    ).toThrow(/exited with 1/);
+
+    const logPath = resolveRuntimeStartupLogPath({ env });
+    const log = fs.readFileSync(logPath, "utf8");
+
+    expect(logPath).toBe(
+      path.join(localAppData, "SWY", "runtime-startup.log")
+    );
+    expect(log).toContain("startup failed");
+    expect(log).toContain("Stage:");
+    expect(log).toContain("prisma migrate deploy");
+    expect(log).toContain("Exit code: 1");
+    expect(log).toContain("migration stdout");
+    expect(log).toContain("migration stderr");
+    expect(log).toContain("Process output:");
+    expect(log).toContain("Command:");
+  });
+
+  it("writes startup diagnostics when server startup throws", () => {
+    const {
+      startServerRuntime,
+      resolveRuntimeStartupLogPath,
+    } = require(runtimePath);
+    const serverRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-server-")
+    );
+    const localAppData = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-appdata-")
+    );
+    makeExecutable(path.join(serverRoot, "node_modules", ".bin", "prisma"));
+    fs.mkdirSync(serverRoot, { recursive: true });
+    fs.writeFileSync(
+      path.join(serverRoot, "index.js"),
+      'throw new Error("server boot exploded");'
+    );
+
+    const env = { LOCALAPPDATA: localAppData };
+    const spawnSyncImpl = jest.fn(() => ({ status: 0 }));
+
+    expect(() =>
+      startServerRuntime(serverRoot, {
+        env,
+        spawnSyncImpl,
+      })
+    ).toThrow(/server boot exploded/);
+
+    const logPath = resolveRuntimeStartupLogPath({ env });
+    const log = fs.readFileSync(logPath, "utf8");
+
+    expect(log).toContain("server startup");
+    expect(log).toContain("server boot exploded");
+    expect(log).toContain("require(");
   });
 
   it("moves legacy packaged database files into persistent Local User storage", () => {
