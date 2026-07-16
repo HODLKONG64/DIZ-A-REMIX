@@ -91,3 +91,5 @@ jobs:
           git add frontend/src/components/SwarmsyDesktopFirstRunWizard/index.jsx
           git commit -m "Keep AnythingLLM available without local AI"
           git push origin HEAD:fix/swarmsy-additive-anythingllm-boundary
+
+# Triggered intentionally; remove this temporary workflow after the patch lands.
