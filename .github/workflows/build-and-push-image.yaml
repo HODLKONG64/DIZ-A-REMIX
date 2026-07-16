@@ -99,9 +99,10 @@ jobs:
           set -euo pipefail
           echo "::warning::Docker metadata action failed; using deterministic master tags."
 
+          repository="${GITHUB_REPOSITORY,,}"
           tags=(
-            "ghcr.io/${GITHUB_REPOSITORY}:latest"
-            "ghcr.io/${GITHUB_REPOSITORY}:master"
+            "ghcr.io/${repository}:latest"
+            "ghcr.io/${repository}:master"
           )
           if [[ "${{ steps.dockerhub_auth.outputs.enabled }}" == "true" ]]; then
             tags+=(
