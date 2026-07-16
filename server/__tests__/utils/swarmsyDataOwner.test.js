@@ -39,7 +39,7 @@ describe("SWARMSY data owner resolution", () => {
     userFromSession.mockResolvedValue({ id: 12, role: "default" });
 
     await expect(
-      resolveSwarmsyDataOwner({}, { locals: { multiUserMode: true } })
+      resolveSwarmsyDataOwner({}, { locals: { multiUserMode: true } }),
     ).resolves.toEqual({
       user: { id: 12, role: "default" },
       userId: 12,
@@ -60,7 +60,7 @@ describe("SWARMSY data owner resolution", () => {
     const owner = await resolveSwarmsyDataOwner({}, { locals: {} });
 
     expect(owner).toEqual(
-      expect.objectContaining({ userId: 77, isLocalUser: true })
+      expect.objectContaining({ userId: 77, isLocalUser: true }),
     );
     expect(mockPrisma.users.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
@@ -76,30 +76,30 @@ describe("SWARMSY data owner resolution", () => {
     expect(
       isSwarmsyPersistenceRequest({
         originalUrl: "/api/swarmsy/workspaces/hive/memory-locks/7",
-      })
+      }),
     ).toBe(true);
     expect(
       isSwarmsyPersistenceRequest({
         originalUrl: "/api/swarmsy/workspaces/hive/proof-reviews/import",
-      })
+      }),
     ).toBe(true);
     expect(
       isSwarmsyPersistenceRequest({
         originalUrl: "/api/swarmsy/workspaces/hive/identity-ideas/propose",
-      })
+      }),
     ).toBe(true);
     expect(
       isSwarmsyPersistenceRequest({
         originalUrl: "/api/swarmsy/workspaces/hive/intake-session/4/progress",
-      })
+      }),
     ).toBe(true);
     expect(
       isSwarmsyPersistenceRequest({
         originalUrl: "/api/swarmsy/workspaces/hive/project-backup/export",
-      })
+      }),
     ).toBe(false);
     expect(
-      isSwarmsyPersistenceRequest({ originalUrl: "/api/workspace/hive" })
+      isSwarmsyPersistenceRequest({ originalUrl: "/api/workspace/hive" }),
     ).toBe(false);
   });
 
@@ -115,7 +115,7 @@ describe("SWARMSY data owner resolution", () => {
 
     const attached = await attachLocalSwarmsyOwner(
       { originalUrl: "/api/swarmsy/workspaces/hive/memory-locks" },
-      response
+      response,
     );
 
     expect(attached).toEqual(
@@ -123,7 +123,7 @@ describe("SWARMSY data owner resolution", () => {
         id: 77,
         username: LOCAL_SWARMSY_OWNER_USERNAME,
         role: "admin",
-      })
+      }),
     );
     expect(attached).not.toHaveProperty("password");
     expect(response.locals.swarmsyLocalUserOwner).toBe(true);
@@ -136,8 +136,8 @@ describe("SWARMSY data owner resolution", () => {
     await expect(
       attachLocalSwarmsyOwner(
         { originalUrl: "/api/swarmsy/onboarding/status" },
-        response
-      )
+        response,
+      ),
     ).resolves.toBeNull();
     expect(response.locals.user).toBeUndefined();
     expect(mockPrisma.users.findUnique).not.toHaveBeenCalled();
@@ -148,7 +148,7 @@ describe("SWARMSY data owner resolution", () => {
     SystemSettings.isMultiUserMode.mockResolvedValue(true);
 
     await expect(
-      resolveSwarmsyDataOwner({}, { locals: {} })
+      resolveSwarmsyDataOwner({}, { locals: {} }),
     ).resolves.toBeNull();
     expect(mockPrisma.users.create).not.toHaveBeenCalled();
   });
@@ -162,9 +162,9 @@ describe("SWARMSY data owner resolution", () => {
       suspended: 0,
     });
 
-    await expect(
-      resolveSwarmsyDataOwner({}, { locals: {} })
-    ).rejects.toThrow("Reserved SWARMSY Local User owner is not suspended.");
+    await expect(resolveSwarmsyDataOwner({}, { locals: {} })).rejects.toThrow(
+      "Reserved SWARMSY Local User owner is not suspended.",
+    );
     expect(mockPrisma.users.create).not.toHaveBeenCalled();
   });
 });
