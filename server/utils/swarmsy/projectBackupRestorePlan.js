@@ -45,7 +45,8 @@ function intakePlan(incoming = [], existing = null) {
     section.conflicts.push({
       code: "multiple_intake_sessions_unsupported",
       sourceId: null,
-      message: "Version 1 restore planning supports at most one intake session.",
+      message:
+        "Version 1 restore planning supports at most one intake session.",
     });
     return section;
   }
@@ -136,7 +137,9 @@ function buildProjectBackupRestorePlan({ backup, destination } = {}) {
     ),
     identityIdeas: appendOnlyPlan(
       Array.isArray(data.identityIdeas) ? data.identityIdeas : [],
-      Array.isArray(destination?.identityIdeas) ? destination.identityIdeas : [],
+      Array.isArray(destination?.identityIdeas)
+        ? destination.identityIdeas
+        : [],
       duplicateIdentityIdea
     ),
     memoryLocks: versionedContentPlan(
