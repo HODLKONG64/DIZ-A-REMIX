@@ -55,9 +55,9 @@ async function ensureLocalSwarmsyOwner() {
 async function attachLocalSwarmsyOwner(request, response) {
   if (!isSwarmsyPersistenceRequest(request)) return null;
   const owner = await ensureLocalSwarmsyOwner();
-  response.locals.user = owner;
+  response.locals.user = { ...owner, role: "admin" };
   response.locals.swarmsyLocalUserOwner = true;
-  return owner;
+  return response.locals.user;
 }
 
 async function resolveSwarmsyDataOwner(request, response) {
