@@ -1,8 +1,6 @@
 const { SystemSettings } = require("../../models/systemSettings");
 const { userFromSession } = require("../http");
-const {
-  attachLocalSwarmsyOwner,
-} = require("../swarmsy/dataOwner");
+const { attachLocalSwarmsyOwner } = require("../swarmsy/dataOwner");
 const ROLES = {
   all: "<all>",
   admin: "admin",
