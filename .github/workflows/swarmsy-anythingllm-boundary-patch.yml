@@ -1,0 +1,93 @@
+name: Apply SWARMSY additive boundary patch
+
+on:
+  push:
+    branches:
+      - fix/swarmsy-additive-anythingllm-boundary
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: fix/swarmsy-additive-anythingllm-boundary
+
+      - name: Keep AnythingLLM available without Ollama
+        shell: python
+        run: |
+          from pathlib import Path
+
+          path = Path("frontend/src/components/SwarmsyDesktopFirstRunWizard/index.jsx")
+          text = path.read_text()
+
+          replacements = {
+              '''  const selectedModelReady = !!selectedModel && selectedModelInstalled;
+          const canFinish =
+            runtimeStepReady && ollamaCheck && modelCheck && selectedModelReady;
+          const canAdvanceFromCurrentStep =
+            stepIndex === 0 ||
+            (stepIndex === 1 && runtimeStepReady) ||
+            (stepIndex === 2 && ollamaCheck) ||
+            (stepIndex === 3 && modelCheck) ||
+            (stepIndex === 4 && selectedModelReady);
+          const currentStepHint =
+            stepIndex === 1 && !runtimeStepReady
+              ? "Runtime, storage, and trusted desktop bridge checks must pass before continuing. You can still skip setup and return later."
+              : stepIndex === 2 && !ollamaCheck
+                ? "Install or start Ollama manually, then check again before continuing."
+                : stepIndex === 3 && !modelCheck
+                  ? ollamaCheck
+                    ? `Pull a model manually, for example: ollama pull ${DEFAULT_MODEL}`
+                    : "Start or check Ollama before verifying installed models."
+                  : stepIndex === 4 && !selectedModelReady
+                    ? "Select an installed Ollama model before continuing to Ready."
+                    : null;''': '''  const selectedModelReady = !!selectedModel && selectedModelInstalled;
+          const canFinish = runtimeStepReady;
+          const canAdvanceFromCurrentStep =
+            stepIndex === 0 ||
+            (stepIndex === 1 && runtimeStepReady) ||
+            [2, 3, 4].includes(stepIndex);
+          const currentStepHint =
+            stepIndex === 1 && !runtimeStepReady
+              ? "The desktop runtime, storage, and trusted bridge must work before setup can be saved."
+              : stepIndex >= 2 && !selectedModelReady
+                ? "Local AI is optional. Continue with AnythingLLM and use any provider already configured, or return later to connect Ollama."
+                : null;''',
+              '''              Follow these readiness checks to confirm the desktop runtime,
+                        Ollama, installed models, and Local User settings before your
+                        first chat. This wizard never installs software or downloads
+                        models.''': '''              Confirm the desktop runtime and Local User storage. Ollama is an
+                        optional local AI choice, not a requirement. AnythingLLM workspaces,
+                        chats, documents, agents, and configured providers remain available.
+                        This wizard never installs software or downloads models.''',
+              '''            Select model''': '''            Optional local model''',
+              '''                "Models could not be verified. Start or check Ollama first, then run readiness checks again."''': '''                "No local model was detected. You can continue with AnythingLLM and use another configured provider."''',
+              '''                  No models were reported. Install one manually with:{" "}
+                            <code>ollama pull {DEFAULT_MODEL}</code>''': '''                  No local models were reported. Continue without one, or install
+                            Ollama later with: <code>ollama pull {DEFAULT_MODEL}</code>''',
+              '''                Ready — finish setup''': '''                Finish setup — open AnythingLLM''',
+          }
+
+          for old, new in replacements.items():
+              if old not in text:
+                  raise SystemExit(f"Expected source block not found: {old[:80]!r}")
+              text = text.replace(old, new, 1)
+
+          path.write_text(text)
+
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend/src/components/SwarmsyDesktopFirstRunWizard/index.jsx
+          git commit -m "Keep AnythingLLM available without local AI"
+          git push origin HEAD:fix/swarmsy-additive-anythingllm-boundary
