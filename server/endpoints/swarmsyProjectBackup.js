@@ -1,4 +1,4 @@
-const { userFromSession, reqBody } = require("../utils/http");
+const { reqBody } = require("../utils/http");
 const { Workspace } = require("../models/workspace");
 const {
   buildSwarmsyProjectBackup,
@@ -7,39 +7,45 @@ const {
 const {
   readProjectBackupSections,
 } = require("../utils/swarmsy/projectBackupReader");
+const {
+  buildProjectBackupRestorePlan,
+} = require("../utils/swarmsy/projectBackupRestorePlan");
+const { resolveSwarmsyDataOwner } = require("../utils/swarmsy/dataOwner");
 const { validatedRequest } = require("../utils/middleware/validatedRequest");
 const {
   flexUserRoleValid,
+  isSingleUserMode,
   ROLES,
 } = require("../utils/middleware/multiUserProtected");
 
 async function resolveBackupContext(request, response) {
-  const user = await userFromSession(request, response);
-  const userId = Number(user?.id);
-  if (!Number.isInteger(userId) || userId <= 0) {
+  const owner = await resolveSwarmsyDataOwner(request, response);
+  if (!owner) {
     response.status(401).json({
       success: false,
-      message: "Project backup requires an authenticated user account.",
+      message: "Project backup requires an authenticated owner.",
     });
     return null;
   }
 
   const slug = String(request.params?.slug || "").trim();
-  const isPrivileged = [ROLES.admin, ROLES.manager].includes(user?.role);
+  const isPrivileged =
+    owner.isLocalUser ||
+    [ROLES.admin, ROLES.manager].includes(owner.user?.role);
   const workspace = isPrivileged
     ? await Workspace.get({ slug })
-    : await Workspace.getWithUser(user, { slug });
+    : await Workspace.getWithUser(owner.user, { slug });
   if (!workspace) {
     response.status(404).json({
       success: false,
       workspace: { exists: false },
       message:
-        "Selected workspace was not found or is not available to this user.",
+        "Selected workspace was not found or is not available to this owner.",
     });
     return null;
   }
 
-  return { userId, workspace };
+  return { userId: owner.userId, workspace };
 }
 
 async function swarmsyProjectBackupExport(request, response) {
@@ -78,12 +84,11 @@ async function swarmsyProjectBackupExport(request, response) {
 
 async function swarmsyProjectBackupValidate(request, response) {
   try {
-    const user = await userFromSession(request, response);
-    const userId = Number(user?.id);
-    if (!Number.isInteger(userId) || userId <= 0) {
+    const owner = await resolveSwarmsyDataOwner(request, response);
+    if (!owner) {
       return response.status(401).json({
         success: false,
-        message: "Project backup validation requires an authenticated user.",
+        message: "Project backup validation requires an authenticated owner.",
       });
     }
 
@@ -104,6 +109,54 @@ async function swarmsyProjectBackupValidate(request, response) {
   }
 }
 
+async function swarmsyProjectBackupRestorePlan(request, response) {
+  try {
+    const context = await resolveBackupContext(request, response);
+    if (!context) return;
+
+    const backup = reqBody(request)?.backup;
+    const validation = validateSwarmsyProjectBackup(backup);
+    if (!validation.valid) {
+      return response.status(400).json({
+        success: false,
+        ...validation,
+        restoreApplied: false,
+        restoreAvailable: false,
+      });
+    }
+
+    const destination = await readProjectBackupSections({
+      userId: context.userId,
+      workspaceId: context.workspace.id,
+    });
+    const plan = buildProjectBackupRestorePlan({ backup, destination });
+
+    return response.status(200).json({
+      success: true,
+      valid: true,
+      destination: {
+        id: context.workspace.id,
+        slug: context.workspace.slug,
+        name: context.workspace.name,
+      },
+      ...plan,
+      message: plan.blocked
+        ? "Restore planning found conflicts that must be resolved before any data can be applied."
+        : "Restore plan is ready for review. No workspace data was changed.",
+    });
+  } catch (error) {
+    console.error(error);
+    return response.status(500).json({
+      success: false,
+      valid: false,
+      restoreApplied: false,
+      restoreAvailable: false,
+      message:
+        "Restore planning failed because the destination workspace could not be read safely.",
+    });
+  }
+}
+
 function registerSwarmsyProjectBackupEndpoints(app) {
   if (!app) return;
   app.get(
@@ -116,10 +169,16 @@ function registerSwarmsyProjectBackupEndpoints(app) {
     [validatedRequest, flexUserRoleValid([ROLES.all])],
     swarmsyProjectBackupValidate
   );
+  app.post(
+    "/swarmsy/workspaces/:slug/project-backup/restore-plan",
+    [validatedRequest, isSingleUserMode],
+    swarmsyProjectBackupRestorePlan
+  );
 }
 
 module.exports = {
   registerSwarmsyProjectBackupEndpoints,
   swarmsyProjectBackupExport,
+  swarmsyProjectBackupRestorePlan,
   swarmsyProjectBackupValidate,
 };
