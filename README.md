@@ -1,6 +1,6 @@
 # SWARMSY — DIZ-A-REMIX
 
-**A beginner-first creator operating environment built on AnythingLLM and led by SPARKY.**
+**A persistent creator project manager built on AnythingLLM and led by SPARKY.**
 
 SWARMSY helps ordinary people create or strengthen a distinctive identity, project, character, business, campaign or creative direction without needing to understand AI tools.
 
@@ -94,30 +94,28 @@ No Moonboy, NFT, faction, Arcade activity or blockchain knowledge is required to
 
 A user may also use SWARMSY to build a Moonboy creator world inside Crypto Moonboys.
 
-## The Beginner Journey
+## The Adaptive Beginner Journey
 
-The default experience must remain conversational, forgiving and clear:
+The default experience must remain conversational, forgiving and shaped around the individual user:
 
-1. The user chooses whether to build around themselves, build a hidden identity or bring in an existing project.
-2. SPARKY presents the full question set in clear sections.
-3. The user answers everything they can in one or several rough batches.
-4. The app saves progress automatically.
-5. SPARKY asks only important missing or unclear follow-ups.
-6. Before the idea is created, the user chooses **WTF** or **SAFE**. If skipped, SPARKY defaults to WTF.
-7. SPARKY creates a distinctive Identity Idea.
-8. The user chooses **Keep**, **Delete** or **Try Another**.
-9. A kept idea becomes a normal SPARKY brainstorming conversation.
-10. The user may ask why, reject details, request changes or explore alternatives.
-11. Nothing becomes an approved project idea until the user clearly asks to save it.
-12. The approved idea is stored in the owning workspace and can be continued later.
+1. The user may arrive with a finished project, a rough direction or only the first spark of an idea.
+2. SPARKY reads existing workspace context before asking the user to repeat anything.
+3. Relevant packs provide seed intelligence, useful questions and boundaries; they do not dictate an identical workflow.
+4. SPARKY asks only the questions that materially improve the next decision.
+5. Face Identity, Hidden Identity and Existing Project remain available routes, not mandatory gates.
+6. The 76-question intake remains an adaptive question bank. Users may answer roughly, partially or over time.
+7. SPARKY helps build the missing piece and recommends one useful direction instead of flooding the user with generic cards.
+8. Important information may be offered for saving as project knowledge, while suggestions remain separate from approved decisions and Memory Locks.
+9. Plans may cover one action, two days, two weeks, two months or longer and must adapt when the user pauses, skips or changes direction.
+10. When the user returns, SPARKY continues from saved context and provides a relevant nudge without pretending work happened while the app was closed.
 
-Every Identity Idea must contain three simple hooks:
+Identity Ideas may still use **MESSAGE**, **DOODAD** and **PLACEMENT** when that structure strengthens the concept:
 
 - **MESSAGE** — the line, belief or thought people should remember.
 - **DOODAD** — the recognisable visual object, symbol, character or device.
 - **PLACEMENT** — a fictional or legal concept-mockup setting that makes the message hit harder.
 
-These hooks prevent an early idea from becoming an abstract strategy document with no memorable public signal.
+These are useful creative hooks, not compulsory fields for every kind of project.
 
 ## WTF and SAFE
 

@@ -60,7 +60,23 @@ jobs:
 
       - name: Install server dependencies
         if: steps.cache-server.outputs.cache-hit != 'true'
-        run: cd server && yarn install --frozen-lockfile
+        run: |
+          cd server
+          if yarn install --frozen-lockfile; then
+            exit 0
+          fi
+
+          echo "::warning::Normal install failed; seeding the pinned ripgrep binary without the GitHub Releases API and retrying."
+          set -o pipefail
+          yarn install --frozen-lockfile --ignore-scripts
+          ripgrep_bin="node_modules/@vscode/ripgrep/bin"
+          rm -rf "$ripgrep_bin"
+          mkdir -p "$ripgrep_bin"
+          curl --fail --location --retry 5 --retry-all-errors \
+            "https://github.com/microsoft/ripgrep-prebuilt/releases/download/v15.0.1/ripgrep-v15.0.1-x86_64-unknown-linux-musl.tar.gz" \
+            | tar -xz -C "$ripgrep_bin"
+          test -x "$ripgrep_bin/rg"
+          "$ripgrep_bin/rg" --version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

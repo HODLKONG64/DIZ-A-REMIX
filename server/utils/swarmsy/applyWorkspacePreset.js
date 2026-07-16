@@ -23,6 +23,10 @@ const PRESET_PATH = path.resolve(
 
 const GENERIC_ANYTHINGLLM_PROMPT = Workspace.defaultPrompt;
 const PRESET_NAME = "SWARMSY HIVE";
+const SPARKY_PROMPT_MARKERS = Object.freeze([
+  "You are SPARKY.",
+  "You live in the SWARMSY HIVE.",
+]);
 
 function normalizePrompt(prompt = "") {
   return String(prompt || "")
@@ -50,27 +54,42 @@ function getSparkyPromptStatus(workspace = null) {
   const missing = available ? !applied : true;
   const isGenericDefault =
     !currentNormalized || currentNormalized === genericNormalized;
+  const isPreviousSparkyPrompt =
+    Boolean(currentNormalized) &&
+    !applied &&
+    SPARKY_PROMPT_MARKERS.every((marker) =>
+      currentNormalized.includes(normalizePrompt(marker))
+    );
 
   return {
     available,
     applied,
     missing,
     isGenericDefault,
+    updateAvailable: isPreviousSparkyPrompt,
     status: !available
       ? "unavailable"
       : applied
         ? "applied"
-        : isGenericDefault
-          ? "generic_default"
-          : "custom_prompt",
-    label: applied ? "SPARKY prompt applied" : "SPARKY prompt not applied",
+        : isPreviousSparkyPrompt
+          ? "sparky_update_available"
+          : isGenericDefault
+            ? "generic_default"
+            : "custom_prompt",
+    label: applied
+      ? "SPARKY prompt applied"
+      : isPreviousSparkyPrompt
+        ? "SPARKY update available"
+        : "SPARKY prompt not applied",
     message: applied
-      ? "This workspace is using the SWARMSY HIVE SPARKY system prompt."
+      ? "This workspace is using the current SWARMSY HIVE SPARKY system prompt."
       : !available
         ? "The SWARMSY HIVE SPARKY system prompt is unavailable."
-        : isGenericDefault
-          ? "This workspace is still using the generic AnythingLLM default system prompt."
-          : "This workspace has a custom system prompt. Apply SPARKY only if you explicitly want to replace it.",
+        : isPreviousSparkyPrompt
+          ? "This workspace is using an earlier official SPARKY prompt. Apply the update to use the current adaptive project-manager contract."
+          : isGenericDefault
+            ? "This workspace is still using the generic AnythingLLM default system prompt."
+            : "This workspace has a custom system prompt. Apply SPARKY only if you explicitly want to replace it.",
   };
 }
 
