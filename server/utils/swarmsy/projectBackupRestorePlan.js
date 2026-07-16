@@ -97,15 +97,26 @@ function versionedContentPlan(
   existing,
   { conflictCode, displayName }
 ) {
-  const section = appendOnlyPlan(incoming, existing, duplicateContentRecord);
-  const hasActiveExisting = existing.some((record) => record?.isActive === true);
+  const section = {
+    incoming: incoming.length,
+    create: 0,
+    skipDuplicate: 0,
+    conflicts: [],
+  };
+  const activeExisting = existing.filter((record) => record?.isActive === true);
 
   for (const record of incoming) {
-    if (
-      record?.isActive === true &&
-      hasActiveExisting &&
-      !existing.some((item) => duplicateContentRecord(record, item))
-    ) {
+    const duplicate = existing.find((item) =>
+      duplicateContentRecord(record, item)
+    );
+    if (duplicate) section.skipDuplicate += 1;
+    else section.create += 1;
+
+    if (record?.isActive !== true || activeExisting.length === 0) continue;
+    const hasActiveDuplicate = activeExisting.some((item) =>
+      duplicateContentRecord(record, item)
+    );
+    if (!hasActiveDuplicate) {
       section.conflicts.push({
         code: conflictCode,
         sourceId: record.sourceId || null,
