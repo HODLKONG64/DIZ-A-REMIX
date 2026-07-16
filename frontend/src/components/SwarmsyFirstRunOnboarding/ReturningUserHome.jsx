@@ -7,6 +7,7 @@ import { hasDesktopLocalSettingsBridge } from "./localUserOllamaSelection";
 export default function ReturningUserHome({
   workspaceSlug,
   busy = false,
+  isLocalUserMode = false,
   onContinueIntake,
   onContinueIdea,
   onShowChoices,
@@ -22,7 +23,8 @@ export default function ReturningUserHome({
     onContinueIdea?.(message);
   }
 
-  const canUseLocalProjectBackup = hasDesktopLocalSettingsBridge();
+  const canUseLocalProjectBackup =
+    isLocalUserMode && hasDesktopLocalSettingsBridge();
 
   return (
     <div className="space-y-4">
