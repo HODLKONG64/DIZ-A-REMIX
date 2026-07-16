@@ -172,16 +172,20 @@ describe("packaged desktop local runtime entrypoint", () => {
     const serverRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "swarmsy-server-")
     );
-    const localAppData = fs.mkdtempSync(path.join(os.tmpdir(), "swarmsy-appdata-"));
+    const localAppData = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-appdata-")
+    );
     const prismaBin = path.join(serverRoot, "node_modules", ".bin", "prisma");
     makeExecutable(prismaBin);
 
     const env = { LOCALAPPDATA: localAppData };
-    const spawnSyncImpl = jest.fn(() => ({
-      status: 1,
-      stdout: "migration stdout",
-      stderr: "migration stderr",
-    }));
+    const spawnSyncImpl = jest.fn((command, args, options) => {
+      expect(options.stdio[1]).toBe(options.stdio[2]);
+      expect(options.stdio).not.toContain("pipe");
+      fs.writeSync(options.stdio[1], "migration stdout\n");
+      fs.writeSync(options.stdio[2], "migration stderr\n");
+      return { status: 1 };
+    });
 
     expect(() =>
       initializeLocalRuntime(serverRoot, {
@@ -202,15 +206,21 @@ describe("packaged desktop local runtime entrypoint", () => {
     expect(log).toContain("Exit code: 1");
     expect(log).toContain("migration stdout");
     expect(log).toContain("migration stderr");
+    expect(log).toContain("Process output:");
     expect(log).toContain("Command:");
   });
 
   it("writes startup diagnostics when server startup throws", () => {
-    const { startServerRuntime, resolveRuntimeStartupLogPath } = require(runtimePath);
+    const {
+      startServerRuntime,
+      resolveRuntimeStartupLogPath,
+    } = require(runtimePath);
     const serverRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "swarmsy-server-")
     );
-    const localAppData = fs.mkdtempSync(path.join(os.tmpdir(), "swarmsy-appdata-"));
+    const localAppData = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-appdata-")
+    );
     makeExecutable(path.join(serverRoot, "node_modules", ".bin", "prisma"));
     fs.mkdirSync(serverRoot, { recursive: true });
     fs.writeFileSync(

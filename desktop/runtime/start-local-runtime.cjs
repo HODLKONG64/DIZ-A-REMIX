@@ -19,6 +19,9 @@ function formatErrorDetails(error) {
     parts.push(`Exit code: ${error.exitCode}`);
   }
   if (error.command) parts.push(`Command:\n${error.command}`);
+  if (error.outputLogPath) {
+    parts.push(`Process output:\n${error.outputLogPath}`);
+  }
   if (error.stdout) parts.push(`Stdout:\n${String(error.stdout).trimEnd()}`);
   if (error.stderr) parts.push(`Stderr:\n${String(error.stderr).trimEnd()}`);
   if (error.stack) parts.push(`Stack:\n${error.stack}`);
@@ -164,22 +167,32 @@ function runWithDiagnostics(command, args, options = {}) {
     ? ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", command, ...args]
     : args;
 
-  const result = spawnSyncImpl(actualCommand, actualArgs, {
-    cwd,
-    env,
-    shell: platform === "win32" && !isPowerShellScript,
-    windowsHide: true,
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-  });
+  const commandLine = `${actualCommand} ${actualArgs.join(" ")}`;
+  const outputLogPath = appendRuntimeStartupLog(
+    `[SWARMSY runtime] ${stage} command: ${commandLine}`,
+    { env }
+  );
+  const outputLogFd = fs.openSync(outputLogPath, "a");
+  let result;
+  try {
+    result = spawnSyncImpl(actualCommand, actualArgs, {
+      cwd,
+      env,
+      shell: platform === "win32" && !isPowerShellScript,
+      windowsHide: true,
+      stdio: ["ignore", outputLogFd, outputLogFd],
+    });
+  } finally {
+    fs.closeSync(outputLogFd);
+  }
 
   if (result.error || result.status !== 0) {
-    const error = result.error || new Error(`${actualCommand} exited with ${result.status}`);
+    const error =
+      result.error || new Error(`${actualCommand} exited with ${result.status}`);
     error.stage = stage;
-    error.command = `${actualCommand} ${actualArgs.join(" ")}`;
+    error.command = commandLine;
     error.exitCode = result.status;
-    error.stdout = result.stdout || "";
-    error.stderr = result.stderr || "";
+    error.outputLogPath = outputLogPath;
     throw error;
   }
 
