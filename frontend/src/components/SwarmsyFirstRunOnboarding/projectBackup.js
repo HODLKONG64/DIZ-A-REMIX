@@ -2,7 +2,7 @@ import { API_BASE } from "@/utils/constants";
 import { baseHeaders } from "@/utils/request";
 
 export const PROJECT_BACKUP_RESTORE_DISABLED =
-  "Restore is not enabled yet. Validation checks the file without changing your workspace.";
+  "Restore is not enabled yet. Validation and planning do not change your workspace.";
 
 async function parseResponse(response, fallbackMessage) {
   const data = await response.json().catch(() => ({}));
@@ -48,6 +48,29 @@ export async function validateProjectBackup(backup) {
     }));
 }
 
+export async function planProjectBackupRestore(workspaceSlug, backup) {
+  return await fetch(
+    `${API_BASE}/swarmsy/workspaces/${encodeURIComponent(
+      workspaceSlug
+    )}/project-backup/restore-plan`,
+    {
+      method: "POST",
+      headers: baseHeaders(),
+      body: JSON.stringify({ backup }),
+    }
+  )
+    .then((response) =>
+      parseResponse(response, "Failed to create the project restore plan.")
+    )
+    .catch(() => ({
+      success: false,
+      valid: false,
+      restoreApplied: false,
+      restoreAvailable: false,
+      message: "Failed to create the project restore plan.",
+    }));
+}
+
 export function projectBackupFilename(backup) {
   const slug = String(backup?.workspace?.slug || "swarmsy-project")
     .trim()
@@ -80,4 +103,23 @@ export function projectBackupValidationSummary(validation) {
     ["Memory Locks", counts.memoryLocks || 0],
     ["Proof Reviews", counts.proofReviews || 0],
   ];
+}
+
+export function projectBackupRestorePlanSummary(plan) {
+  const summary = plan?.summary || {};
+  return [
+    ["Would add", summary.create || 0],
+    ["Exact duplicates", summary.skipDuplicate || 0],
+    ["Conflicts", summary.conflicts || 0],
+  ];
+}
+
+export function projectBackupRestoreConflicts(plan) {
+  const sections = plan?.sections || {};
+  return Object.entries(sections).flatMap(([section, details]) =>
+    (details?.conflicts || []).map((conflict) => ({
+      section,
+      ...conflict,
+    }))
+  );
 }
