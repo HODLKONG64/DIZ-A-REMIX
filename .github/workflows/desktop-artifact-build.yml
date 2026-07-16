@@ -79,7 +79,22 @@ jobs:
         working-directory: server
         env:
           GITHUB_TOKEN: ${{ github.token }}
-        run: yarn install --frozen-lockfile --production=true
+        shell: pwsh
+        run: |
+          yarn install --frozen-lockfile --production=true
+          if ($LASTEXITCODE -eq 0) { exit 0 }
+
+          Write-Warning "Normal install failed; seeding the pinned ripgrep binary without the GitHub Releases API and retrying."
+          $ripgrepBin = Join-Path $PWD "node_modules/@vscode/ripgrep/bin"
+          $archive = Join-Path $env:RUNNER_TEMP "ripgrep-v15.0.1-x86_64-pc-windows-msvc.zip"
+          if (Test-Path $ripgrepBin) { Remove-Item -Recurse -Force $ripgrepBin }
+          New-Item -ItemType Directory -Force -Path $ripgrepBin | Out-Null
+          Invoke-WebRequest -Uri "https://github.com/microsoft/ripgrep-prebuilt/releases/download/v15.0.1/ripgrep-v15.0.1-x86_64-pc-windows-msvc.zip" -OutFile $archive
+          Expand-Archive -Path $archive -DestinationPath $ripgrepBin -Force
+          if (!(Test-Path (Join-Path $ripgrepBin "rg.exe"))) { throw "Pinned ripgrep binary was not extracted." }
+
+          yarn install --frozen-lockfile --production=true
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Generate Prisma client (server)
         working-directory: server
         run: yarn prisma generate
