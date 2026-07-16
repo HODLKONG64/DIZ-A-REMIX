@@ -142,7 +142,7 @@ describe("SWARMSY project backup restore plan", () => {
 
     expect(plan.blocked).toBe(true);
     expect(plan.sections.memoryLocks.conflicts).toEqual([
-      expect.objectContaining({ code: "active_Memory Lock_exists" }),
+      expect.objectContaining({ code: "active_memory_lock_exists" }),
     ]);
     expect(plan.sections.proofReviews.skipDuplicate).toBe(1);
     expect(plan.sections.proofReviews.conflicts).toEqual([]);
