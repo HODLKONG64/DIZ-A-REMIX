@@ -1,0 +1,53 @@
+name: PR 135 server lint diagnostics
+
+on:
+  push:
+    branches:
+      - feat/project-backup-restore-plan
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install server dependencies
+        working-directory: server
+        run: yarn install --frozen-lockfile
+
+      - name: Capture server lint diagnostics
+        id: diagnostics
+        working-directory: server
+        shell: bash
+        run: |
+          set +e
+          yarn lint:check > ../server-lint-output.txt 2>&1
+          status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Post diagnostics to PR
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          {
+            echo '## Temporary PR 135 server lint diagnostics'
+            echo
+            echo "Lint exit: ${{ steps.diagnostics.outputs.status }}"
+            echo
+            echo '```text'
+            tail -n 120 server-lint-output.txt
+            echo '```'
+          } > diagnostic-comment.md
+          gh pr comment 135 --body-file diagnostic-comment.md
