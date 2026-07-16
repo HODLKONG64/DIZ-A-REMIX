@@ -10,7 +10,9 @@ function stableValue(value) {
 }
 
 function sameJson(left, right) {
-  return JSON.stringify(stableValue(left)) === JSON.stringify(stableValue(right));
+  return (
+    JSON.stringify(stableValue(left)) === JSON.stringify(stableValue(right))
+  );
 }
 
 function sameText(left, right) {
@@ -81,7 +83,11 @@ function appendOnlyPlan(incoming, existing, duplicateCheck) {
   return section;
 }
 
-function versionedContentPlan(incoming, existing, type) {
+function versionedContentPlan(
+  incoming,
+  existing,
+  { conflictCode, displayName }
+) {
   const section = appendOnlyPlan(incoming, existing, duplicateContentRecord);
   const hasActiveExisting = existing.some((record) => record?.isActive === true);
 
@@ -92,9 +98,9 @@ function versionedContentPlan(incoming, existing, type) {
       !existing.some((item) => duplicateContentRecord(record, item))
     ) {
       section.conflicts.push({
-        code: `active_${type}_exists`,
+        code: conflictCode,
         sourceId: record.sourceId || null,
-        message: `The destination workspace already has an active ${type}.`,
+        message: `The destination workspace already has an active ${displayName}.`,
       });
     }
   }
@@ -116,12 +122,18 @@ function buildProjectBackupRestorePlan({ backup, destination } = {}) {
     memoryLocks: versionedContentPlan(
       Array.isArray(data.memoryLocks) ? data.memoryLocks : [],
       Array.isArray(destination?.memoryLocks) ? destination.memoryLocks : [],
-      "Memory Lock"
+      {
+        conflictCode: "active_memory_lock_exists",
+        displayName: "Memory Lock",
+      }
     ),
     proofReviews: versionedContentPlan(
       Array.isArray(data.proofReviews) ? data.proofReviews : [],
       Array.isArray(destination?.proofReviews) ? destination.proofReviews : [],
-      "Proof Review"
+      {
+        conflictCode: "active_proof_review_exists",
+        displayName: "Proof Review",
+      }
     ),
   };
 
