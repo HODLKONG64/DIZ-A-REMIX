@@ -40,6 +40,16 @@ describe("SWARMSY project backup user surface", () => {
     expect(helper).not.toContain('["Questions", counts.intakeSessions || 0]');
   });
 
+  it("rejects oversized backup files before reading or uploading them", () => {
+    const panel = read(
+      "components/SwarmsyFirstRunOnboarding/ProjectBackupPanel.jsx"
+    );
+
+    expect(panel).toContain("MAX_PROJECT_BACKUP_FILE_BYTES");
+    expect(panel).toContain("file.size > MAX_PROJECT_BACKUP_FILE_BYTES");
+    expect(panel).toContain("larger than the 10 MB validation limit");
+  });
+
   it("keeps restore disabled and validates without changing workspace data", () => {
     const helper = read(
       "components/SwarmsyFirstRunOnboarding/projectBackup.js"
