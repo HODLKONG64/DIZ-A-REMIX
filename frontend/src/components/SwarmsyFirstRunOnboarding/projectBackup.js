@@ -75,7 +75,7 @@ export function downloadProjectBackup(backup) {
 export function projectBackupValidationSummary(validation) {
   const counts = validation?.summary?.counts || {};
   return [
-    ["Questions", counts.intakeSessions || 0],
+    ["Intake Sessions", counts.intakeSessions || 0],
     ["Identity Ideas", counts.identityIdeas || 0],
     ["Memory Locks", counts.memoryLocks || 0],
     ["Proof Reviews", counts.proofReviews || 0],
