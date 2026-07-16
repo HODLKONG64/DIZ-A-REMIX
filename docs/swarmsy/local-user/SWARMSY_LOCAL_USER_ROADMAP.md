@@ -1,6 +1,6 @@
 # SWARMSY Local User Roadmap
 
-Last updated: 2026-07-15
+Last updated: 2026-07-16
 
 ## Purpose
 
@@ -26,8 +26,8 @@ This roadmap is subordinate to the top-level `README.md`, current runtime code, 
 | Memory Lock core storage | Shipped | User-and-workspace-scoped storage, API access, frontend helpers and a minimal viewer/import flow are implemented. |
 | Memory Lock lifecycle controls | Partial / beta | Archive, delete, export, compare, restore and advanced version controls remain. |
 | Proof Review core storage | Shipped | Durable user-and-workspace-scoped Proof Review storage and authenticated API access are implemented. |
-| Proof Review history surface | Partial / beta | A complete history, comparison and claim-ledger interface remains. |
-| Returning-user dashboard | Partial / beta | A continuation card and HIVE snapshot exist; a complete project-status dashboard remains. |
+| Proof Review history surface | Partial / beta | Version history, active-state display, reopen-in-SPARKY and Markdown export exist; comparison, claim statuses and lifecycle controls remain. |
+| Returning-user dashboard | Partial / beta | Core intake, Identity Idea, Memory Lock and Proof Review state plus a recommended next action are visible; campaign and generated-asset state await dedicated persistence. |
 | Campaign planning handoff | Shipped | Campaign-day prompts can be handed to SPARKY. |
 | Campaign storage and calendar history | Not built | Campaign output still needs dedicated persistence and a retrievable calendar view. |
 | Local Ollama detection | Shipped | The app checks Ollama readiness and lists installed models. |
@@ -36,8 +36,8 @@ This roadmap is subordinate to the top-level `README.md`, current runtime code, 
 | Local ComfyUI generation | Partial / beta | Submission and polling work, but ComfyUI, models and workflow JSON are user supplied. |
 | Generated asset library | Not built | Generated prompts and images need a persistent project-linked asset surface. |
 | Per-message `Use API` | Shipped | API routing occurs only with explicit user intent and a configured provider. |
-| Local settings backup | Shipped | Allowlisted settings export/import is filesystem-backed with path and secret protections. |
-| Full project backup and restore | Not built | HIVE state, chats, ideas, locks, proof, campaigns, documents and assets need one versioned export/import format. |
+| Local settings backup | Shipped | Allowlisted settings export/import is filesystem-backed with path and credential protections. |
+| Project backup and restore | Partial / beta | A versioned read-only export and dry-run validator cover active intake, Identity Ideas, Memory Locks and Proof Reviews. Restore, chats, documents, campaigns, assets and migrations remain. |
 | Desktop wrapper and runtime | Partial / beta | Electron wrapper, trusted bridge, runtime launcher, packaged runtime and installed-launch smoke exist. |
 | Windows artifact and installer | Partial / beta | Build, installer, dependency archive, integrity, installed-runtime smoke and release workflows exist; signing, auto-update and broader clean-machine acceptance remain. |
 | Desktop diagnostics | Shipped | Safe runtime, model, bridge, settings and backup failure reasons are surfaced. |
@@ -76,16 +76,18 @@ This roadmap is subordinate to the top-level `README.md`, current runtime code, 
 
 - Memory Lock core storage, retrieval and minimal viewer/import.
 - Proof Review core storage and authenticated API access.
+- Proof Review version history, reopen flow and Markdown export.
 - Durable intake sessions and Identity Ideas.
+- Core returning-user project dashboard and recommended next action.
 - Campaign-day SPARKY handoff.
 
 ### Remaining
 
-- Full Proof Review history and comparison surface.
+- Structured Proof Review claim/evidence statuses and comparison.
 - Advanced Memory Lock lifecycle controls.
-- Dedicated returning-user project dashboard.
 - Persistent campaign records and calendar history.
 - Generated asset library.
+- Dashboard enrichment once campaign and generated-asset persistence exists.
 
 ## Phase 4 — Local data ownership
 
@@ -96,13 +98,15 @@ This roadmap is subordinate to the top-level `README.md`, current runtime code, 
 - Deterministic Local User data-directory contract.
 - Filesystem-backed desktop settings.
 - Allowlisted settings backup/export/import.
-- Symlink, path-containment, schema and secret-exclusion protections.
+- Symlink, path-containment, schema and credential-exclusion protections.
+- Versioned read-only SWARMSY project export for active intake, Identity Ideas, Memory Locks and Proof Reviews.
+- Dry-run project backup validation that never applies restore writes.
 
 ### Remaining
 
-- Versioned full-project export and restore.
-- Migration support for older project exports.
-- Recovery of chats, Identity Ideas, Memory Locks, Proof Reviews, campaigns, documents and generated assets.
+- Versioned full-project restore.
+- Conflict handling and migration support for older project exports.
+- Recovery of chats, completed intake history, documents, campaigns, generated assets and user-grown packs.
 - Clean uninstall/reinstall acceptance proving user project data survives.
 
 ## Phase 5 — Local AI and image generation
@@ -162,10 +166,10 @@ This roadmap is subordinate to the top-level `README.md`, current runtime code, 
 - Local User Mode must remain usable without paid API keys.
 - No API usage without explicit intent.
 - No silent model, runtime, image-engine or cloud installation.
-- No claim that settings backup is a full project backup.
+- No claim that settings backup or the read-only project export is a complete restore system.
 - No claim that unsigned beta artifacts are production-ready releases.
-- No claim that Proof Review history, campaign persistence, full dashboard, full backup, auto-update or external action tools are complete until runtime proves it.
-- Memory Lock core storage, intake persistence, Identity Ideas and Proof Review core storage must not be described as unbuilt.
+- No claim that campaign persistence, complete project restore, auto-update or external action tools are complete until runtime proves it.
+- Memory Lock core storage, intake persistence, Identity Ideas, Proof Review core storage, Proof Review history and the core returning-user dashboard must not be described as unbuilt.
 
 ## Definition of finished beta
 

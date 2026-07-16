@@ -10,6 +10,9 @@ const path = require("path");
 const { reqBody } = require("./utils/http");
 const { systemEndpoints } = require("./endpoints/system");
 const { swarmsyEndpoints } = require("./endpoints/swarmsy");
+const {
+  registerSwarmsyProjectBackupEndpoints,
+} = require("./endpoints/swarmsyProjectBackup");
 const { workspaceEndpoints } = require("./endpoints/workspaces");
 const { chatEndpoints } = require("./endpoints/chat");
 const { embeddedEndpoints } = require("./endpoints/embed");
@@ -81,6 +84,7 @@ app.use("/api", apiRouter);
 systemEndpoints(apiRouter);
 extensionEndpoints(apiRouter);
 swarmsyEndpoints(apiRouter);
+registerSwarmsyProjectBackupEndpoints(apiRouter);
 workspaceEndpoints(apiRouter);
 workspaceThreadEndpoints(apiRouter);
 chatEndpoints(apiRouter);
