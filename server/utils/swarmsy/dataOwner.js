@@ -6,6 +6,18 @@ const { SystemSettings } = require("../../models/systemSettings");
 const { userFromSession } = require("../http");
 
 const LOCAL_SWARMSY_OWNER_USERNAME = "swarmsy-local-owner";
+const SWARMSY_PERSISTENCE_ROUTE =
+  /\/swarmsy\/workspaces\/[^/]+\/(?:memory-locks|proof-reviews|identity-ideas|intake-session)(?:\/|$)/;
+
+function requestPath(request) {
+  return String(request?.originalUrl || request?.path || request?.url || "")
+    .split("?")[0]
+    .trim();
+}
+
+function isSwarmsyPersistenceRequest(request) {
+  return SWARMSY_PERSISTENCE_ROUTE.test(requestPath(request));
+}
 
 async function ensureLocalSwarmsyOwner() {
   const existing = await prisma.users.findUnique({
@@ -40,6 +52,14 @@ async function ensureLocalSwarmsyOwner() {
   }
 }
 
+async function attachLocalSwarmsyOwner(request, response) {
+  if (!isSwarmsyPersistenceRequest(request)) return null;
+  const owner = await ensureLocalSwarmsyOwner();
+  response.locals.user = { ...owner, role: "admin" };
+  response.locals.swarmsyLocalUserOwner = true;
+  return response.locals.user;
+}
+
 async function resolveSwarmsyDataOwner(request, response) {
   const sessionUser = await userFromSession(request, response);
   const sessionUserId = Number(sessionUser?.id);
@@ -47,7 +67,7 @@ async function resolveSwarmsyDataOwner(request, response) {
     return {
       user: sessionUser,
       userId: sessionUserId,
-      isLocalUser: false,
+      isLocalUser: response.locals?.swarmsyLocalUserOwner === true,
     };
   }
 
@@ -65,6 +85,8 @@ async function resolveSwarmsyDataOwner(request, response) {
 
 module.exports = {
   LOCAL_SWARMSY_OWNER_USERNAME,
+  attachLocalSwarmsyOwner,
   ensureLocalSwarmsyOwner,
+  isSwarmsyPersistenceRequest,
   resolveSwarmsyDataOwner,
 };

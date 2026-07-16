@@ -1,5 +1,6 @@
 const { SystemSettings } = require("../../models/systemSettings");
 const { userFromSession } = require("../http");
+const { attachLocalSwarmsyOwner } = require("../swarmsy/dataOwner");
 const ROLES = {
   all: "<all>",
   admin: "admin",
@@ -58,18 +59,18 @@ function strictMultiUserRoleValid(allowedRoles = DEFAULT_ROLES) {
  */
 function flexUserRoleValid(allowedRoles = DEFAULT_ROLES) {
   return async (request, response, next) => {
-    // If the access-control is allowable for all - skip validations and continue;
-    // It does not matter if multi-user or not.
+    const multiUserMode =
+      response.locals?.multiUserMode ??
+      (await SystemSettings.isMultiUserMode());
+
     if (allowedRoles.includes(ROLES.all)) {
+      if (!multiUserMode) await attachLocalSwarmsyOwner(request, response);
       next();
       return;
     }
 
-    // Bypass if not in multi-user mode
-    const multiUserMode =
-      response.locals?.multiUserMode ??
-      (await SystemSettings.isMultiUserMode());
     if (!multiUserMode) {
+      await attachLocalSwarmsyOwner(request, response);
       next();
       return;
     }
