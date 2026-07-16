@@ -10,7 +10,10 @@ import showToast from "@/utils/toast";
 import {
   downloadProjectBackup,
   exportProjectBackup,
+  planProjectBackupRestore,
   PROJECT_BACKUP_RESTORE_DISABLED,
+  projectBackupRestoreConflicts,
+  projectBackupRestorePlanSummary,
   projectBackupValidationSummary,
   validateProjectBackup,
 } from "./projectBackup";
@@ -21,6 +24,7 @@ export default function ProjectBackupPanel({ workspaceSlug, busy = false }) {
   const fileInputRef = useRef(null);
   const [action, setAction] = useState("");
   const [validation, setValidation] = useState(null);
+  const [restorePlan, setRestorePlan] = useState(null);
 
   async function downloadBackup() {
     if (!workspaceSlug || action) return;
@@ -45,6 +49,8 @@ export default function ProjectBackupPanel({ workspaceSlug, busy = false }) {
     event.target.value = "";
     if (!file || action) return;
 
+    setValidation(null);
+    setRestorePlan(null);
     if (file.size > MAX_PROJECT_BACKUP_FILE_BYTES) {
       setValidation({
         success: false,
@@ -56,11 +62,15 @@ export default function ProjectBackupPanel({ workspaceSlug, busy = false }) {
     }
 
     setAction("validate");
-    setValidation(null);
     try {
       const parsed = JSON.parse(await file.text());
-      const result = await validateProjectBackup(parsed);
-      setValidation(result);
+      const validationResult = await validateProjectBackup(parsed);
+      setValidation(validationResult);
+      if (!validationResult?.valid) return;
+
+      setAction("plan");
+      const planResult = await planProjectBackupRestore(workspaceSlug, parsed);
+      setRestorePlan(planResult);
     } catch {
       setValidation({
         success: false,
@@ -75,8 +85,14 @@ export default function ProjectBackupPanel({ workspaceSlug, busy = false }) {
 
   if (!workspaceSlug) return null;
 
-  const summary = validation?.valid
+  const validationSummary = validation?.valid
     ? projectBackupValidationSummary(validation)
+    : [];
+  const planSummary = restorePlan?.success
+    ? projectBackupRestorePlanSummary(restorePlan)
+    : [];
+  const conflicts = restorePlan?.success
+    ? projectBackupRestoreConflicts(restorePlan)
     : [];
 
   return (
@@ -96,8 +112,8 @@ export default function ProjectBackupPanel({ workspaceSlug, busy = false }) {
             Project Backup
           </h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-theme-text-secondary">
-            Download a portable snapshot of your current questions, Identity
-            Ideas, Memory Locks and Proof Reviews.
+            Download a portable snapshot, or check a backup against this
+            workspace before any future restore is allowed.
           </p>
           <p className="mt-2 text-xs leading-5 text-theme-text-secondary">
             {PROJECT_BACKUP_RESTORE_DISABLED}
@@ -124,12 +140,12 @@ export default function ProjectBackupPanel({ workspaceSlug, busy = false }) {
             onClick={() => fileInputRef.current?.click()}
             className="flex items-center gap-2 rounded-lg border border-theme-sidebar-border px-4 py-2 text-sm font-medium text-theme-text-primary disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {action === "validate" ? (
+            {action === "validate" || action === "plan" ? (
               <SpinnerGap size={18} className="animate-spin" />
             ) : (
               <FileArrowUp size={18} />
             )}
-            Check a backup file
+            {action === "plan" ? "Planning restore" : "Check a backup file"}
           </button>
           <input
             ref={fileInputRef}
@@ -171,7 +187,7 @@ export default function ProjectBackupPanel({ workspaceSlug, busy = false }) {
               </h3>
               {validation.valid ? (
                 <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-                  {summary.map(([label, count]) => (
+                  {validationSummary.map(([label, count]) => (
                     <div
                       key={label}
                       className="rounded-lg border border-theme-sidebar-border bg-theme-bg-primary px-3 py-2"
@@ -196,6 +212,84 @@ export default function ProjectBackupPanel({ workspaceSlug, busy = false }) {
               )}
               <p className="mt-3 text-xs text-theme-text-secondary">
                 No workspace data was changed.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {restorePlan && (
+        <div
+          className={`mt-4 rounded-xl border p-4 ${
+            restorePlan.success && !restorePlan.blocked
+              ? "border-sky-500/30 bg-sky-500/10"
+              : "border-amber-500/30 bg-amber-500/10"
+          }`}
+        >
+          <div className="flex items-start gap-3">
+            {restorePlan.success && !restorePlan.blocked ? (
+              <CheckCircle
+                size={22}
+                weight="fill"
+                className="mt-0.5 text-sky-400"
+              />
+            ) : (
+              <WarningCircle
+                size={22}
+                weight="fill"
+                className="mt-0.5 text-amber-400"
+              />
+            )}
+            <div className="min-w-0 flex-1">
+              <h3 className="font-semibold text-theme-text-primary">
+                {!restorePlan.success
+                  ? "Restore plan could not be created"
+                  : restorePlan.blocked
+                    ? "Restore plan has conflicts"
+                    : "Restore plan is ready for review"}
+              </h3>
+              {restorePlan.success ? (
+                <>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                    {planSummary.map(([label, count]) => (
+                      <div
+                        key={label}
+                        className="rounded-lg border border-theme-sidebar-border bg-theme-bg-primary px-3 py-2"
+                      >
+                        <p className="text-xs text-theme-text-secondary">
+                          {label}
+                        </p>
+                        <p className="mt-1 font-semibold text-theme-text-primary">
+                          {count}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  {conflicts.length > 0 && (
+                    <ul className="mt-3 space-y-2 text-sm text-theme-text-secondary">
+                      {conflicts.map((conflict, index) => (
+                        <li
+                          key={`${conflict.section}-${conflict.code}-${conflict.sourceId || index}`}
+                          className="rounded-lg border border-theme-sidebar-border bg-theme-bg-primary px-3 py-2"
+                        >
+                          <span className="font-medium text-theme-text-primary">
+                            {conflict.section}:
+                          </span>{" "}
+                          {conflict.message}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
+              ) : (
+                <p className="mt-2 text-sm text-theme-text-secondary">
+                  {restorePlan.message ||
+                    "SPARKY could not compare this backup with the workspace."}
+                </p>
+              )}
+              <p className="mt-3 text-xs text-theme-text-secondary">
+                Preview only. Restore remains unavailable and no workspace data
+                was changed.
               </p>
             </div>
           </div>
