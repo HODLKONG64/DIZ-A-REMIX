@@ -1,0 +1,51 @@
+name: PR 138 diagnostics
+
+on:
+  push:
+    branches:
+      - fix/swarmsy-additive-anythingllm-boundary
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install frontend
+        working-directory: frontend
+        run: yarn install --frozen-lockfile
+      - name: Install server
+        working-directory: server
+        run: yarn install --frozen-lockfile
+      - name: Capture failures
+        shell: bash
+        run: |
+          set +e
+          (cd frontend && yarn lint:check) > frontend-lint.txt 2>&1
+          (cd server && npx jest __tests__/frontend --runInBand) > backend-tests.txt 2>&1
+          exit 0
+      - name: Post exact output
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          {
+            echo '## Temporary PR 138 diagnostics'
+            echo
+            echo '### Frontend lint'
+            echo '```text'
+            tail -n 80 frontend-lint.txt
+            echo '```'
+            echo
+            echo '### Frontend contract tests'
+            echo '```text'
+            tail -n 140 backend-tests.txt
+            echo '```'
+          } > diagnostics.md
+          gh pr comment 138 --body-file diagnostics.md
