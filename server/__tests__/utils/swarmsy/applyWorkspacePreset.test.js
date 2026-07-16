@@ -43,6 +43,17 @@ describe("SWARMSY HIVE workspace preset", () => {
     expect(preset.workspaceName).toBe("SWARMSY HIVE");
     expect(preset.systemPrompt).toContain("You are SPARKY.");
     expect(preset.systemPrompt).toContain("You live in the SWARMSY HIVE.");
+    expect(preset.systemPrompt).toContain("AnythingLLM is the workshop");
+    expect(preset.systemPrompt).toContain("SWARMSY packs are seed DNA");
+    expect(preset.systemPrompt).toContain(
+      "The 76-question intake is a question bank"
+    );
+    expect(preset.systemPrompt).toContain(
+      "Never claim that background work happened"
+    );
+    expect(preset.systemPrompt).not.toContain(
+      "Then load and follow docs/swarmsy/living-icon-engine/prompts/01_SWARMSY_USER_INTAKE_76_QUESTIONS.md"
+    );
   });
 
   it("creates a new SWARMSY HIVE with the SPARKY prompt persisted on openAiPrompt", async () => {
@@ -113,6 +124,27 @@ describe("SWARMSY HIVE workspace preset", () => {
       status: "applied",
       label: "SPARKY prompt applied",
     });
+  });
+
+  it("recognises an earlier official SPARKY prompt as updateable instead of custom", () => {
+    const status = getSparkyPromptStatus({
+      id: 2,
+      name: "SWARMSY HIVE",
+      slug: "swarmsy-hive",
+      openAiPrompt:
+        "You are SPARKY.\nYou live in the SWARMSY HIVE.\nEvery output must create a next action.",
+    });
+
+    expect(status).toMatchObject({
+      available: true,
+      applied: false,
+      missing: true,
+      isGenericDefault: false,
+      updateAvailable: true,
+      status: "sparky_update_available",
+      label: "SPARKY update available",
+    });
+    expect(Workspace.update).not.toHaveBeenCalled();
   });
 
   it("detects an existing generic workspace as missing SPARKY without changing it", () => {
