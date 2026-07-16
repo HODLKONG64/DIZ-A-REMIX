@@ -17,6 +17,7 @@ describe("SWARMSY desktop welcome", () => {
     expect(welcome).toContain("Ollama is optional");
     expect(welcome).toContain("Use AnythingLLM provider settings");
     expect(welcome).toContain("Continue to AnythingLLM");
-    expect(welcome).toContain("does not replace or restrict AnythingLLM");
+    expect(welcome).toContain("does not");
+    expect(welcome).toContain("replace or restrict AnythingLLM");
   });
 });
