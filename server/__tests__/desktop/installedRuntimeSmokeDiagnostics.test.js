@@ -11,6 +11,16 @@ function scriptSource() {
 }
 
 describe("installed Windows runtime smoke diagnostics", () => {
+  it("keeps installer cleanup wired to the installed uninstaller", () => {
+    const source = scriptSource();
+
+    expect(source).toContain(
+      '$uninstallerPath = Join-Path $installRoot "Uninstall SWARMSY Desktop.exe"'
+    );
+    expect(source).toContain("Test-Path -LiteralPath $uninstallerPath");
+    expect(source).toContain("Start-Process -FilePath $uninstallerPath");
+  });
+
   it("validates the actual installed runtime payload before launch", () => {
     const source = scriptSource();
 
