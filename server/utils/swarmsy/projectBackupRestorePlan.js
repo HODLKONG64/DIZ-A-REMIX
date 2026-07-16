@@ -41,6 +41,15 @@ function intakePlan(incoming = [], existing = null) {
     skipDuplicate: 0,
     conflicts: [],
   };
+  if (incoming.length > 1) {
+    section.conflicts.push({
+      code: "multiple_intake_sessions_unsupported",
+      sourceId: null,
+      message: "Version 1 restore planning supports at most one intake session.",
+    });
+    return section;
+  }
+
   const record = incoming[0] || null;
   if (!record) return section;
   if (!existing) {
