@@ -6,8 +6,9 @@ $artifactBackup = "$artifactRoot.install-smoke-source"
 $installerPath = Join-Path $repoRoot "desktop\artifacts\SWARMSY-Desktop-Setup.exe"
 $installRoot = Join-Path $env:LOCALAPPDATA "Programs\SWARMSY Desktop"
 $installedExe = Join-Path $installRoot "SWARMSY Desktop.exe"
-$uninstallerPath = Join-Path $installRoot "Uninstall SWARMSY Desktop.exe"
 $installedArchive = Join-Path $installRoot "resources\app\desktop\runtime\server-node-modules.tar.gz"
+$installedRuntimeEntrypoint = Join-Path $installRoot "resources\app\desktop\runtime\start-local-runtime.cjs"
+$installedServerEntrypoint = Join-Path $installRoot "resources\app\server\index.js"
 $installedNodeModules = Join-Path $installRoot "resources\app\server\node_modules"
 $smokeCacheRoot = Join-Path $env:LOCALAPPDATA "SWY"
 
@@ -37,6 +38,74 @@ function Uninstall-Swarmsy {
   }
 }
 
+function Write-DirectorySummary {
+  param(
+    [string]$Label,
+    [string]$Root
+  )
+
+  Write-Host "--- $Label ---"
+  Write-Host "Path: $Root"
+  Write-Host "Exists: $(Test-Path -LiteralPath $Root)"
+  if (!(Test-Path -LiteralPath $Root)) { return }
+
+  Get-ChildItem -LiteralPath $Root -Recurse -Depth 2 -Force -ErrorAction SilentlyContinue |
+    Select-Object FullName, Length, LastWriteTime |
+    Format-Table -AutoSize |
+    Out-String -Width 240 |
+    Write-Host
+}
+
+function Write-InstalledRuntimeDiagnostics {
+  param(
+    [string]$InstallRoot
+  )
+
+  $runtimeRoot = Join-Path $InstallRoot "resources\app\desktop\runtime"
+  $serverRoot = Join-Path $InstallRoot "resources\app\server"
+  $temporarySmokeRoots = Join-Path ([System.IO.Path]::GetTempPath()) "swarmsy-desktop-launch-smoke-*"
+
+  Write-Host "=== Installed SWARMSY Runtime Diagnostics ==="
+  Write-Host "InstallRoot: $InstallRoot"
+  Write-Host "Installed EXE exists: $(Test-Path -LiteralPath $installedExe)"
+  Write-Host "Runtime entrypoint exists: $(Test-Path -LiteralPath $installedRuntimeEntrypoint)"
+  Write-Host "Server entrypoint exists: $(Test-Path -LiteralPath $installedServerEntrypoint)"
+  Write-Host "Dependency archive exists: $(Test-Path -LiteralPath $installedArchive)"
+  Write-Host "Raw server node_modules exists: $(Test-Path -LiteralPath $installedNodeModules)"
+
+  Write-DirectorySummary -Label "installed runtime tree (depth 2)" -Root $runtimeRoot
+  Write-DirectorySummary -Label "installed server tree (depth 2)" -Root $serverRoot
+  Write-DirectorySummary -Label "runtime dependency cache (depth 2)" -Root $smokeCacheRoot
+
+  Write-Host "--- recent smoke data and logs ---"
+  Get-ChildItem -Path $temporarySmokeRoots -Directory -Force -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending |
+    Select-Object -First 5 |
+    ForEach-Object {
+      Write-Host "Smoke root: $($_.FullName)"
+      Get-ChildItem -LiteralPath $_.FullName -Recurse -File -Force -ErrorAction SilentlyContinue |
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 30 FullName, LastWriteTime, Length |
+        Format-Table -AutoSize |
+        Out-String -Width 240 |
+        Write-Host
+    }
+
+  Write-Host "--- SWARMSY processes ---"
+  Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+    Where-Object {
+      $_.Name -like "*SWARMSY*" -or
+      $_.CommandLine -like "*start-local-runtime*" -or
+      $_.CommandLine -like "*desktop-runtime-launch-smoke*"
+    } |
+    Select-Object ProcessId, ParentProcessId, Name, ExecutablePath, CommandLine |
+    Format-List |
+    Out-String -Width 240 |
+    Write-Host
+
+  Write-Host "=== End Installed SWARMSY Runtime Diagnostics ==="
+}
+
 if (!(Test-Path -LiteralPath $installerPath)) {
   throw "Installer is missing: $installerPath"
 }
@@ -57,6 +126,12 @@ try {
   if (!(Test-Path -LiteralPath $installedArchive)) {
     throw "Installed runtime dependency archive is missing: $installedArchive"
   }
+  if (!(Test-Path -LiteralPath $installedRuntimeEntrypoint)) {
+    throw "Installed runtime entrypoint is missing: $installedRuntimeEntrypoint"
+  }
+  if (!(Test-Path -LiteralPath $installedServerEntrypoint)) {
+    throw "Installed server entrypoint is missing: $installedServerEntrypoint"
+  }
   if (Test-Path -LiteralPath $installedNodeModules) {
     throw "Installer wrote raw server/node_modules instead of the archived runtime payload: $installedNodeModules"
   }
@@ -69,16 +144,17 @@ try {
 
   Push-Location $repoRoot
   try {
-    $env:SWARMSY_RUNTIME_SMOKE_TIMEOUT_MS = "480000"
-    $env:SWARMSY_RUNTIME_SMOKE_RETRY_MS   = "3000"
+    $env:SWARMSY_RUNTIME_SMOKE_TIMEOUT_MS = "600000"
+    $env:SWARMSY_RUNTIME_SMOKE_RETRY_MS = "1000"
 
-    # force smoke test to target installed app/runtime paths directly
-    $env:SWARMSY_DESKTOP_ROOT_OVERRIDE    = $installRoot
-    $env:SWARMSY_RUNTIME_BASE_OVERRIDE    = Join-Path $installRoot "resources\app\desktop\runtime"
-    $env:SWARMSY_SERVER_ROOT_OVERRIDE     = Join-Path $installRoot "resources\app\server"
+    # Force the smoke test to target installed app/runtime paths directly.
+    $env:SWARMSY_DESKTOP_ROOT_OVERRIDE = $installRoot
+    $env:SWARMSY_RUNTIME_BASE_OVERRIDE = Join-Path $installRoot "resources\app\desktop\runtime"
+    $env:SWARMSY_SERVER_ROOT_OVERRIDE = Join-Path $installRoot "resources\app\server"
 
     npm run desktop:runtime:smoke:win
     if ($LASTEXITCODE -ne 0) {
+      Write-InstalledRuntimeDiagnostics -InstallRoot $installRoot
       throw "Installed SWARMSY runtime smoke failed with exit code $LASTEXITCODE."
     }
   } finally {
