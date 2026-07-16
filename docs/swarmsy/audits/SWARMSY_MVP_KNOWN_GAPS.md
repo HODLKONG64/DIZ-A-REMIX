@@ -1,7 +1,7 @@
 # SWARMSY MVP Known Gaps
 
 Audit date: 2026-07-16
-Branch basis: `master` after merged PRs through #132 plus the project-backup foundation in this branch
+Branch basis: `master` after merged PRs through #133 plus the Local User project-backup controls in PR #134
 
 ## Purpose
 
@@ -29,6 +29,7 @@ The following are implemented and must not be listed as unbuilt:
 - durable Proof Review core storage and authenticated API access;
 - Proof Review version history, active-state display, reopen-in-SPARKY and Markdown export;
 - versioned read-only project export and dry-run backup validation for active intake, Identity Ideas, Memory Locks and Proof Reviews;
+- trusted desktop Local User controls for downloading and checking project-backup files;
 - local Ollama detection, model selection and routing;
 - explicit configured-provider routing;
 - desktop wrapper, artifact, installer, integrity and installed-runtime smoke workflows.
@@ -41,7 +42,9 @@ The following are implemented and must not be listed as unbuilt:
 - versioned read-only SWARMSY project export;
 - strict portable record allowlists;
 - authenticated workspace-scoped export;
-- dry-run validation that reports record counts and never applies restore writes.
+- dry-run validation that reports record counts and never applies restore writes;
+- trusted desktop Local User download and file-check controls;
+- client-side rejection of backup files larger than 10 MB before reading or validation upload.
 
 **What remains:**
 
@@ -156,7 +159,7 @@ The following are implemented and must not be listed as unbuilt:
 
 ## Gap 7 — Full returning-user project dashboard enrichment
 
-**What exists:** A joined-up dashboard for active intake, current Identity Idea, Memory Locks, Proof Reviews and one recommended next action.
+**What exists:** A joined-up dashboard for active intake, current Identity Idea, Memory Locks, Proof Reviews and one recommended next action. Trusted desktop Local User users also receive project-backup download and validation controls below the dashboard.
 
 **What remains:**
 
@@ -164,7 +167,7 @@ The following are implemented and must not be listed as unbuilt:
 - campaign state once campaign persistence exists;
 - generated assets once an asset library exists;
 - broader risk and missing-proof summaries;
-- backup readiness and recovery status.
+- backup readiness and recovery status beyond the current manual export/check controls.
 
 | Property | Detail |
 |---|---|
@@ -188,7 +191,7 @@ The following are implemented and must not be listed as unbuilt:
 
 **What exists:** User-safe route and journey tests plus desktop safety coverage.
 
-**What remains:** Dedicated tests for admin HIVE preset creation, required-doc status and ingestion, unauthorised admin access, cross-user/workspace access attempts, malicious packs and file names, oversized uploads, forged workspace IDs, provider-value leakage, Memory Lock overwrite attempts, Proof Review cross-user access and project-backup allowlist enforcement.
+**What remains:** Dedicated tests for admin HIVE preset creation, required-doc status and ingestion, unauthorised admin access, cross-user/workspace access attempts, malicious packs and file names, oversized direct API uploads, forged workspace IDs, provider-value leakage, Memory Lock overwrite attempts, Proof Review cross-user access and project-backup allowlist enforcement.
 
 | Property | Detail |
 |---|---|

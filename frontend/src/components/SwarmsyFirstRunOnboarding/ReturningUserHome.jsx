@@ -1,6 +1,8 @@
+import ProjectBackupPanel from "./ProjectBackupPanel";
 import ProjectDashboard from "./ProjectDashboard";
 import ProofReviewHistoryPanel from "./ProofReviewHistoryPanel";
 import { buildMemoryLockStarterMessage } from "./memoryLock";
+import { hasDesktopLocalSettingsBridge } from "./localUserOllamaSelection";
 
 export default function ReturningUserHome({
   workspaceSlug,
@@ -20,6 +22,8 @@ export default function ReturningUserHome({
     onContinueIdea?.(message);
   }
 
+  const canUseLocalProjectBackup = hasDesktopLocalSettingsBridge();
+
   return (
     <div className="space-y-4">
       <ProjectDashboard
@@ -30,6 +34,10 @@ export default function ReturningUserHome({
         onContinueMemoryLock={continueMemoryLock}
         onShowChoices={onShowChoices}
       />
+
+      {canUseLocalProjectBackup && (
+        <ProjectBackupPanel workspaceSlug={workspaceSlug} busy={busy} />
+      )}
 
       <ProofReviewHistoryPanel
         workspaceSlug={workspaceSlug}
