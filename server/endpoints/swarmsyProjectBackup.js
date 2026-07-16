@@ -10,9 +10,7 @@ const {
 const {
   buildProjectBackupRestorePlan,
 } = require("../utils/swarmsy/projectBackupRestorePlan");
-const {
-  resolveSwarmsyDataOwner,
-} = require("../utils/swarmsy/dataOwner");
+const { resolveSwarmsyDataOwner } = require("../utils/swarmsy/dataOwner");
 const { validatedRequest } = require("../utils/middleware/validatedRequest");
 const {
   flexUserRoleValid,
