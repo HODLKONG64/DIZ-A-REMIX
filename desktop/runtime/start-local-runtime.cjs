@@ -5,9 +5,60 @@ const path = require("path");
 const { spawnSync } = require("child_process");
 
 const RUNTIME_DEPENDENCY_ARCHIVE = "server-node-modules.tar.gz";
+const RUNTIME_LOG_FILENAME = "runtime-startup.log";
 
 function ensureDir(dir) {
   fs.mkdirSync(dir, { recursive: true });
+}
+
+function formatErrorDetails(error) {
+  if (!error) return "";
+  const parts = [];
+  if (error.message) parts.push(`Error: ${error.message}`);
+  if (typeof error.exitCode !== "undefined") {
+    parts.push(`Exit code: ${error.exitCode}`);
+  }
+  if (error.command) parts.push(`Command:\n${error.command}`);
+  if (error.stdout) parts.push(`Stdout:\n${String(error.stdout).trimEnd()}`);
+  if (error.stderr) parts.push(`Stderr:\n${String(error.stderr).trimEnd()}`);
+  if (error.stack) parts.push(`Stack:\n${error.stack}`);
+  return parts.join("\n");
+}
+
+function resolveRuntimeStartupLogPath({ env = process.env } = {}) {
+  const localAppData = String(env.LOCALAPPDATA || "").trim();
+  if (!localAppData) {
+    return path.join(process.cwd(), RUNTIME_LOG_FILENAME);
+  }
+
+  return path.join(localAppData, "SWY", RUNTIME_LOG_FILENAME);
+}
+
+function appendRuntimeStartupLog(message, { env = process.env } = {}) {
+  const logPath = resolveRuntimeStartupLogPath({ env });
+  ensureDir(path.dirname(logPath));
+  fs.appendFileSync(logPath, `${message}\n`, "utf8");
+  return logPath;
+}
+
+function writeRuntimeStartupFailure(stage, error, { env = process.env } = {}) {
+  const logPath = resolveRuntimeStartupLogPath({ env });
+  ensureDir(path.dirname(logPath));
+  const message = [
+    "[SWARMSY runtime] startup failed",
+    "",
+    `Stage:`,
+    stage,
+    "",
+    formatErrorDetails(error) || "Error:\nUnknown error",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  fs.appendFileSync(logPath, `${message}\n\n`, "utf8");
+  if (error && typeof error === "object") {
+    error.runtimeStartupLogged = true;
+  }
+  return logPath;
 }
 
 function ensurePrismaStorageLink(
@@ -93,6 +144,46 @@ function run(command, args, options = {}) {
       `${actualCommand} ${actualArgs.join(" ")} exited with ${result.status}`
     );
   }
+}
+
+function runWithDiagnostics(command, args, options = {}) {
+  const {
+    env = process.env,
+    platform = process.platform,
+    spawnSyncImpl = spawnSync,
+    stage = "runtime command",
+    cwd,
+  } = options;
+  const isPowerShellScript =
+    platform === "win32" &&
+    String(command || "")
+      .toLowerCase()
+      .endsWith(".ps1");
+  const actualCommand = isPowerShellScript ? "powershell.exe" : command;
+  const actualArgs = isPowerShellScript
+    ? ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", command, ...args]
+    : args;
+
+  const result = spawnSyncImpl(actualCommand, actualArgs, {
+    cwd,
+    env,
+    shell: platform === "win32" && !isPowerShellScript,
+    windowsHide: true,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+
+  if (result.error || result.status !== 0) {
+    const error = result.error || new Error(`${actualCommand} exited with ${result.status}`);
+    error.stage = stage;
+    error.command = `${actualCommand} ${actualArgs.join(" ")}`;
+    error.exitCode = result.status;
+    error.stdout = result.stdout || "";
+    error.stderr = result.stderr || "";
+    throw error;
+  }
+
+  return result;
 }
 
 function resolveRuntimeDataRoot(serverRoot, { env = process.env } = {}) {
@@ -325,18 +416,57 @@ function initializeLocalRuntime(
     );
   }
 
-  run(prismaBin, ["migrate", "deploy"], {
-    cwd: serverRoot,
+  appendRuntimeStartupLog("[SWARMSY runtime] boot started", { env });
+  appendRuntimeStartupLog("[SWARMSY runtime] storage initialisation", { env });
+  ensurePrismaStorageLink(serverRoot, storageRoot, { platform });
+  appendRuntimeStartupLog("[SWARMSY runtime] dependency extraction", { env });
+  ensureServerRuntimeDependencies(serverRoot, {
     env,
     platform,
     spawnSyncImpl,
   });
-  run(prismaBin, ["db", "seed"], {
-    cwd: serverRoot,
-    env,
-    platform,
-    spawnSyncImpl,
-  });
+  appendRuntimeStartupLog("[SWARMSY runtime] Prisma migration", { env });
+  try {
+    runWithDiagnostics(prismaBin, ["migrate", "deploy"], {
+      cwd: serverRoot,
+      env,
+      platform,
+      spawnSyncImpl,
+      stage: "prisma migrate deploy",
+    });
+    appendRuntimeStartupLog("[SWARMSY runtime] Prisma seed", { env });
+    runWithDiagnostics(prismaBin, ["db", "seed"], {
+      cwd: serverRoot,
+      env,
+      platform,
+      spawnSyncImpl,
+      stage: "prisma db seed",
+    });
+    appendRuntimeStartupLog("[SWARMSY runtime] server startup", { env });
+  } catch (error) {
+    writeRuntimeStartupFailure(error.stage || "runtime initialization", error, {
+      env,
+    });
+    throw error;
+  }
+}
+
+function startServerRuntime(
+  serverRoot,
+  { env = process.env, platform = process.platform, spawnSyncImpl = spawnSync } = {}
+) {
+  initializeLocalRuntime(serverRoot, { env, platform, spawnSyncImpl });
+  try {
+    require(path.join(serverRoot, "index.js"));
+    appendRuntimeStartupLog("[SWARMSY runtime] ready", { env });
+  } catch (error) {
+    error.stage = "server startup";
+    error.command = `require(${path.join(serverRoot, "index.js")})`;
+    if (!error.runtimeStartupLogged) {
+      writeRuntimeStartupFailure("server startup", error, { env });
+    }
+    throw error;
+  }
 }
 
 function main() {
@@ -346,8 +476,21 @@ function main() {
       `Bundled SWARMSY server runtime is missing at ${serverRoot}`
     );
   }
-  initializeLocalRuntime(serverRoot);
-  require(path.join(serverRoot, "index.js"));
+  const env = process.env;
+  try {
+    startServerRuntime(serverRoot, { env });
+  } catch (error) {
+    if (!error?.stage) {
+      error.stage = "runtime initialization";
+    }
+    if (!error?.runtimeStartupLogged) {
+      writeRuntimeStartupFailure(error?.stage, error, { env });
+    }
+    console.error("[SWARMSY runtime] startup failed");
+    console.error(`Stage: ${error?.stage || "runtime initialization"}`);
+    console.error(formatErrorDetails(error));
+    process.exitCode = 1;
+  }
 }
 
 if (require.main === module) main();
@@ -361,11 +504,16 @@ module.exports = {
   extractRuntimeDependencyArchive,
   hashFileSync,
   initializeLocalRuntime,
+  startServerRuntime,
   removePathIfPresent,
   resolvePrismaBin,
   resolveRuntimeDataRoot,
   resolveRuntimeDependencyArchive,
   resolveRuntimeDependencyCacheRoot,
   run,
+  runWithDiagnostics,
   sqliteFileUrl,
+  resolveRuntimeStartupLogPath,
+  appendRuntimeStartupLog,
+  writeRuntimeStartupFailure,
 };
