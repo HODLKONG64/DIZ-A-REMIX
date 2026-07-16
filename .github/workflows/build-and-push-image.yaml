@@ -128,8 +128,22 @@ jobs:
         env:
           CVE_EXCEPTIONS: ${{ steps.cve-list.outputs.CVE_EXCEPTIONS }}
         run: |
-          echo $CVE_EXCEPTIONS
-          curl -sSfL https://raw.githubusercontent.com/docker/scout-cli/main/install.sh | sh -s --
+          set -euo pipefail
+          echo "$CVE_EXCEPTIONS"
+
+          SCOUT_INSTALL_URL="https://raw.githubusercontent.com/docker/scout-cli/main/install.sh"
+          curl -fsSL "$SCOUT_INSTALL_URL" -o /tmp/scout-install.sh
+
+          # Do not execute HTML or another upstream error response as shell.
+          if ! head -n 1 /tmp/scout-install.sh | grep -q '^#!'; then
+            echo "::error::Docker Scout installer download did not return a shell script."
+            echo "::error::First 20 lines of response:"
+            sed -n '1,20p' /tmp/scout-install.sh
+            exit 1
+          fi
+
+          sh /tmp/scout-install.sh
+
           for cve in $CVE_EXCEPTIONS; do
             for tag in "${{ join(fromJSON(steps.meta.outputs.json).tags, ' ') }}"; do
               echo "Attaching VEX exception $cve to $tag"
