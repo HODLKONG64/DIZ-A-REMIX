@@ -147,4 +147,41 @@ describe("SWARMSY project backup restore plan", () => {
     expect(plan.sections.proofReviews.skipDuplicate).toBe(1);
     expect(plan.sections.proofReviews.conflicts).toEqual([]);
   });
+
+  it("does not let an inactive duplicate hide a different active record", () => {
+    const plan = buildProjectBackupRestorePlan({
+      backup: backupData({
+        proofReviews: [
+          {
+            sourceId: 9,
+            source: "generated",
+            content: "Archived matching proof",
+            isActive: true,
+          },
+        ],
+      }),
+      destination: destination({
+        proofReviews: [
+          {
+            id: 50,
+            source: "generated",
+            content: "Archived matching proof",
+            isActive: false,
+          },
+          {
+            id: 51,
+            source: "generated",
+            content: "Different active proof",
+            isActive: true,
+          },
+        ],
+      }),
+    });
+
+    expect(plan.sections.proofReviews.skipDuplicate).toBe(1);
+    expect(plan.sections.proofReviews.conflicts).toEqual([
+      expect.objectContaining({ code: "active_proof_review_exists" }),
+    ]);
+    expect(plan.blocked).toBe(true);
+  });
 });
