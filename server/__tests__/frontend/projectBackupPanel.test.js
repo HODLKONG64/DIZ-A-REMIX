@@ -64,7 +64,7 @@ describe("SWARMSY project backup user surface", () => {
     expect(panel).not.toMatch(/restoreProject|applyRestore|importProjectBackup/);
   });
 
-  it("shows the backup surface between the dashboard and proof history", () => {
+  it("shows backup controls only through the trusted Local User desktop bridge", () => {
     const returningHome = read(
       "components/SwarmsyFirstRunOnboarding/ReturningUserHome.jsx"
     );
@@ -72,11 +72,13 @@ describe("SWARMSY project backup user surface", () => {
     const backup = returningHome.indexOf("<ProjectBackupPanel");
     const proof = returningHome.indexOf("<ProofReviewHistoryPanel");
 
+    expect(returningHome).toContain("hasDesktopLocalSettingsBridge");
+    expect(returningHome).toContain(
+      "const canUseLocalProjectBackup = hasDesktopLocalSettingsBridge();"
+    );
+    expect(returningHome).toContain("{canUseLocalProjectBackup && (");
     expect(dashboard).toBeGreaterThan(-1);
     expect(backup).toBeGreaterThan(dashboard);
     expect(proof).toBeGreaterThan(backup);
-    expect(returningHome).toContain(
-      "<ProjectBackupPanel workspaceSlug={workspaceSlug} busy={busy} />"
-    );
   });
 });
