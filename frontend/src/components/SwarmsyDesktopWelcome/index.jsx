@@ -137,7 +137,10 @@ export default function SwarmsyDesktopWelcome() {
       targetWindow: window,
     }).catch(() => null);
     setVisible(false);
-    showToast("SWARMSY is ready. AnythingLLM remains fully available.", "success");
+    showToast(
+      "SWARMSY is ready. AnythingLLM remains fully available.",
+      "success"
+    );
   }
 
   if (!visible || isHostedAdminMode) return null;
