@@ -79,6 +79,7 @@ jobs:
       
       - name: Extract metadata (tags, labels) for Docker
         id: meta
+        continue-on-error: true
         uses: docker/metadata-action@9ec57ed1fcdbf14dcef7dfbe97b2010124a938b7
         with:
           images: |
@@ -90,6 +91,34 @@ jobs:
             type=ref,event=tag
             type=ref,event=pr
 
+      - name: Fall back to deterministic master metadata
+        id: meta-fallback
+        if: steps.meta.outcome == 'failure'
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "::warning::Docker metadata action failed; using deterministic master tags."
+
+          tags=(
+            "ghcr.io/${GITHUB_REPOSITORY}:latest"
+            "ghcr.io/${GITHUB_REPOSITORY}:master"
+          )
+          if [[ "${{ steps.dockerhub_auth.outputs.enabled }}" == "true" ]]; then
+            tags+=(
+              "mintplexlabs/anythingllm:latest"
+              "mintplexlabs/anythingllm:master"
+            )
+          fi
+
+          {
+            echo 'tags<<EOF'
+            printf '%s\n' "${tags[@]}"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+          tags_json=$(printf '%s\n' "${tags[@]}" | jq -R . | jq -sc .)
+          echo "json={\"tags\":$tags_json}" >> "$GITHUB_OUTPUT"
+
       - name: Build and push multi-platform Docker image
         uses: docker/build-push-action@v6
         with:
@@ -99,7 +128,7 @@ jobs:
           sbom: true
           provenance: mode=max
           platforms: linux/amd64,linux/arm64
-          tags: ${{ steps.meta.outputs.tags }}
+          tags: ${{ steps.meta.outputs.tags || steps.meta-fallback.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -145,7 +174,7 @@ jobs:
           sh /tmp/scout-install.sh
 
           for cve in $CVE_EXCEPTIONS; do
-            for tag in "${{ join(fromJSON(steps.meta.outputs.json).tags, ' ') }}"; do
+            for tag in "${{ join(fromJSON(steps.meta.outputs.json || steps.meta-fallback.outputs.json).tags, ' ') }}"; do
               echo "Attaching VEX exception $cve to $tag"
               docker scout attestation add \
               --file "./docker/vex/$cve.vex.json" \
