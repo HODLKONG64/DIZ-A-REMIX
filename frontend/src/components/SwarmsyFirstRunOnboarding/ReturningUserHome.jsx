@@ -1,3 +1,4 @@
+import ProjectBackupPanel from "./ProjectBackupPanel";
 import ProjectDashboard from "./ProjectDashboard";
 import ProofReviewHistoryPanel from "./ProofReviewHistoryPanel";
 import { buildMemoryLockStarterMessage } from "./memoryLock";
@@ -30,6 +31,8 @@ export default function ReturningUserHome({
         onContinueMemoryLock={continueMemoryLock}
         onShowChoices={onShowChoices}
       />
+
+      <ProjectBackupPanel workspaceSlug={workspaceSlug} busy={busy} />
 
       <ProofReviewHistoryPanel
         workspaceSlug={workspaceSlug}
