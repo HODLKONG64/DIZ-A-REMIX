@@ -1049,6 +1049,11 @@ describe("SWARMSY desktop wrapper foundation", () => {
       mode: "desktop_local_runtime_launcher",
     });
     const runtimeStopper = jest.fn().mockResolvedValue({ ok: true });
+    const runtimeHealthWaiter = jest.fn().mockResolvedValue({
+      ok: true,
+      startUrl: "http://127.0.0.1:3000",
+      origin: "http://127.0.0.1:3000",
+    });
     const result = await main.ensureDesktopRuntimeReady({
       startUrl: "http://127.0.0.1:3000",
       env: { SWARMSY_DESKTOP_AUTO_START_RUNTIME: "true" },
@@ -1058,17 +1063,57 @@ describe("SWARMSY desktop wrapper foundation", () => {
         startUrl: "http://127.0.0.1:3000",
       }),
       runtimeLauncher,
-      runtimeHealthWaiter: jest.fn().mockResolvedValue({
-        ok: true,
-        startUrl: "http://127.0.0.1:3000",
-        origin: "http://127.0.0.1:3000",
-      }),
+      runtimeHealthWaiter,
       runtimeStopper,
     });
 
     expect(result.ok).toBe(true);
     expect(runtimeLauncher).toHaveBeenCalledTimes(1);
+    expect(runtimeHealthWaiter).toHaveBeenCalledWith(
+      expect.objectContaining({ timeoutMs: 45000 })
+    );
     expect(runtimeStopper).not.toHaveBeenCalled();
+  });
+
+  it("runtime orchestrator gives packaged dependency extraction its cold-start deadline", async () => {
+    jest.resetModules();
+    jest.doMock(
+      "electron",
+      () => ({
+        app: {},
+        BrowserWindow: jest.fn(),
+        ipcMain: { handle: jest.fn(), removeHandler: jest.fn() },
+        shell: { openExternal: jest.fn() },
+      }),
+      { virtual: true }
+    );
+
+    const main = require(path.resolve(repoRoot, "desktop/electron/main.cjs"));
+    const child = { pid: 9998, exitCode: null, signalCode: null };
+    const runtimeHealthWaiter = jest.fn().mockResolvedValue({ ok: true });
+
+    const result = await main.ensureDesktopRuntimeReady({
+      startUrl: "http://127.0.0.1:3000",
+      env: {
+        SWARMSY_DESKTOP_PACKAGED_RUNTIME_START_TIMEOUT_MS: "720000",
+      },
+      packagedRuntime: true,
+      runtimeHealthcheck: jest.fn().mockResolvedValue({
+        ok: false,
+        reason: "runtime_unreachable",
+      }),
+      runtimeLauncher: jest.fn().mockResolvedValue({
+        ok: true,
+        pid: 9998,
+        child,
+      }),
+      runtimeHealthWaiter,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(runtimeHealthWaiter).toHaveBeenCalledWith(
+      expect.objectContaining({ timeoutMs: 720000 })
+    );
   });
 
   it("runtime orchestrator surfaces launch failure and timeout failure safely", async () => {
