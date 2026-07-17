@@ -11,10 +11,15 @@ const {
   stopWindowsProcessTree,
   validateFirstRunFiles,
 } = require("../../../desktop/scripts/desktop-runtime-launch-smoke.cjs");
+const {
+  DEFAULT_PACKAGED_RUNTIME_START_TIMEOUT_MS,
+} = require("../../../desktop/foundation/runtimeLauncher.cjs");
 
 describe("packaged desktop runtime launch smoke", () => {
-  it("allows enough time for a cold packaged Windows runtime copy", () => {
-    expect(DEFAULT_TIMEOUT_MS).toBeGreaterThanOrEqual(300_000);
+  it("keeps the outer smoke alive beyond the packaged cold-start deadline", () => {
+    expect(DEFAULT_TIMEOUT_MS).toBeGreaterThan(
+      DEFAULT_PACKAGED_RUNTIME_START_TIMEOUT_MS
+    );
   });
 
   it("matches only the Electron page loaded from the fresh local runtime", () => {
