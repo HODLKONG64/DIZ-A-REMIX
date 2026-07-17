@@ -13,6 +13,14 @@ function makeExecutable(targetPath, contents = "#!/bin/sh\nexit 0\n") {
   fs.writeFileSync(targetPath, contents, { mode: 0o755 });
 }
 
+function makePrismaRuntime(serverRoot) {
+  makeExecutable(path.join(serverRoot, "node_modules", ".bin", "prisma"));
+  makeExecutable(
+    path.join(serverRoot, "node_modules", "prisma", "build", "index.js"),
+    "#!/usr/bin/env node\nprocess.exit(0);\n"
+  );
+}
+
 describe("packaged desktop local runtime entrypoint", () => {
   it("resolves the persistent runtime startup log under LocalAppData", () => {
     const { resolveRuntimeStartupLogPath } = require(runtimePath);
@@ -134,7 +142,7 @@ describe("packaged desktop local runtime entrypoint", () => {
       path.join(os.tmpdir(), "swarmsy-server-")
     );
     const userData = fs.mkdtempSync(path.join(os.tmpdir(), "swarmsy-user-"));
-    makeExecutable(path.join(serverRoot, "node_modules", ".bin", "prisma"));
+    makePrismaRuntime(serverRoot);
 
     const env = { SWARMSY_DESKTOP_USER_DATA_DIR: userData };
     initializeLocalRuntime(serverRoot, { env });
@@ -177,6 +185,9 @@ describe("packaged desktop local runtime entrypoint", () => {
     );
     const prismaBin = path.join(serverRoot, "node_modules", ".bin", "prisma");
     makeExecutable(prismaBin);
+    makeExecutable(
+      path.join(serverRoot, "node_modules", "prisma", "build", "index.js")
+    );
 
     const env = { LOCALAPPDATA: localAppData };
     const spawnSyncImpl = jest.fn((command, args, options) => {
@@ -221,7 +232,7 @@ describe("packaged desktop local runtime entrypoint", () => {
     const localAppData = fs.mkdtempSync(
       path.join(os.tmpdir(), "swarmsy-appdata-")
     );
-    makeExecutable(path.join(serverRoot, "node_modules", ".bin", "prisma"));
+    makePrismaRuntime(serverRoot);
     fs.mkdirSync(serverRoot, { recursive: true });
     fs.writeFileSync(
       path.join(serverRoot, "index.js"),
@@ -267,7 +278,7 @@ describe("packaged desktop local runtime entrypoint", () => {
     expect(fs.realpathSync(oldStorageRoot)).toBe(fs.realpathSync(storageRoot));
   });
 
-  it("throws a clear error when no Prisma shim is bundled", () => {
+  it("throws a clear error when no Prisma CLI entrypoint is bundled", () => {
     const { initializeLocalRuntime } = require(runtimePath);
     const serverRoot = fs.mkdtempSync(
       path.join(os.tmpdir(), "swarmsy-server-")
@@ -277,6 +288,56 @@ describe("packaged desktop local runtime entrypoint", () => {
       initializeLocalRuntime(serverRoot, {
         env: { SWARMSY_DESKTOP_USER_DATA_DIR: os.tmpdir() },
       })
-    ).toThrow(/Bundled Prisma CLI is missing under/);
+    ).toThrow(/Bundled Prisma CLI entrypoint is missing at/);
+  });
+
+  it("runs Prisma through the packaged executable when Windows paths contain spaces", () => {
+    const { initializeLocalRuntime } = require(runtimePath);
+    const tempRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-windows-space-")
+    );
+    const serverRoot = path.join(tempRoot, "SWARMSY Desktop", "server");
+    const userData = path.join(tempRoot, "User Data");
+    const runtimeExecPath =
+      "C:\\Program Files\\SWARMSY Desktop\\SWARMSY Desktop.exe";
+    makePrismaRuntime(serverRoot);
+    const spawnSyncImpl = jest.fn(() => ({ status: 0, error: null }));
+
+    try {
+      initializeLocalRuntime(serverRoot, {
+        env: { SWARMSY_DESKTOP_USER_DATA_DIR: userData },
+        platform: "win32",
+        spawnSyncImpl,
+        runtimeExecPath,
+      });
+
+      const prismaEntry = path.join(
+        serverRoot,
+        "node_modules",
+        "prisma",
+        "build",
+        "index.js"
+      );
+      expect(spawnSyncImpl).toHaveBeenNthCalledWith(
+        1,
+        runtimeExecPath,
+        [prismaEntry, "migrate", "deploy"],
+        expect.objectContaining({
+          shell: false,
+          env: expect.objectContaining({ ELECTRON_RUN_AS_NODE: "1" }),
+        })
+      );
+      expect(spawnSyncImpl).toHaveBeenNthCalledWith(
+        2,
+        runtimeExecPath,
+        [prismaEntry, "db", "seed"],
+        expect.objectContaining({
+          shell: false,
+          env: expect.objectContaining({ ELECTRON_RUN_AS_NODE: "1" }),
+        })
+      );
+    } finally {
+      fs.rmSync(tempRoot, { recursive: true, force: true });
+    }
   });
 });
