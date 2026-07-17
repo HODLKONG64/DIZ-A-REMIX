@@ -393,6 +393,73 @@ describe("desktop runtime launcher foundation", () => {
     );
   });
 
+  it("moves legacy managed app storage before refreshing stale packaged runtime", () => {
+    const fs = require("fs");
+    const os = require("os");
+    const { preparePackagedRuntimeRoot } = require(launcherPath);
+    const sourceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-runtime-legacy-storage-source-")
+    );
+    const userData = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-runtime-legacy-storage-user-")
+    );
+    const managedAppRoot = path.join(userData, "managed-local-runtime", "app");
+    const legacyStorageRoot = path.join(managedAppRoot, "server", "storage");
+    const runtimeDataRoot = path.join(userData, "local-user-data", "runtime");
+    fs.mkdirSync(path.join(sourceRoot, "desktop/runtime"), { recursive: true });
+    fs.mkdirSync(path.join(sourceRoot, "server"), { recursive: true });
+    fs.mkdirSync(path.join(managedAppRoot, "desktop", "runtime"), {
+      recursive: true,
+    });
+    fs.mkdirSync(legacyStorageRoot, { recursive: true });
+    fs.writeFileSync(
+      path.join(sourceRoot, "desktop/runtime/start-local-runtime.cjs"),
+      "module.exports = { runtime: 'new' };\n"
+    );
+    fs.writeFileSync(path.join(sourceRoot, "server/index.js"), "server-new");
+    fs.writeFileSync(
+      path.join(sourceRoot, "package.json"),
+      JSON.stringify({ version: "1.0.0" })
+    );
+    fs.writeFileSync(path.join(legacyStorageRoot, "anythingllm.db"), "legacy-db");
+    fs.writeFileSync(path.join(legacyStorageRoot, "local-runtime.jwt"), "legacy-jwt");
+    fs.writeFileSync(
+      path.join(userData, "managed-local-runtime", "runtime-manifest.json"),
+      JSON.stringify({ version: "1.0.0" })
+    );
+    fs.writeFileSync(
+      path.join(managedAppRoot, "desktop", "runtime", "start-local-runtime.cjs"),
+      "module.exports = { runtime: 'old' };\n"
+    );
+    fs.writeFileSync(path.join(managedAppRoot, "server", "index.js"), "server-old");
+
+    preparePackagedRuntimeRoot({
+      rootDir: sourceRoot,
+      env: { SWARMSY_DESKTOP_USER_DATA_DIR: userData },
+    });
+
+    expect(
+      fs.readFileSync(path.join(runtimeDataRoot, "anythingllm.db"), "utf8")
+    ).toBe("legacy-db");
+    expect(
+      fs.readFileSync(path.join(runtimeDataRoot, "local-runtime.jwt"), "utf8")
+    ).toBe("legacy-jwt");
+    expect(
+      fs.readFileSync(
+        path.join(
+          managedAppRoot,
+          "desktop",
+          "runtime",
+          "start-local-runtime.cjs"
+        ),
+        "utf8"
+      )
+    ).toContain("new");
+    expect(fs.existsSync(path.join(managedAppRoot, "server", "storage"))).toBe(
+      false
+    );
+  });
+
   it("returns packaged_runtime_missing without falling back to Yarn dev scripts", async () => {
     const fs = require("fs");
     const os = require("os");
