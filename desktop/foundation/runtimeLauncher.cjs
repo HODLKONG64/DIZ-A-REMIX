@@ -161,6 +161,37 @@ function copyRuntimeTree(from, to) {
   });
 }
 
+function resolveRuntimeDataRootFromManagedRoot(managedRoot) {
+  return path.join(path.dirname(managedRoot), "local-user-data", "runtime");
+}
+
+function preserveLegacyManagedRuntimeStorage(managedRoot, managedAppRoot) {
+  const legacyStorageRoot = path.join(managedAppRoot, "server", "storage");
+  if (!fs.existsSync(legacyStorageRoot)) return;
+
+  const current = fs.lstatSync(legacyStorageRoot);
+  if (current.isSymbolicLink()) return;
+  if (!current.isDirectory()) {
+    throw new Error(
+      `Expected legacy Prisma storage to be a directory: ${legacyStorageRoot}`
+    );
+  }
+
+  const runtimeDataRoot = resolveRuntimeDataRootFromManagedRoot(managedRoot);
+  fs.mkdirSync(runtimeDataRoot, { recursive: true });
+  for (const entry of fs.readdirSync(legacyStorageRoot)) {
+    const source = path.join(legacyStorageRoot, entry);
+    const destination = path.join(runtimeDataRoot, entry);
+    if (fs.existsSync(destination)) {
+      throw new Error(
+        `Cannot move legacy desktop data because ${destination} already exists.`
+      );
+    }
+    fs.renameSync(source, destination);
+  }
+  fs.rmdirSync(legacyStorageRoot);
+}
+
 function updateRuntimeFingerprintForFile(hash, filePath, portablePath) {
   const stats = fs.statSync(filePath);
   hash.update(`${portablePath}\0${stats.size}\0`);
@@ -241,6 +272,7 @@ function preparePackagedRuntimeRoot({
     !fs.existsSync(entry) ||
     !fs.existsSync(serverIndex)
   ) {
+    preserveLegacyManagedRuntimeStorage(managedRoot, managedAppRoot);
     fs.rmSync(managedAppRoot, { recursive: true, force: true });
     fs.mkdirSync(managedAppRoot, { recursive: true });
     copyRuntimeTree(
@@ -699,6 +731,8 @@ module.exports = {
   resolveManagedRuntimeRoot,
   assertSafeManagedRuntimePath,
   createRuntimeSourceFingerprint,
+  resolveRuntimeDataRootFromManagedRoot,
+  preserveLegacyManagedRuntimeStorage,
   preparePackagedRuntimeRoot,
   shouldExcludeRuntimeCopy,
   toPortableLower,
