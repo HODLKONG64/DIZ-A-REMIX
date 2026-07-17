@@ -157,6 +157,12 @@ describe("installed desktop runtime dependency archive", () => {
         );
         fs.mkdirSync(path.dirname(prismaPath), { recursive: true });
         fs.writeFileSync(prismaPath, "@exit /b 0\n");
+        const prismaEntry = path.join(
+          destinationRoot,
+          "node_modules/prisma/build/index.js"
+        );
+        fs.mkdirSync(path.dirname(prismaEntry), { recursive: true });
+        fs.writeFileSync(prismaEntry, "process.exit(0);\n");
       }
       return { status: 0, error: null };
     });

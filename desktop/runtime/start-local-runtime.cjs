@@ -166,6 +166,10 @@ function runWithDiagnostics(command, args, options = {}) {
   const actualArgs = isPowerShellScript
     ? ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", command, ...args]
     : args;
+  const useShell =
+    platform === "win32" &&
+    !isPowerShellScript &&
+    /\.(?:cmd|bat)$/i.test(String(actualCommand || ""));
 
   const commandLine = `${actualCommand} ${actualArgs.join(" ")}`;
   const outputLogPath = appendRuntimeStartupLog(
@@ -178,7 +182,7 @@ function runWithDiagnostics(command, args, options = {}) {
     result = spawnSyncImpl(actualCommand, actualArgs, {
       cwd,
       env,
-      shell: platform === "win32" && !isPowerShellScript,
+      shell: useShell,
       windowsHide: true,
       stdio: ["ignore", outputLogFd, outputLogFd],
     });
@@ -226,6 +230,17 @@ function resolvePrismaBin(serverRoot, { platform = process.platform } = {}) {
   }
 
   return "";
+}
+
+function resolvePrismaCliEntry(serverRoot) {
+  const entry = path.join(
+    serverRoot,
+    "node_modules",
+    "prisma",
+    "build",
+    "index.js"
+  );
+  return fs.existsSync(entry) ? entry : "";
 }
 
 function resolveRuntimeDependencyArchive(serverRoot) {
@@ -391,6 +406,7 @@ function initializeLocalRuntime(
     env = process.env,
     platform = process.platform,
     spawnSyncImpl = spawnSync,
+    runtimeExecPath = process.execPath,
   } = {}
 ) {
   const storageRoot = resolveRuntimeDataRoot(serverRoot, { env });
@@ -422,30 +438,33 @@ function initializeLocalRuntime(
     spawnSyncImpl,
   });
 
-  const prismaBin = resolvePrismaBin(serverRoot, { platform });
-  if (!prismaBin) {
+  const prismaCliEntry = resolvePrismaCliEntry(serverRoot);
+  if (!prismaCliEntry) {
     throw new Error(
-      `Bundled Prisma CLI is missing under ${path.join(
+      `Bundled Prisma CLI entrypoint is missing at ${path.join(
         serverRoot,
         "node_modules",
-        ".bin"
+        "prisma",
+        "build",
+        "index.js"
       )}`
     );
   }
 
   appendRuntimeStartupLog("[SWARMSY runtime] Prisma migration", { env });
+  const prismaEnv = { ...env, ELECTRON_RUN_AS_NODE: "1" };
   try {
-    runWithDiagnostics(prismaBin, ["migrate", "deploy"], {
+    runWithDiagnostics(runtimeExecPath, [prismaCliEntry, "migrate", "deploy"], {
       cwd: serverRoot,
-      env,
+      env: prismaEnv,
       platform,
       spawnSyncImpl,
       stage: "prisma migrate deploy",
     });
     appendRuntimeStartupLog("[SWARMSY runtime] Prisma seed", { env });
-    runWithDiagnostics(prismaBin, ["db", "seed"], {
+    runWithDiagnostics(runtimeExecPath, [prismaCliEntry, "db", "seed"], {
       cwd: serverRoot,
-      env,
+      env: prismaEnv,
       platform,
       spawnSyncImpl,
       stage: "prisma db seed",
@@ -461,9 +480,19 @@ function initializeLocalRuntime(
 
 function startServerRuntime(
   serverRoot,
-  { env = process.env, platform = process.platform, spawnSyncImpl = spawnSync } = {}
+  {
+    env = process.env,
+    platform = process.platform,
+    spawnSyncImpl = spawnSync,
+    runtimeExecPath = process.execPath,
+  } = {}
 ) {
-  initializeLocalRuntime(serverRoot, { env, platform, spawnSyncImpl });
+  initializeLocalRuntime(serverRoot, {
+    env,
+    platform,
+    spawnSyncImpl,
+    runtimeExecPath,
+  });
   try {
     require(path.join(serverRoot, "index.js"));
     appendRuntimeStartupLog("[SWARMSY runtime] ready", { env });
@@ -515,6 +544,7 @@ module.exports = {
   startServerRuntime,
   removePathIfPresent,
   resolvePrismaBin,
+  resolvePrismaCliEntry,
   resolveRuntimeDataRoot,
   resolveRuntimeDependencyArchive,
   resolveRuntimeDependencyCacheRoot,
