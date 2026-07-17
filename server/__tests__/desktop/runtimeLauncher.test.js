@@ -336,6 +336,63 @@ describe("desktop runtime launcher foundation", () => {
     expect(fs.existsSync(path.join(runtimeDataRoot, "assets", "asset.txt"))).toBe(true);
   });
 
+  it("replaces managed app code when packaged runtime changes without a version bump", () => {
+    const fs = require("fs");
+    const os = require("os");
+    const { preparePackagedRuntimeRoot } = require(launcherPath);
+    const sourceRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-runtime-fingerprint-source-")
+    );
+    const userData = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-runtime-fingerprint-user-")
+    );
+    const runtimeDataRoot = path.join(userData, "local-user-data", "runtime");
+    fs.mkdirSync(path.join(sourceRoot, "desktop/runtime"), { recursive: true });
+    fs.mkdirSync(path.join(sourceRoot, "server"), { recursive: true });
+    fs.mkdirSync(runtimeDataRoot, { recursive: true });
+    fs.writeFileSync(path.join(runtimeDataRoot, "anythingllm.db"), "db-v1");
+    fs.writeFileSync(
+      path.join(sourceRoot, "package.json"),
+      JSON.stringify({ version: "1.0.0" })
+    );
+    fs.writeFileSync(
+      path.join(sourceRoot, "desktop/runtime/start-local-runtime.cjs"),
+      "module.exports = { prisma: 'cmd-shim' };\n"
+    );
+    fs.writeFileSync(path.join(sourceRoot, "server/index.js"), "server-v1");
+
+    preparePackagedRuntimeRoot({
+      rootDir: sourceRoot,
+      env: { SWARMSY_DESKTOP_USER_DATA_DIR: userData },
+    });
+
+    fs.writeFileSync(
+      path.join(sourceRoot, "desktop/runtime/start-local-runtime.cjs"),
+      "module.exports = { prisma: 'electron-run-as-node' };\n"
+    );
+    preparePackagedRuntimeRoot({
+      rootDir: sourceRoot,
+      env: { SWARMSY_DESKTOP_USER_DATA_DIR: userData },
+    });
+
+    expect(
+      fs.readFileSync(
+        path.join(
+          userData,
+          "managed-local-runtime",
+          "app",
+          "desktop",
+          "runtime",
+          "start-local-runtime.cjs"
+        ),
+        "utf8"
+      )
+    ).toContain("electron-run-as-node");
+    expect(fs.readFileSync(path.join(runtimeDataRoot, "anythingllm.db"), "utf8")).toBe(
+      "db-v1"
+    );
+  });
+
   it("returns packaged_runtime_missing without falling back to Yarn dev scripts", async () => {
     const fs = require("fs");
     const os = require("os");
