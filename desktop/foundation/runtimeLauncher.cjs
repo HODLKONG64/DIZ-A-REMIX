@@ -12,6 +12,9 @@ const LEGACY_RUNTIME_SCRIPT = "dev:all";
 const AUTO_START_RUNTIME_ENV_FLAG = "SWARMSY_DESKTOP_AUTO_START_RUNTIME";
 const RUNTIME_SCRIPT_ENV_FLAG = "SWARMSY_DESKTOP_RUNTIME_SCRIPT";
 const DEFAULT_HEALTHCHECK_WAIT_TIMEOUT_MS = 45000;
+const PACKAGED_RUNTIME_START_TIMEOUT_ENV_FLAG =
+  "SWARMSY_DESKTOP_PACKAGED_RUNTIME_START_TIMEOUT_MS";
+const DEFAULT_PACKAGED_RUNTIME_START_TIMEOUT_MS = 600000;
 const DEFAULT_HEALTHCHECK_RETRY_INTERVAL_MS = 1000;
 const DEFAULT_LAUNCH_SPAWN_TIMEOUT_MS = 5000;
 const DEFAULT_STOP_TIMEOUT_MS = 5000;
@@ -35,6 +38,18 @@ function shouldAutoStartDesktopRuntime({
   packagedRuntime = false,
 } = {}) {
   return packagedRuntime || isDesktopRuntimeAutoStartEnabled({ env });
+}
+
+function resolveRuntimeHealthcheckWaitTimeout({
+  env = process.env,
+  packagedRuntime = false,
+} = {}) {
+  if (!packagedRuntime) return DEFAULT_HEALTHCHECK_WAIT_TIMEOUT_MS;
+
+  const configured = Number(env?.[PACKAGED_RUNTIME_START_TIMEOUT_ENV_FLAG]);
+  return Number.isFinite(configured) && configured > 0
+    ? configured
+    : DEFAULT_PACKAGED_RUNTIME_START_TIMEOUT_MS;
 }
 
 function resolveManagedRuntimeRoot({ env = process.env } = {}) {
@@ -604,6 +619,8 @@ module.exports = {
   AUTO_START_RUNTIME_ENV_FLAG,
   RUNTIME_SCRIPT_ENV_FLAG,
   DEFAULT_HEALTHCHECK_WAIT_TIMEOUT_MS,
+  PACKAGED_RUNTIME_START_TIMEOUT_ENV_FLAG,
+  DEFAULT_PACKAGED_RUNTIME_START_TIMEOUT_MS,
   DEFAULT_HEALTHCHECK_RETRY_INTERVAL_MS,
   DEFAULT_LAUNCH_SPAWN_TIMEOUT_MS,
   isDesktopRuntimeAutoStartEnabled,
@@ -615,6 +632,7 @@ module.exports = {
   toPortableLower,
   isUnderNodeModules,
   shouldAutoStartDesktopRuntime,
+  resolveRuntimeHealthcheckWaitTimeout,
   resolveNodeRuntimeBinary,
   getAllowlistedRuntimeScripts,
   readRootPackageScripts,

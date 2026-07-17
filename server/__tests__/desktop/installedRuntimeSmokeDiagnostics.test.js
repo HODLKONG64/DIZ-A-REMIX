@@ -35,7 +35,10 @@ describe("installed Windows runtime smoke diagnostics", () => {
     const source = scriptSource();
 
     expect(source).toContain(
-      '$env:SWARMSY_RUNTIME_SMOKE_TIMEOUT_MS = "600000"'
+      '$env:SWARMSY_DESKTOP_PACKAGED_RUNTIME_START_TIMEOUT_MS = "600000"'
+    );
+    expect(source).toContain(
+      '$env:SWARMSY_RUNTIME_SMOKE_TIMEOUT_MS = "900000"'
     );
     expect(source).toContain(
       '$env:SWARMSY_RUNTIME_SMOKE_RETRY_MS = "1000"'

@@ -51,6 +51,29 @@ describe("desktop runtime launcher foundation", () => {
     ).toBe(false);
   });
 
+  it("keeps the short health deadline for development and allows packaged cold starts", () => {
+    const {
+      DEFAULT_HEALTHCHECK_WAIT_TIMEOUT_MS,
+      DEFAULT_PACKAGED_RUNTIME_START_TIMEOUT_MS,
+      resolveRuntimeHealthcheckWaitTimeout,
+    } = require(launcherPath);
+
+    expect(
+      resolveRuntimeHealthcheckWaitTimeout({ env: {}, packagedRuntime: false })
+    ).toBe(DEFAULT_HEALTHCHECK_WAIT_TIMEOUT_MS);
+    expect(
+      resolveRuntimeHealthcheckWaitTimeout({ env: {}, packagedRuntime: true })
+    ).toBe(DEFAULT_PACKAGED_RUNTIME_START_TIMEOUT_MS);
+    expect(
+      resolveRuntimeHealthcheckWaitTimeout({
+        env: {
+          SWARMSY_DESKTOP_PACKAGED_RUNTIME_START_TIMEOUT_MS: "720000",
+        },
+        packagedRuntime: true,
+      })
+    ).toBe(720000);
+  });
+
   it("resolves allowlisted runtime script and rejects unsafe env script names", () => {
     const { resolveRuntimeLaunchScript } = require(launcherPath);
     expect(

@@ -13,11 +13,11 @@ const packageRoot = process.env.SWARMSY_DESKTOP_ROOT_OVERRIDE
   ? path.resolve(process.env.SWARMSY_DESKTOP_ROOT_OVERRIDE)
   : path.join(repoRoot, "desktop", "artifacts", "swarmsy-desktop-win32-x64");
 const desktopExecutable = path.join(packageRoot, "SWARMSY Desktop.exe");
-// A fresh packaged launch copies the production server tree (including native
-// dependencies) into managed Local User storage before migrations can run.
-// Windows CI antivirus scanning can make that one-time copy take nearly three
-// minutes, so keep the outer smoke deadline above the measured cold-start path.
-const DEFAULT_TIMEOUT_MS = 300_000;
+// The smoke process owns Electron and must outlive Electron's packaged-runtime
+// cold-start deadline. First launch extracts the archived production server
+// dependencies before migrations can run, so keep this outer deadline above
+// DEFAULT_PACKAGED_RUNTIME_START_TIMEOUT_MS in runtimeLauncher.cjs.
+const DEFAULT_TIMEOUT_MS = 900_000;
 const DEFAULT_RETRY_INTERVAL_MS = 1_000;
 
 function fail(message) {

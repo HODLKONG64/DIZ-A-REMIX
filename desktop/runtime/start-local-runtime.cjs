@@ -398,12 +398,6 @@ function initializeLocalRuntime(
   ensureDir(path.join(storageRoot, "documents"));
   ensureDir(path.join(storageRoot, "vector-cache"));
   ensureDir(path.join(storageRoot, "assets"));
-  ensurePrismaStorageLink(serverRoot, storageRoot, { platform });
-  ensureServerRuntimeDependencies(serverRoot, {
-    env,
-    platform,
-    spawnSyncImpl,
-  });
 
   env.NODE_ENV = "production";
   env.SERVER_PORT = env.SERVER_PORT || "3000";
@@ -418,6 +412,16 @@ function initializeLocalRuntime(
   env.DISABLE_TELEMETRY = env.DISABLE_TELEMETRY || "true";
   env.SWARMSY_DESKTOP_LOCAL_RUNTIME = "true";
 
+  appendRuntimeStartupLog("[SWARMSY runtime] boot started", { env });
+  appendRuntimeStartupLog("[SWARMSY runtime] storage initialisation", { env });
+  ensurePrismaStorageLink(serverRoot, storageRoot, { platform });
+  appendRuntimeStartupLog("[SWARMSY runtime] dependency extraction", { env });
+  ensureServerRuntimeDependencies(serverRoot, {
+    env,
+    platform,
+    spawnSyncImpl,
+  });
+
   const prismaBin = resolvePrismaBin(serverRoot, { platform });
   if (!prismaBin) {
     throw new Error(
@@ -429,15 +433,6 @@ function initializeLocalRuntime(
     );
   }
 
-  appendRuntimeStartupLog("[SWARMSY runtime] boot started", { env });
-  appendRuntimeStartupLog("[SWARMSY runtime] storage initialisation", { env });
-  ensurePrismaStorageLink(serverRoot, storageRoot, { platform });
-  appendRuntimeStartupLog("[SWARMSY runtime] dependency extraction", { env });
-  ensureServerRuntimeDependencies(serverRoot, {
-    env,
-    platform,
-    spawnSyncImpl,
-  });
   appendRuntimeStartupLog("[SWARMSY runtime] Prisma migration", { env });
   try {
     runWithDiagnostics(prismaBin, ["migrate", "deploy"], {

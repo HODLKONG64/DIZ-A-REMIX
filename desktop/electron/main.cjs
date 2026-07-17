@@ -23,6 +23,7 @@ const {
   getManualRuntimeStartCommand,
   launchDesktopLocalRuntime,
   waitForRuntimeHealthcheck,
+  resolveRuntimeHealthcheckWaitTimeout,
   stopDesktopLaunchedRuntime,
 } = require("../foundation/runtimeLauncher.cjs");
 
@@ -345,6 +346,10 @@ async function ensureDesktopRuntimeReady({
     startUrl,
     launchResult,
     runtimeHealthcheckImpl: runtimeHealthcheck,
+    timeoutMs: resolveRuntimeHealthcheckWaitTimeout({
+      env,
+      packagedRuntime,
+    }),
   });
 
   if (!waitedHealth?.ok) {

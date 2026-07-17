@@ -130,4 +130,63 @@ describe("installed desktop runtime dependency archive", () => {
       fs.rmSync(tempRoot, { recursive: true, force: true });
     }
   });
+
+  it("logs and performs first-launch dependency extraction exactly once", () => {
+    const runtime = require(runtimePath);
+    const tempRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), "swarmsy-runtime-cold-start-")
+    );
+    const serverRoot = path.join(tempRoot, "app", "server");
+    const runtimeDir = path.join(tempRoot, "app", "desktop", "runtime");
+    const archivePath = path.join(
+      runtimeDir,
+      runtime.RUNTIME_DEPENDENCY_ARCHIVE
+    );
+    const cacheRoot = path.join(tempRoot, "short-cache");
+    const localAppData = path.join(tempRoot, "local-app-data");
+    fs.mkdirSync(serverRoot, { recursive: true });
+    fs.mkdirSync(runtimeDir, { recursive: true });
+    fs.writeFileSync(archivePath, "archive-content");
+
+    const spawnSyncImpl = jest.fn((command, args) => {
+      if (command === "tar.exe") {
+        const destinationRoot = args[args.indexOf("-C") + 1];
+        const prismaPath = path.join(
+          destinationRoot,
+          "node_modules/.bin/prisma.cmd"
+        );
+        fs.mkdirSync(path.dirname(prismaPath), { recursive: true });
+        fs.writeFileSync(prismaPath, "@exit /b 0\n");
+      }
+      return { status: 0, error: null };
+    });
+    const env = {
+      LOCALAPPDATA: localAppData,
+      SWARMSY_DESKTOP_RUNTIME_DEPENDENCIES_DIR: cacheRoot,
+    };
+
+    try {
+      runtime.initializeLocalRuntime(serverRoot, {
+        env,
+        platform: "win32",
+        spawnSyncImpl,
+      });
+
+      expect(
+        spawnSyncImpl.mock.calls.filter(([command]) => command === "tar.exe")
+      ).toHaveLength(1);
+      const log = fs.readFileSync(
+        runtime.resolveRuntimeStartupLogPath({ env }),
+        "utf8"
+      );
+      expect(log.indexOf("dependency extraction")).toBeGreaterThan(
+        log.indexOf("boot started")
+      );
+      expect(log.indexOf("Prisma migration")).toBeGreaterThan(
+        log.indexOf("dependency extraction")
+      );
+    } finally {
+      fs.rmSync(tempRoot, { recursive: true, force: true });
+    }
+  });
 });
