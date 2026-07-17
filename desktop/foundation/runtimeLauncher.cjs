@@ -1,5 +1,6 @@
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const { spawn } = require("child_process");
 const {
   runDesktopRuntimeHealthcheck,
@@ -18,6 +19,9 @@ const DEFAULT_PACKAGED_RUNTIME_START_TIMEOUT_MS = 600000;
 const DEFAULT_HEALTHCHECK_RETRY_INTERVAL_MS = 1000;
 const DEFAULT_LAUNCH_SPAWN_TIMEOUT_MS = 5000;
 const DEFAULT_STOP_TIMEOUT_MS = 5000;
+const RUNTIME_MANIFEST_SCHEMA_VERSION = 2;
+const RUNTIME_FINGERPRINT_ROOTS = ["server", "desktop/runtime"];
+const LARGE_RUNTIME_FINGERPRINT_METADATA_THRESHOLD_BYTES = 10 * 1024 * 1024;
 const repoRoot = path.resolve(__dirname, "../..");
 
 function isDesktopRuntimeAutoStartEnabled({ env = process.env } = {}) {
@@ -157,6 +161,59 @@ function copyRuntimeTree(from, to) {
   });
 }
 
+function updateRuntimeFingerprintForFile(hash, filePath, portablePath) {
+  const stats = fs.statSync(filePath);
+  hash.update(`${portablePath}\0${stats.size}\0`);
+
+  if (stats.size > LARGE_RUNTIME_FINGERPRINT_METADATA_THRESHOLD_BYTES) {
+    hash.update(`${Math.trunc(stats.mtimeMs)}\0`);
+    return;
+  }
+
+  hash.update(fs.readFileSync(filePath));
+  hash.update("\0");
+}
+
+function updateRuntimeFingerprintForTree(hash, rootDir, relativeRoot) {
+  const absoluteRoot = path.join(rootDir, relativeRoot);
+  if (!fs.existsSync(absoluteRoot)) return;
+
+  function visit(directory) {
+    const entries = fs
+      .readdirSync(directory, { withFileTypes: true })
+      .sort((left, right) => left.name.localeCompare(right.name));
+
+    for (const entry of entries) {
+      const absolutePath = path.join(directory, entry.name);
+      if (isUnderNodeModules(absolutePath)) continue;
+      if (shouldExcludeRuntimeCopy(absolutePath)) continue;
+
+      const portablePath = path
+        .relative(rootDir, absolutePath)
+        .replace(/\\/g, "/");
+      if (entry.isDirectory()) {
+        hash.update(`${portablePath}/\0`);
+        visit(absolutePath);
+        continue;
+      }
+      if (entry.isFile()) {
+        updateRuntimeFingerprintForFile(hash, absolutePath, portablePath);
+      }
+    }
+  }
+
+  visit(absoluteRoot);
+}
+
+function createRuntimeSourceFingerprint({ rootDir = repoRoot } = {}) {
+  const hash = crypto.createHash("sha256");
+  hash.update(`schema:${RUNTIME_MANIFEST_SCHEMA_VERSION}\0`);
+  for (const relativeRoot of RUNTIME_FINGERPRINT_ROOTS) {
+    updateRuntimeFingerprintForTree(hash, rootDir, relativeRoot);
+  }
+  return hash.digest("hex");
+}
+
 function preparePackagedRuntimeRoot({
   rootDir = repoRoot,
   env = process.env,
@@ -176,8 +233,11 @@ function preparePackagedRuntimeRoot({
 
   const entry = path.join(managedAppRoot, PACKAGED_RUNTIME_ENTRY);
   const serverIndex = path.join(managedAppRoot, "server", "index.js");
+  const sourceFingerprint = createRuntimeSourceFingerprint({ rootDir });
   if (
+    currentManifest?.schemaVersion !== RUNTIME_MANIFEST_SCHEMA_VERSION ||
     currentManifest?.version !== version ||
+    currentManifest?.sourceFingerprint !== sourceFingerprint ||
     !fs.existsSync(entry) ||
     !fs.existsSync(serverIndex)
   ) {
@@ -194,7 +254,17 @@ function preparePackagedRuntimeRoot({
     fs.mkdirSync(managedRoot, { recursive: true });
     fs.writeFileSync(
       manifestPath,
-      `${JSON.stringify({ version, updatedAt: new Date().toISOString() }, null, 2)}\n`
+      `${JSON.stringify(
+        {
+          schemaVersion: RUNTIME_MANIFEST_SCHEMA_VERSION,
+          version,
+          sourceFingerprint,
+          fingerprintRoots: RUNTIME_FINGERPRINT_ROOTS,
+          updatedAt: new Date().toISOString(),
+        },
+        null,
+        2
+      )}\n`
     );
   }
   return entry;
@@ -623,10 +693,12 @@ module.exports = {
   DEFAULT_PACKAGED_RUNTIME_START_TIMEOUT_MS,
   DEFAULT_HEALTHCHECK_RETRY_INTERVAL_MS,
   DEFAULT_LAUNCH_SPAWN_TIMEOUT_MS,
+  RUNTIME_MANIFEST_SCHEMA_VERSION,
   isDesktopRuntimeAutoStartEnabled,
   resolvePackagedRuntimeEntry,
   resolveManagedRuntimeRoot,
   assertSafeManagedRuntimePath,
+  createRuntimeSourceFingerprint,
   preparePackagedRuntimeRoot,
   shouldExcludeRuntimeCopy,
   toPortableLower,
