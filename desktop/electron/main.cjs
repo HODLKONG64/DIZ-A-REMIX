@@ -59,22 +59,29 @@ function resolveRuntimeStartupLogPath({ env = process.env } = {}) {
 
 function readRuntimeStartupLogTail({
   env = process.env,
-  readFileSyncImpl = fs.readFileSync,
   statSyncImpl = fs.statSync,
+  openSyncImpl = fs.openSync,
+  readSyncImpl = fs.readSync,
+  closeSyncImpl = fs.closeSync,
 } = {}) {
   const logPath = resolveRuntimeStartupLogPath({ env });
+  let fd;
   try {
     const stats = statSyncImpl(logPath);
-    const content = readFileSyncImpl(logPath, "utf8");
-    const tail =
-      stats.size > RUNTIME_LOG_TAIL_BYTES
-        ? content.slice(-RUNTIME_LOG_TAIL_BYTES)
-        : content;
+    const fileSize = Number(stats?.size || 0);
+    const readLength = Math.min(fileSize, RUNTIME_LOG_TAIL_BYTES);
+    const readStart = Math.max(0, fileSize - readLength);
+    const buffer = Buffer.alloc(readLength);
+    fd = openSyncImpl(logPath, "r");
+    const bytesRead = readLength
+      ? readSyncImpl(fd, buffer, 0, readLength, readStart)
+      : 0;
+    const tail = buffer.subarray(0, bytesRead).toString("utf8");
     return {
       ok: true,
       path: logPath,
       content: tail.trim(),
-      truncated: stats.size > RUNTIME_LOG_TAIL_BYTES,
+      truncated: fileSize > RUNTIME_LOG_TAIL_BYTES,
     };
   } catch {
     return {
@@ -83,6 +90,14 @@ function readRuntimeStartupLogTail({
       content: "",
       truncated: false,
     };
+  } finally {
+    if (fd !== undefined) {
+      try {
+        closeSyncImpl(fd);
+      } catch {
+        // Best-effort cleanup only. A failed close should not hide diagnostics.
+      }
+    }
   }
 }
 

@@ -40,4 +40,40 @@ describe("desktop runtime failure diagnostics page", () => {
     expect(failureMarkup).toContain("prisma migrate deploy");
     expect(failureMarkup).toContain("migration failed");
   });
+
+  it("reads only the startup log tail from disk", () => {
+    const main = require(mainPath);
+    const logPath = path.join(
+      "C:\\Users\\GOD\\AppData\\Local",
+      "SWY",
+      "runtime-startup.log"
+    );
+    const openSyncImpl = jest.fn(() => 42);
+    const closeSyncImpl = jest.fn();
+    const readSyncImpl = jest.fn((fd, buffer, offset, length, position) => {
+      expect(fd).toBe(42);
+      expect(offset).toBe(0);
+      expect(length).toBe(24 * 1024);
+      expect(position).toBe(1024);
+      const written = buffer.write("latest diagnostics");
+      return written;
+    });
+
+    const result = main.readRuntimeStartupLogTail({
+      env: { LOCALAPPDATA: "C:\\Users\\GOD\\AppData\\Local" },
+      statSyncImpl: jest.fn(() => ({ size: 25 * 1024 })),
+      openSyncImpl,
+      readSyncImpl,
+      closeSyncImpl,
+    });
+
+    expect(result).toEqual({
+      ok: true,
+      path: logPath,
+      content: "latest diagnostics",
+      truncated: true,
+    });
+    expect(openSyncImpl).toHaveBeenCalledWith(logPath, "r");
+    expect(closeSyncImpl).toHaveBeenCalledWith(42);
+  });
 });
