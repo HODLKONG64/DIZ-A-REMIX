@@ -1,3 +1,4 @@
+const fs = require("fs");
 const path = require("path");
 const { app, BrowserWindow, ipcMain, shell } = require("electron");
 const {
@@ -34,6 +35,8 @@ const CLEAR_LOCAL_USER_SETTINGS_CHANNEL = "swarmsy:clear-local-user-settings";
 const EXPORT_LOCAL_USER_BACKUP_CHANNEL = "swarmsy:export-local-user-backup";
 const IMPORT_LOCAL_USER_BACKUP_CHANNEL = "swarmsy:import-local-user-backup";
 const GET_RUNTIME_STATUS_CHANNEL = "swarmsy:get-runtime-status";
+const RUNTIME_LOG_FILENAME = "runtime-startup.log";
+const RUNTIME_LOG_TAIL_BYTES = 24 * 1024;
 const repoRoot = path.resolve(__dirname, "../..");
 
 function isPublicPackagedRuntimeLaunch({ appInstance = app } = {}) {
@@ -46,6 +49,56 @@ let isQuittingAfterManagedRuntimeStop = false;
 function resolveStartUrl() {
   const configured = String(process.env.SWARMSY_DESKTOP_START_URL || "").trim();
   return configured || "http://127.0.0.1:3000";
+}
+
+function resolveRuntimeStartupLogPath({ env = process.env } = {}) {
+  const localAppData = String(env.LOCALAPPDATA || "").trim();
+  if (!localAppData) return path.join(process.cwd(), RUNTIME_LOG_FILENAME);
+  return path.join(localAppData, "SWY", RUNTIME_LOG_FILENAME);
+}
+
+function readRuntimeStartupLogTail({
+  env = process.env,
+  statSyncImpl = fs.statSync,
+  openSyncImpl = fs.openSync,
+  readSyncImpl = fs.readSync,
+  closeSyncImpl = fs.closeSync,
+} = {}) {
+  const logPath = resolveRuntimeStartupLogPath({ env });
+  let fd;
+  try {
+    const stats = statSyncImpl(logPath);
+    const fileSize = Number(stats?.size || 0);
+    const readLength = Math.min(fileSize, RUNTIME_LOG_TAIL_BYTES);
+    const readStart = Math.max(0, fileSize - readLength);
+    const buffer = Buffer.alloc(readLength);
+    fd = openSyncImpl(logPath, "r");
+    const bytesRead = readLength
+      ? readSyncImpl(fd, buffer, 0, readLength, readStart)
+      : 0;
+    const tail = buffer.subarray(0, bytesRead).toString("utf8");
+    return {
+      ok: true,
+      path: logPath,
+      content: tail.trim(),
+      truncated: fileSize > RUNTIME_LOG_TAIL_BYTES,
+    };
+  } catch {
+    return {
+      ok: false,
+      path: logPath,
+      content: "",
+      truncated: false,
+    };
+  } finally {
+    if (fd !== undefined) {
+      try {
+        closeSyncImpl(fd);
+      } catch {
+        // Best-effort cleanup only. A failed close should not hide diagnostics.
+      }
+    }
+  }
 }
 
 function renderFailurePage(failure) {
@@ -85,6 +138,30 @@ function renderFailurePage(failure) {
       : "http://127.0.0.1:3000";
   const escaped = escapeHtml(message);
   const escapedExpectedUrl = escapeHtml(expectedUrl);
+  const startupLog =
+    failure?.runtimeStartupLog ||
+    readRuntimeStartupLogTail({ env: failure?.env || process.env });
+  const startupLogMarkup = startupLog?.ok
+    ? `
+        <h3 style="margin-top:24px;">Startup diagnostics</h3>
+        <p>Copy this block into the bug report. It is the local runtime startup log from <code>${escapeHtml(
+          startupLog.path
+        )}</code>.</p>
+        ${
+          startupLog.truncated
+            ? "<p><strong>Note:</strong> showing the latest part of a large log.</p>"
+            : ""
+        }
+        <textarea readonly style="box-sizing:border-box;width:100%;min-height:320px;background:#020617;color:#e5e7eb;border:1px solid #334155;border-radius:8px;padding:12px;font-family:Consolas, monospace;font-size:12px;white-space:pre;">${escapeHtml(
+          startupLog.content
+        )}</textarea>
+      `
+    : `
+        <h3 style="margin-top:24px;">Startup diagnostics</h3>
+        <p>No runtime startup log was found at <code>${escapeHtml(
+          startupLog?.path || ""
+        )}</code>. This usually means the packaged runtime failed before it could write diagnostics.</p>
+      `;
 
   return `data:text/html;charset=utf-8,${encodeURIComponent(`
     <html>
@@ -97,6 +174,7 @@ function renderFailurePage(failure) {
           manualStartCommand
         )}</code> and relaunch with <code>yarn desktop:dev</code>.</p>
         <p><a href="${retryUrl}" style="display:inline-block;background:#38bdf8;color:#0f172a;padding:10px 14px;border-radius:8px;text-decoration:none;font-weight:bold;">Retry local runtime</a></p>
+        ${startupLogMarkup}
         <p>Hosted/Admin deployment is unchanged by this desktop local runtime foundation.</p>
       </body>
     </html>
@@ -509,6 +587,8 @@ module.exports = {
   TRUSTED_DESKTOP_HOSTS,
   normalizeTrustedHost,
   resolveStartUrl,
+  resolveRuntimeStartupLogPath,
+  readRuntimeStartupLogTail,
   renderFailurePage,
   isTrustedDesktopOrigin,
   shouldOpenExternally,
